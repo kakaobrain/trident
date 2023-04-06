@@ -1,0 +1,6 @@
+torch
+torchvision
+torchaudio
+matplotlib
+pandas
+triton
