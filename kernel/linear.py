@@ -65,6 +65,8 @@ def linear(x_ptr, stride_x_m, stride_x_k,
 
     if ACTIVATION == 'relu':
         total = relu(total)
+    elif ACTIVATION == 'leaky_relu':
+        total = leaky_relu(total)
 
     y_ptr += range_m[:, None] * stride_y_m + range_n[None, :] * stride_y_n
     mask_m = range_m[:, None] < size_m

@@ -18,7 +18,7 @@ def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None, activation=''
     :param x: Input tensor. The tensor shape is (*, in_features).
     :param w: Weight tensor. The tensor shape is (out_features, in_features).
     :param b: Bias tensor. The tensor shape is (out_features).
-    :param activation: Activation function. Supports for relu.
+    :param activation: Activation function. Supports for relu and leaky_relu.
     :return: Output tensor. The tensor shape is (*,out_features).
     """
     assert x.is_cuda and x.is_contiguous()
