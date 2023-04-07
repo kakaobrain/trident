@@ -53,6 +53,14 @@ class LinearTestCase(unittest.TestCase):
 
         self.assertTrue(tt.allclose(tdf.linear(x, w, b), tf.linear(x, w, b)))
 
+    def test_linear_relu(self):
+        x = torch.randn(1, 32, device='cuda')
+        w = torch.randn(8, 32, device='cuda')
+        b = torch.randn(8, device='cuda')
+
+        self.assertTrue(tt.allclose(tdf.linear(x, w, b, 'relu'),
+                                    torch.relu(tf.linear(x, w, b))))
+
 
 if __name__ == '__main__':
     unittest.main()

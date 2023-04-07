@@ -10,7 +10,7 @@ import triton
 import kernel as tdk
 
 
-def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None):
+def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None, activation=''):
     """
     Applies a linear transformation on the input tensor x using the weight tensor w
     and the bias tensor b, and returns the result.
@@ -18,6 +18,7 @@ def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None):
     :param x: Input tensor. The tensor shape is (*, in_features).
     :param w: Weight tensor. The tensor shape is (out_features, in_features).
     :param b: Bias tensor. The tensor shape is (out_features).
+    :param activation: Activation function. Supports for relu.
     :return: Output tensor. The tensor shape is (*,out_features).
     """
     assert x.is_cuda and x.is_contiguous()
@@ -39,6 +40,7 @@ def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None):
                          w, w.stride(0), w.stride(1),
                          None, 0,
                          m, k, n,
+                         ACTIVATION=activation,
                          BLOCK_SIZE_K=16)
     else:
         assert b.is_cuda and b.is_contiguous()
@@ -49,6 +51,7 @@ def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None):
                          w, w.stride(0), w.stride(1),
                          b, b.stride(0) if b.dim() == 1 else b.stride(1),
                          m, k, n,
+                         ACTIVATION=activation,
                          BLOCK_SIZE_K=16)
 
     return y

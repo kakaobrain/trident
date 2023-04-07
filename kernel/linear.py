@@ -8,6 +8,7 @@ Proprietary and confidential.
 import triton
 import triton.language as tl
 
+from .activation import *
 
 def get_configs_linear_io_bound():
     configs = []
@@ -30,6 +31,7 @@ def linear(x_ptr, stride_x_m, stride_x_k,
            w_ptr, stride_w_n, stride_w_k,
            b_ptr, stride_b_n,
            size_m, size_k, size_n,
+           ACTIVATION: tl.constexpr,
            BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_K: tl.constexpr, BLOCK_SIZE_N: tl.constexpr):
     i = tl.program_id(0)
     j = tl.program_id(1)
@@ -60,6 +62,9 @@ def linear(x_ptr, stride_x_m, stride_x_k,
         mask_n = range_n < size_n
         b = tl.load(b_ptr, mask_n, 0.0)
         total += b[None, :]
+
+    if ACTIVATION == 'relu':
+        total = relu(total)
 
     y_ptr += range_m[:, None] * stride_y_m + range_n[None, :] * stride_y_n
     mask_m = range_m[:, None] < size_m
