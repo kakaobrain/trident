@@ -8,8 +8,11 @@ Proprietary and confidential.
 import unittest
 import torch
 import torch.nn.functional as tf
+import triton
 import triton.testing as tt
 import function as tdf
+import operation
+import module
 
 
 class LinearTestCase(unittest.TestCase):
@@ -68,6 +71,37 @@ class LinearTestCase(unittest.TestCase):
 
         self.assertTrue(tt.allclose(tdf.linear(x, w, b, 'leaky_relu'),
                                     tf.leaky_relu(tf.linear(x, w, b))))
+
+    def test_linear_operation_no_bias(self):
+        x = torch.randn(1024, 4096, device='cuda')
+        w = torch.randn(2048, 4096, device='cuda')
+
+        self.assertTrue(
+            triton.testing.allclose(operation.Linear.apply(x, w), torch.nn.functional.linear(x, w))
+        )
+
+    def test_linear_operation(self):
+        x = torch.randn(128, 256, device='cuda')
+        w = torch.randn(512, 256, device='cuda')
+        b = torch.randn(512, device='cuda')
+
+        self.assertTrue(
+            triton.testing.allclose(operation.Linear.apply(x, w, b), torch.nn.functional.linear(x, w, b))
+        )
+
+    def test_linear_module_no_bias(self):
+        linear0 = torch.nn.Linear(128, 256, bias=False).to('cuda')
+        linear1 = module.Linear(128, 256, bias=False).load_state_dict(linear0.state_dict())
+        x = torch.randn(128, 128, device='cuda')
+
+        self.assertTrue(triton.testing.allclose(linear0(x), linear1(x)))
+
+    def test_linear_module(self):
+        linear0 = torch.nn.Linear(128, 256).to('cuda')
+        linear1 = module.Linear(128, 256).load_state_dict(linear0.state_dict())
+        x = torch.randn(128, 128, device='cuda')
+
+        self.assertTrue(triton.testing.allclose(linear0(x), linear1(x)))
 
 
 if __name__ == '__main__':
