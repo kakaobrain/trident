@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as tf
 import triton
 import triton.testing as tt
-import function as tdf
+import trident
 
 
 @tt.perf_report(
@@ -45,7 +45,7 @@ def benchmark(k, provider):
     if provider == 'torch':
         avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: tf.linear(x, w, b))
     else:
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: tdf.linear(x, w, b))
+        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: trident.function.linear(x, w, b))
 
     gbps = lambda ms: (m * k * n * 2 * 1e-12) / (ms * 1e-3)
     return gbps(avg_ms), gbps(max_ms), gbps(min_ms)

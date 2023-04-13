@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 import torch
-import function
+from trident import function
 
 
 class Linear(torch.autograd.Function):

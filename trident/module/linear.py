@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 import torch
-import operation
+from trident import operation
 
 
 class Linear(torch.nn.Module):

@@ -16,7 +16,7 @@ limitations under the License.
 
 import torch
 import triton
-import kernel as tdk
+from trident import kernel as tdk
 
 
 def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None, activation=''):
