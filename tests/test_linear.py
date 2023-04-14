@@ -15,104 +15,103 @@ limitations under the License.
 """
 
 import unittest
+import random
 import torch
-import torch.nn.functional as tf
+import torch.nn
 import triton
-import triton.testing as tt
 import trident
 
 
 class LinearTestCase(unittest.TestCase):
-    def test_small_tensor_no_bias(self):
-        x = torch.randn(512, 512, device='cuda')
-        w = torch.randn(256, 512, device='cuda')
+    m = None
+    k = None
+    n = None
+    x = None
+    w = None
+    b = None
 
-        self.assertTrue(tt.allclose(trident.function.linear(x, w), tf.linear(x, w)))
+    @classmethod
+    def setUpClass(cls):
+        cls.m = random.randint(64, 2048)
+        cls.k = random.randint(64, 2048)
+        cls.n = random.randint(64, 2048)
+        cls.x = torch.randn(cls.m, cls.k, device='cuda')
+        cls.w = torch.randn(cls.n, cls.k, device='cuda')
+        cls.b = torch.randn(cls.n, device='cuda')
 
-    def test_large_tensor_no_bias(self):
-        x = torch.randn(1024, 2048, device='cuda')
-        w = torch.randn(4096, 2048, device='cuda')
+    def test_linear_no_bias(self):
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(self.x, self.w),
+            trident.function.linear(self.x, self.w),
+        ))
 
-        self.assertTrue(tt.allclose(trident.function.linear(x, w), tf.linear(x, w)))
-
-    def test_small_tensor(self):
-        x = torch.randn(64, 32, device='cuda')
-        w = torch.randn(16, 32, device='cuda')
-        b = torch.randn(16, device='cuda')
-
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b), tf.linear(x, w, b)))
-
-    def test_large_tensor(self):
-        x = torch.randn(2048, 4096, device='cuda')
-        w = torch.randn(1024, 4096, device='cuda')
-        b = torch.randn(1024, device='cuda')
-
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b), tf.linear(x, w, b)))
+    def test_linear(self):
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(self.x, self.w, self.b),
+            trident.function.linear(self.x, self.w, self.b)
+        ))
 
     def test_linear_zero_input(self):
-        x = torch.full((128, 32), 0.0, device='cuda')
-        w = torch.randn(256, 32, device='cuda')
-        b = torch.full((1, 256), 0.1, device='cuda')
+        x = torch.zeros(self.m, self.k, device='cuda')
 
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b), tf.linear(x, w, b)))
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(x, self.w, self.b),
+            trident.function.linear(x, self.w, self.b)
+        ))
 
     def test_linear_zero_bias(self):
-        x = torch.randn(128, 32, device='cuda')
-        w = torch.randn(256, 32, device='cuda')
-        b = torch.full((1, 256), 0.0, device='cuda')
+        b = torch.zeros(self.n, device='cuda')
 
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b), tf.linear(x, w, b)))
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(self.x, self.w, b),
+            trident.function.linear(self.x, self.w, b)
+        ))
 
     def test_linear_relu(self):
-        x = torch.randn(1, 32, device='cuda')
-        w = torch.randn(8, 32, device='cuda')
-        b = torch.randn(8, device='cuda')
-
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b, 'relu'),
-                                    torch.relu(tf.linear(x, w, b))))
+        self.assertTrue(triton.testing.allclose(
+            torch.relu(torch.nn.functional.linear(self.x, self.w, self.b)),
+            trident.function.linear(self.x, self.w, self.b, 'relu')
+        ))
 
     def test_linear_leaky_relu(self):
-        x = torch.randn(1, 32, device='cuda')
-        w = torch.randn(8, 32, device='cuda')
-        b = torch.randn(8, device='cuda')
-
-        self.assertTrue(tt.allclose(trident.function.linear(x, w, b, 'leaky_relu'),
-                                    tf.leaky_relu(tf.linear(x, w, b))))
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.leaky_relu(torch.nn.functional.linear(self.x, self.w, self.b)),
+            trident.function.linear(self.x, self.w, self.b, 'leaky_relu')
+        ))
 
     def test_linear_operation_no_bias(self):
-        x = torch.randn(1024, 4096, device='cuda')
-        w = torch.randn(2048, 4096, device='cuda')
-
-        self.assertTrue(
-            triton.testing.allclose(trident.operation.Linear.apply(x, w), torch.nn.functional.linear(x, w))
-        )
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(self.x, self.w),
+            trident.operation.Linear.apply(self.x, self.w)
+        ))
 
     def test_linear_operation(self):
-        x = torch.randn(128, 256, device='cuda')
-        w = torch.randn(512, 256, device='cuda')
-        b = torch.randn(512, device='cuda')
-
-        self.assertTrue(
-            triton.testing.allclose(trident.operation.Linear.apply(x, w, b), torch.nn.functional.linear(x, w, b))
-        )
+        self.assertTrue(triton.testing.allclose(
+            torch.nn.functional.linear(self.x, self.w, self.b),
+            trident.operation.Linear.apply(self.x, self.w, self.b)
+        ))
 
     def test_linear_module_no_bias(self):
-        linear0 = torch.nn.Linear(128, 256, bias=False).to('cuda')
-        linear1 = trident.module.Linear(128, 256, bias=False)
-        x = torch.randn(128, 128, device='cuda')
+        torch_linear = torch.nn.Linear(self.k, self.n, bias=False).to('cuda')
+        trident_linear = trident.module.Linear(self.k, self.n, bias=False)
 
-        linear1.load_state_dict(linear0.state_dict())
+        trident_linear.load_state_dict(torch_linear.state_dict())
 
-        self.assertTrue(triton.testing.allclose(linear0(x), linear1(x)))
+        self.assertTrue(triton.testing.allclose(
+            torch_linear(self.x),
+            trident_linear(self.x)
+        ))
 
     def test_linear_module(self):
-        linear0 = torch.nn.Linear(128, 256).to('cuda')
-        linear1 = trident.module.Linear(128, 256)
-        x = torch.randn(128, 128, device='cuda')
+        torch_linear = torch.nn.Linear(self.k, self.n).to('cuda')
+        trident_linear = trident.module.Linear(self.k, self.n)
 
-        linear1.load_state_dict(linear0.state_dict())
+        trident_linear.load_state_dict(torch_linear.state_dict())
 
-        self.assertTrue(triton.testing.allclose(linear0(x), linear1(x)))
+        self.assertTrue(triton.testing.allclose(
+            torch_linear(self.x),
+            trident_linear(self.x)
+        ))
 
 
 if __name__ == '__main__':
