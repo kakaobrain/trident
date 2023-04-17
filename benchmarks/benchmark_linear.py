@@ -23,8 +23,8 @@ import trident
 
 @tt.perf_report(
     tt.Benchmark(
-        x_names=['k'],
-        x_vals=[512 * i for i in range(1, 20)],
+        x_names=['n'],
+        x_vals=[2 ** i for i in range(0, 11)],
         x_log=True,
         line_arg='provider',
         line_vals=['torch', 'trident'],
@@ -35,9 +35,9 @@ import trident
         args={}
     )
 )
-def benchmark(k, provider):
+def benchmark(n, provider):
     m = 1024
-    n = 1024
+    k = 2048
     x = torch.randn(m, k, device='cuda', dtype=torch.float32)
     w = torch.randn(n, k, device='cuda')
     b = torch.randn(n, device='cuda')
