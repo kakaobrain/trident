@@ -14,5 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .linear import *
-from .math import *
+import torch
+from trident import operation
+
+
+class Softmax(torch.nn.Module):
+    def __init__(self, dim=None):
+        """
+        Applies a softmax function to the input tensor. Output tensor in the range [0,1] and sum to 1.
+
+        :param dim: A dimension along which softmax will be computed.
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, x):
+        return operation.Softmax.apply(x, self.dim)
