@@ -78,7 +78,7 @@ class MathTestCase(unittest.TestCase):
         criterion = torch.nn.MSELoss()
 
         torch_softmax = torch.nn.Softmax(1)
-        trident_softmax = trident.module.Softmax(1)
+        trident_softmax = trident.Softmax(1)
 
         torch_y = torch_softmax(x)
         trident_y = trident_softmax(x)

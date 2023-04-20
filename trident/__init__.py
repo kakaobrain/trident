@@ -17,4 +17,5 @@ limitations under the License.
 from . import kernel
 from . import function
 from . import operation
-from . import module
+from .linear import *
+from .math import *

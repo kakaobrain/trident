@@ -93,7 +93,7 @@ class LinearTestCase(unittest.TestCase):
 
     def test_linear_module_no_bias(self):
         torch_linear = torch.nn.Linear(self.k, self.n, bias=False).to('cuda')
-        trident_linear = trident.module.Linear(self.k, self.n, bias=False)
+        trident_linear = trident.Linear(self.k, self.n, bias=False)
 
         trident_linear.load_state_dict(torch_linear.state_dict())
 
@@ -104,7 +104,7 @@ class LinearTestCase(unittest.TestCase):
 
     def test_linear_module(self):
         torch_linear = torch.nn.Linear(self.k, self.n).to('cuda')
-        trident_linear = trident.module.Linear(self.k, self.n)
+        trident_linear = trident.Linear(self.k, self.n)
 
         trident_linear.load_state_dict(torch_linear.state_dict())
 
