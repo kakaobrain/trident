@@ -30,7 +30,7 @@ class MathTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.m = 1
+        cls.m = random.randint(64, 16384)
         cls.k = random.randint(64, 16384)
         cls.x = torch.randn(cls.m, cls.k, device='cuda')
         cls.t = torch.randn(cls.m, cls.k, device='cuda')

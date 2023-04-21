@@ -23,7 +23,7 @@ def softmax_forward(x_ptr, stride_xm, stride_xn, y_ptr, stride_ym, stride_yn, si
                     BLOCK_SIZE_N: tl.constexpr):
     i = tl.program_id(0)
 
-    block_n = tl.arange(0, BLOCK_SIZE_N) + i * BLOCK_SIZE_N
+    block_n = tl.arange(0, BLOCK_SIZE_N)
     mask_x = block_n < size_n
 
     x_ptr += i * stride_xm + block_n * stride_xn
