@@ -16,7 +16,7 @@ limitations under the License.
 
 import triton
 import triton.language as tl
-from trident import kernel
+from trident import language
 
 def get_configs_linear_io_bound():
     configs = []
@@ -70,9 +70,9 @@ def linear(x_ptr, stride_x_m, stride_x_k,
         total += b[None, :]
 
     if ACTIVATION == 'relu':
-        total = kernel.relu(total)
+        total = language.relu(total)
     elif ACTIVATION == 'leaky_relu':
-        total = kernel.leaky_relu(total)
+        total = language.leaky_relu(total)
 
     y_ptr += range_m[:, None] * stride_y_m + range_n[None, :] * stride_y_n
     mask_m = range_m[:, None] < size_m
