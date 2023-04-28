@@ -19,4 +19,5 @@ from . import kernel
 from . import function
 from . import operation
 from .linear import *
+from .activation import *
 from .math import *

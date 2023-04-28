@@ -14,15 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import triton
-import triton.language as tl
+import torch
+from trident import operation
 
 
-@triton.jit
-def relu(x):
-    return tl.where(x > 0, x, 0)
+class LeakyReLU(torch.nn.Module):
+    def __init__(self, negative_slope=1e-2):
+        """
+        Applies a leaky relu function to the input tensor and return the result.
 
+        :param negative_slope: Controls the angle of the negative slope.
+        """
+        super().__init__()
 
-@triton.jit
-def leaky_relu(x, a):
-    return tl.where(x > 0, x, 0) + a * tl.where(x > 0, 0, x)
+        self.negative_slope = negative_slope
+
+    def forward(self, x):
+        return operation.LeakyReLU.apply(x, self.negative_slope)
