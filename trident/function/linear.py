@@ -16,10 +16,11 @@ limitations under the License.
 
 import torch
 import triton
+
 from trident import kernel
 
 
-def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None, activation=''):
+def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor = None, activation=''):
     """
     Applies a linear transformation on the input tensor x using the weight tensor w
     and the bias tensor b, and returns the result.
@@ -40,7 +41,7 @@ def linear(x: torch.Tensor, w: torch.Tensor, b: torch.Tensor=None, activation=''
 
     m, k = x.shape
     n, _ = w.shape
-    grid = lambda meta: (triton.cdiv(m, meta['BLOCK_SIZE_M']), triton.cdiv(n, meta['BLOCK_SIZE_N']), )
+    grid = lambda meta: (triton.cdiv(m, meta['BLOCK_SIZE_M']), triton.cdiv(n, meta['BLOCK_SIZE_N']),)
     y = torch.empty((m, n), device='cuda')
 
     if b is None:

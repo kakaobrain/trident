@@ -16,6 +16,7 @@ limitations under the License.
 
 import torch
 import triton
+
 from trident import kernel
 
 
@@ -53,7 +54,7 @@ def softmax(x, dim=None):
 
     assert y.is_cuda and x.is_contiguous
 
-    kernel.softmax_forward[(m, )](x, x.stride(0), x.stride(1), y, y.stride(0), y.stride(1), m, n,
-                                  BLOCK_SIZE_N=block_size_n, num_stages=get_num_stages(), num_warps=get_num_warps())
+    kernel.softmax_forward[(m,)](x, x.stride(0), x.stride(1), y, y.stride(0), y.stride(1), m, n,
+                                 BLOCK_SIZE_N=block_size_n, num_stages=get_num_stages(), num_warps=get_num_warps())
 
     return y

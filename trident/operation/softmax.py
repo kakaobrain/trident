@@ -16,8 +16,8 @@ limitations under the License.
 
 import torch
 import triton
-from trident import kernel
-from trident import function
+
+from trident import kernel, function
 
 
 class Softmax(torch.autograd.Function):
@@ -60,9 +60,9 @@ class Softmax(torch.autograd.Function):
 
         assert d.is_cuda and d.is_contiguous
 
-        kernel.softmax_backward[(m, )](y, y.stride(0), y.stride(1),
-                                       t, t.stride(0), t.stride(1),
-                                       d, d.stride(0), d.stride(1),
-                                       n,
-                                       BLOCK_SIZE_N=block_size_n, num_warps=get_num_warps())
+        kernel.softmax_backward[(m,)](y, y.stride(0), y.stride(1),
+                                      t, t.stride(0), t.stride(1),
+                                      d, d.stride(0), d.stride(1),
+                                      n,
+                                      BLOCK_SIZE_N=block_size_n, num_warps=get_num_warps())
         return d, None

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from . import language
-from . import kernel
 from . import function
+from . import kernel
+from . import language
 from . import operation
 from .module import *

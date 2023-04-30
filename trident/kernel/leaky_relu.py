@@ -16,6 +16,7 @@ limitations under the License.
 
 import triton
 import triton.language as tl
+
 from trident import language
 
 

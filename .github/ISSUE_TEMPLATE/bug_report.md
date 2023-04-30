@@ -24,9 +24,9 @@ If applicable, add screenshots to help explain your problem.
 
 ## 💻 Requirements
 
- - Platform:
- - Hardware:
- - Version:
+- Platform:
+- Hardware:
+- Version:
 
 ## 💬 Additional context
 

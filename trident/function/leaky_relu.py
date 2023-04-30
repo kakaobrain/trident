@@ -16,6 +16,7 @@ limitations under the License.
 
 import torch
 import triton
+
 from trident import kernel
 
 
@@ -37,7 +38,7 @@ def leaky_relu(x, a=0.01):
     def get_block_size():
         return min(triton.next_power_of_2(size_1), 1 << 14)
 
-    grid = lambda meta: (size_0, triton.cdiv(size_1, meta['block_size']), )
+    grid = lambda meta: (size_0, triton.cdiv(size_1, meta['block_size']),)
     kernel.leaky_relu_forward[grid](x, x.stride(0), x.stride(1),
                                     y, y.stride(0), y.stride(1),
                                     a, size_1,

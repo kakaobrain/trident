@@ -15,9 +15,12 @@ limitations under the License.
 """
 
 import collections
+
 import torch
 import triton
+
 import trident
+
 
 @triton.testing.perf_report(
     triton.testing.Benchmark(
@@ -30,7 +33,7 @@ import trident
         styles=[('blue', '-'), ('green', '-'), ('blue', '--'), ('green', '--')],
         ylabel='TFLOPS',
         plot_name='softmax-performance',
-        args={'m' : 2048}
+        args={'m': 2048}
     )
 )
 def benchmark(m, n, provider):

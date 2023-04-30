@@ -15,8 +15,8 @@ Trident includes highly optimized kernels, functions and modules for machine lea
 
 ## 💻 Requirements
 
- - Platform: Linux
- - Hardware: NVIDIA
+- Platform: Linux
+- Hardware: NVIDIA
 
 ## 📦 Installation
 

@@ -16,7 +16,9 @@ limitations under the License.
 
 import triton
 import triton.language as tl
+
 from trident import language
+
 
 def get_configs_linear_io_bound():
     configs = []
@@ -78,5 +80,3 @@ def linear(x_ptr, stride_x_m, stride_x_k,
     mask_m = range_m[:, None] < size_m
     mask_n = range_n[None, :] < size_n
     tl.store(y_ptr, total, mask_m & mask_n)
-
-

@@ -14,10 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import unittest
 import random
+import unittest
+
 import torch
 import triton
+
 import trident
 
 
