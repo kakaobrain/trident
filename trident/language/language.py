@@ -14,20 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import torch
-from trident import operation
+import triton
 
 
-class Softmax(torch.nn.Module):
-    def __init__(self, dim=None):
-        """
-        Applies a softmax function to the input tensor. Output tensor in the range [0,1] and sum to 1.
+@triton.jit
+def relu(x):
+    return triton.language.where(x > 0, x, 0)
 
-        :param dim: A dimension along which softmax will be computed.
-        """
-        super().__init__()
 
-        self.dim = dim
-
-    def forward(self, x):
-        return operation.Softmax.apply(x, self.dim)
+@triton.jit
+def leaky_relu(x, a):
+    return triton.language.where(x > 0, x, 0) + a * triton.language.where(x > 0, 0, x)

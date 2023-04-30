@@ -18,6 +18,21 @@ import torch
 from trident import operation
 
 
+class LeakyReLU(torch.nn.Module):
+    def __init__(self, negative_slope=1e-2):
+        """
+        Applies a leaky relu function to the input tensor and return the result.
+
+        :param negative_slope: Controls the angle of the negative slope.
+        """
+        super().__init__()
+
+        self.negative_slope = negative_slope
+
+    def forward(self, x):
+        return operation.LeakyReLU.apply(x, self.negative_slope)
+
+
 class Linear(torch.nn.Module):
     def __init__(self, in_features, out_features, bias=True):
         """
@@ -35,3 +50,18 @@ class Linear(torch.nn.Module):
 
     def forward(self, x):
         return operation.Linear.apply(x, self.weight, self.bias)
+
+
+class Softmax(torch.nn.Module):
+    def __init__(self, dim=None):
+        """
+        Applies a softmax function to the input tensor. Output tensor in the range [0,1] and sum to 1.
+
+        :param dim: A dimension along which softmax will be computed.
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, x):
+        return operation.Softmax.apply(x, self.dim)

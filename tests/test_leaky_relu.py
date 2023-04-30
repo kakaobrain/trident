@@ -17,12 +17,11 @@ limitations under the License.
 import unittest
 import random
 import torch
-import torch.nn
 import triton
 import trident
 
 
-class ActivationTestCase(unittest.TestCase):
+class LeakyReLUTestCase(unittest.TestCase):
     m = None
     n = None
     x = None

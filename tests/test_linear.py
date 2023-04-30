@@ -17,7 +17,6 @@ limitations under the License.
 import unittest
 import random
 import torch
-import torch.nn
 import triton
 import trident
 
