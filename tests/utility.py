@@ -15,21 +15,21 @@ limitations under the License.
 """
 
 import torch
-import triton
-
-import trident
-from tests import utility
 
 
-def test_function(tensor):
-    assert triton.testing.allclose(
-        torch.nn.functional.leaky_relu(tensor), trident.function.leaky_relu(tensor)
-    )
+def train(x, t, module, criterion=torch.nn.MSELoss()):
+    y = module(x)
+
+    y.retain_grad()
+    criterion(y, t).backward()
+
+    return y
 
 
-def test_module(tensor, target):
-    x = utility.train(tensor, target, torch.nn.LeakyReLU())
-    y = utility.train(tensor, target, trident.LeakyReLU())
-
-    assert triton.testing.allclose(x, y)
-    assert triton.testing.allclose(x.grad, y.grad)
+def activate(x, activation):
+    if activation == 'relu':
+        return torch.relu(x)
+    elif activation == 'leaky_relu':
+        return torch.nn.functional.leaky_relu(x)
+    else:
+        raise ValueError(f'{activation} is not supported.')

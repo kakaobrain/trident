@@ -14,92 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import random
-import unittest
-
 import torch
 import triton
 
 import trident
+from tests import utility
 
 
-class SoftmaxTestCase(unittest.TestCase):
-    m = None
-    k = None
-    x = None
-    t = None
-
-    @classmethod
-    def setUpClass(cls):
-        cls.m = random.randint(64, 16384)
-        cls.k = random.randint(64, 16384)
-        cls.x = torch.randn(cls.m, cls.k, device='cuda')
-        cls.t = torch.randn(cls.m, cls.k, device='cuda')
-
-    def test_softmax_function(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.softmax(self.x, 1),
-            trident.function.softmax(self.x, 1),
-        ))
-
-    def test_softmax_operation_forward(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.softmax(self.x, 1),
-            trident.operation.Softmax.apply(self.x, 1),
-        ))
-
-    def test_softmax_operation_backward(self):
-        criterion = torch.nn.MSELoss()
-
-        def get_torch_grad():
-            x = self.x.detach().requires_grad_()
-            y = torch.nn.Softmax(dim=1)(x)
-
-            y.retain_grad()
-            criterion(y, self.t).backward()
-
-            return y.grad
-
-        def get_trident_grad():
-            x = self.x.detach().requires_grad_()
-            y = trident.operation.Softmax.apply(x, 1)
-
-            y.retain_grad()
-            criterion(y, self.t).backward()
-
-            return y.grad
-
-        self.assertTrue(triton.testing.allclose(
-            get_torch_grad(),
-            get_trident_grad(),
-        ))
-
-    def test_softmax_module(self):
-        x = self.x.detach().requires_grad_()
-        criterion = torch.nn.MSELoss()
-
-        torch_softmax = torch.nn.Softmax(1)
-        trident_softmax = trident.Softmax(1)
-
-        torch_y = torch_softmax(x)
-        trident_y = trident_softmax(x)
-
-        self.assertTrue(triton.testing.allclose(
-            torch_y,
-            trident_y,
-        ))
-
-        torch_y.retain_grad()
-        trident_y.retain_grad()
-
-        criterion(torch_y, self.t).backward()
-        criterion(trident_y, self.t).backward()
-
-        self.assertTrue(triton.testing.allclose(
-            torch_y.grad,
-            trident_y.grad,
-        ))
+def test_function(tensor):
+    assert triton.testing.allclose(
+        torch.nn.functional.softmax(tensor, 1), trident.function.softmax(tensor, 1)
+    )
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_module(tensor, target):
+    x = utility.train(tensor, target, torch.nn.Softmax(1))
+    y = utility.train(tensor, target, trident.Softmax(1))
+
+    assert triton.testing.allclose(x, y)
+    assert triton.testing.allclose(x.grad, y.grad)

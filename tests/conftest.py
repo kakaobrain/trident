@@ -14,22 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import pytest
 import torch
-import triton
-
-import trident
-from tests import utility
 
 
-def test_function(tensor):
-    assert triton.testing.allclose(
-        torch.nn.functional.leaky_relu(tensor), trident.function.leaky_relu(tensor)
-    )
+@pytest.fixture(scope='session')
+def tensor():
+    return torch.randn(1024, 8192, device='cuda', requires_grad=True)
 
 
-def test_module(tensor, target):
-    x = utility.train(tensor, target, torch.nn.LeakyReLU())
-    y = utility.train(tensor, target, trident.LeakyReLU())
+@pytest.fixture(scope='session')
+def target():
+    return torch.randn(1024, 8192, device='cuda')
 
-    assert triton.testing.allclose(x, y)
-    assert triton.testing.allclose(x.grad, y.grad)
+
+@pytest.fixture(scope='session')
+def weight():
+    return torch.randn(1024, 8192, device='cuda', requires_grad=True)
+
+
+@pytest.fixture(scope='session')
+def bias():
+    return torch.randn(1024, device='cuda', requires_grad=True)

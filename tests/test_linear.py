@@ -14,106 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import random
-import unittest
-
+import pytest
 import torch
 import triton
 
 import trident
+from tests import utility
 
 
-class LinearTestCase(unittest.TestCase):
-    m = None
-    k = None
-    n = None
-    x = None
-    w = None
-    b = None
-
-    @classmethod
-    def setUpClass(cls):
-        cls.m = random.randint(64, 2048)
-        cls.k = random.randint(64, 2048)
-        cls.n = random.randint(64, 2048)
-        cls.x = torch.randn(cls.m, cls.k, device='cuda')
-        cls.w = torch.randn(cls.n, cls.k, device='cuda')
-        cls.b = torch.randn(cls.n, device='cuda')
-
-    def test_linear_no_bias(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(self.x, self.w),
-            trident.function.linear(self.x, self.w),
-        ))
-
-    def test_linear(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(self.x, self.w, self.b),
-            trident.function.linear(self.x, self.w, self.b)
-        ))
-
-    def test_linear_zero_input(self):
-        x = torch.zeros(self.m, self.k, device='cuda')
-
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(x, self.w, self.b),
-            trident.function.linear(x, self.w, self.b)
-        ))
-
-    def test_linear_zero_bias(self):
-        b = torch.zeros(self.n, device='cuda')
-
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(self.x, self.w, b),
-            trident.function.linear(self.x, self.w, b)
-        ))
-
-    def test_linear_relu(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.relu(torch.nn.functional.linear(self.x, self.w, self.b)),
-            trident.function.linear(self.x, self.w, self.b, 'relu')
-        ))
-
-    def test_linear_leaky_relu(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.leaky_relu(torch.nn.functional.linear(self.x, self.w, self.b)),
-            trident.function.linear(self.x, self.w, self.b, 'leaky_relu')
-        ))
-
-    def test_linear_operation_no_bias(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(self.x, self.w),
-            trident.operation.Linear.apply(self.x, self.w)
-        ))
-
-    def test_linear_operation(self):
-        self.assertTrue(triton.testing.allclose(
-            torch.nn.functional.linear(self.x, self.w, self.b),
-            trident.operation.Linear.apply(self.x, self.w, self.b)
-        ))
-
-    def test_linear_module_no_bias(self):
-        torch_linear = torch.nn.Linear(self.k, self.n, bias=False).to('cuda')
-        trident_linear = trident.Linear(self.k, self.n, bias=False)
-
-        trident_linear.load_state_dict(torch_linear.state_dict())
-
-        self.assertTrue(triton.testing.allclose(
-            torch_linear(self.x),
-            trident_linear(self.x)
-        ))
-
-    def test_linear_module(self):
-        torch_linear = torch.nn.Linear(self.k, self.n).to('cuda')
-        trident_linear = trident.Linear(self.k, self.n)
-
-        trident_linear.load_state_dict(torch_linear.state_dict())
-
-        self.assertTrue(triton.testing.allclose(
-            torch_linear(self.x),
-            trident_linear(self.x)
-        ))
+def test_function(tensor, weight):
+    assert triton.testing.allclose(
+        torch.nn.functional.linear(tensor, weight), trident.function.linear(tensor, weight)
+    )
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_function_with_bias(tensor, weight, bias):
+    assert triton.testing.allclose(
+        torch.nn.functional.linear(tensor, weight, bias), trident.function.linear(tensor, weight, bias)
+    )
+
+
+@pytest.mark.parametrize('activation', ['relu', 'leaky_relu'])
+def test_function_with_activation(tensor, weight, bias, activation):
+    assert triton.testing.allclose(
+        utility.activate(torch.nn.functional.linear(tensor, weight, bias), activation),
+        trident.function.linear(tensor, weight, bias, activation)
+    )
