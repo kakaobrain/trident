@@ -21,15 +21,15 @@ import trident
 from tests import utility
 
 
-def test_function(tensor):
+def test_function(input_2d):
     assert triton.testing.allclose(
-        torch.nn.functional.softmax(tensor, 1), trident.function.softmax(tensor, 1)
+        torch.nn.functional.softmax(input_2d, 1), trident.function.softmax(input_2d, 1)
     )
 
 
-def test_module(tensor, target):
-    x = utility.train(tensor, target, torch.nn.Softmax(1))
-    y = utility.train(tensor, target, trident.Softmax(1))
+def test_module(input_2d, target):
+    x = utility.train(input_2d, target, torch.nn.Softmax(1))
+    y = utility.train(input_2d, target, trident.Softmax(1))
 
     assert triton.testing.allclose(x, y)
     assert triton.testing.allclose(x.grad, y.grad)

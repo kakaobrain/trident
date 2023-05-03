@@ -18,18 +18,9 @@ import torch
 import triton
 
 import trident
-from tests import utility
 
 
-def test_function(input_2d):
+def test_function(input_3d):
     assert triton.testing.allclose(
-        torch.nn.functional.leaky_relu(input_2d), trident.function.leaky_relu(input_2d)
+        torch.nn.functional.instance_norm(input_3d), trident.function.instance_norm(input_3d)
     )
-
-
-def test_module(input_2d, target):
-    x = utility.train(input_2d, target, torch.nn.LeakyReLU())
-    y = utility.train(input_2d, target, trident.LeakyReLU())
-
-    assert triton.testing.allclose(x, y)
-    assert triton.testing.allclose(x.grad, y.grad)

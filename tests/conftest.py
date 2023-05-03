@@ -19,8 +19,13 @@ import torch
 
 
 @pytest.fixture(scope='session')
-def tensor():
+def input_2d():
     return torch.randn(1024, 8192, device='cuda', requires_grad=True)
+
+
+@pytest.fixture(scope='session')
+def input_3d():
+    return torch.randn(64, 1024, 8192, device='cuda', requires_grad=True)
 
 
 @pytest.fixture(scope='session')

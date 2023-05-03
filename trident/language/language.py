@@ -18,6 +18,16 @@ import triton
 
 
 @triton.jit
+def pow2(x):
+    return x * x
+
+
+@triton.jit
+def var(mask, x, size, mean, dim=0, correction=1):
+    return triton.language.sum(pow2(triton.language.where(mask, x - mean, 0.0)), dim) / (size - correction)
+
+
+@triton.jit
 def relu(x):
     return triton.language.where(x > 0, x, 0)
 
