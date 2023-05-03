@@ -15,7 +15,4 @@ limitations under the License.
 """
 
 from . import function
-from . import kernel
-from . import language
-from . import operation
 from .module import *
