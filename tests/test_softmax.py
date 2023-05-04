@@ -15,14 +15,13 @@ limitations under the License.
 """
 
 import torch
-import triton
 
 import trident
 from tests import utility
 
 
 def test_function(input_2d):
-    assert triton.testing.allclose(
+    assert utility.equal(
         torch.nn.functional.softmax(input_2d, 1), trident.function.softmax(input_2d, 1)
     )
 
@@ -31,5 +30,5 @@ def test_module(input_2d, target):
     x = utility.train(input_2d, target, torch.nn.Softmax(1))
     y = utility.train(input_2d, target, trident.Softmax(1))
 
-    assert triton.testing.allclose(x, y)
-    assert triton.testing.allclose(x.grad, y.grad)
+    assert utility.equal(x, y)
+    assert utility.equal(x.grad, y.grad)

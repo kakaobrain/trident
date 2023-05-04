@@ -16,27 +16,26 @@ limitations under the License.
 
 import pytest
 import torch
-import triton
 
 import trident
 from tests import utility
 
 
 def test_function(input_2d, weight):
-    assert triton.testing.allclose(
+    assert utility.equal(
         torch.nn.functional.linear(input_2d, weight), trident.function.linear(input_2d, weight)
     )
 
 
 def test_function_with_bias(input_2d, weight, bias):
-    assert triton.testing.allclose(
+    assert utility.equal(
         torch.nn.functional.linear(input_2d, weight, bias), trident.function.linear(input_2d, weight, bias)
     )
 
 
 @pytest.mark.parametrize('activation', ['relu', 'leaky_relu'])
 def test_function_with_activation(input_2d, weight, bias, activation):
-    assert triton.testing.allclose(
+    assert utility.equal(
         utility.activate(torch.nn.functional.linear(input_2d, weight, bias), activation),
         trident.function.linear(input_2d, weight, bias, activation)
     )

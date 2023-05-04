@@ -17,6 +17,10 @@ limitations under the License.
 import torch
 
 
+def equal(a, b):
+    return torch.allclose(a, b, atol=1e-2, rtol=0)
+
+
 def train(x, t, module, criterion=torch.nn.MSELoss()):
     y = module(x)
 

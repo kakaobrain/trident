@@ -15,12 +15,12 @@ limitations under the License.
 """
 
 import torch
-import triton
 
 import trident
+from tests import utility
 
 
 def test_function(input_3d):
-    assert triton.testing.allclose(
+    assert utility.equal(
         torch.nn.functional.instance_norm(input_3d), trident.function.instance_norm(input_3d)
     )

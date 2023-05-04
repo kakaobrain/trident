@@ -15,14 +15,13 @@ limitations under the License.
 """
 
 import torch
-import triton
 
 import trident
 from tests import utility
 
 
 def test_function(input_2d):
-    assert triton.testing.allclose(
+    assert utility.equal(
         torch.nn.functional.leaky_relu(input_2d), trident.function.leaky_relu(input_2d)
     )
 
@@ -31,5 +30,5 @@ def test_module(input_2d, target):
     x = utility.train(input_2d, target, torch.nn.LeakyReLU())
     y = utility.train(input_2d, target, trident.LeakyReLU())
 
-    assert triton.testing.allclose(x, y)
-    assert triton.testing.allclose(x.grad, y.grad)
+    assert utility.equal(x, y)
+    assert utility.equal(x.grad, y.grad)
