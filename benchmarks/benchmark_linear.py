@@ -24,33 +24,27 @@ import trident
 
 @tt.perf_report(
     tt.Benchmark(
-        x_names=['n'],
-        x_vals=[2 ** i for i in range(0, 11)],
-        x_log=True,
+        x_names=['num_elements'],
+        x_vals=[2 << i for i in range(4, 14)],
         line_arg='provider',
         line_vals=['torch', 'trident'],
         line_names=['torch', 'trident'],
-        styles=[('blue', '-'), ('green', '-')],
-        ylabel='TFLOPS',
-        plot_name='linear-performance',
-        args={}
+        plot_name='linear forward',
+        args={'in_features': 32, 'out_features': 32},
+        ylabel='milliseconds',
+        x_log=True
     )
 )
-def benchmark(n, provider):
-    m = 1024
-    k = 2048
-    x = torch.randn(m, k, device='cuda', dtype=torch.float32)
-    w = torch.randn(n, k, device='cuda')
-    b = torch.randn(n, device='cuda')
+def bench_linear_forward(in_features, out_features, num_elements, provider):
+    x = torch.randn(in_features, num_elements, device='cuda')
+    w = torch.randn(out_features, num_elements, device='cuda')
+    b = torch.randn(out_features, device='cuda')
 
     if provider == 'torch':
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: tf.linear(x, w, b))
+        return triton.testing.do_bench(lambda: tf.linear(x, w, b))
     else:
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: trident.function.linear(x, w, b))
-
-    gbps = lambda ms: (m * k * n * 2 * 1e-12) / (ms * 1e-3)
-    return gbps(avg_ms), gbps(max_ms), gbps(min_ms)
+        return triton.testing.do_bench(lambda: trident.function.linear(x, w, b))
 
 
-if __name__ == '__main__':
-    benchmark.run(print_data=True, show_plots=False)
+def run_benchmarks(show_plots):
+    bench_linear_forward.run(print_data=True, show_plots=show_plots)

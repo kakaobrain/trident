@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
-
 import torch
 import triton
 
@@ -24,37 +22,25 @@ import trident
 
 @triton.testing.perf_report(
     triton.testing.Benchmark(
-        x_names=['n'],
-        x_vals=[128 * i for i in range(1, 21)],
-        x_log=True,
+        x_names=['num_elements'],
+        x_vals=[2 << i for i in range(4, 14)],
         line_arg='provider',
-        line_vals=['torch forward', 'trident forward', 'torch backward', 'trident backward'],
-        line_names=['torch forward', 'trident forward', 'torch backward', 'trident backward'],
-        styles=[('blue', '-'), ('green', '-'), ('blue', '--'), ('green', '--')],
-        ylabel='TFLOPS',
-        plot_name='softmax-performance',
-        args={'m': 2048}
+        line_vals=['torch', 'trident'],
+        line_names=['torch', 'trident'],
+        plot_name='softmax forward',
+        args={'num_batches': 32},
+        ylabel='milliseconds',
+        x_log=True,
     )
 )
-def benchmark(m, n, provider):
-    Context = collections.namedtuple('Context', ['saved_tensors'])
+def bench_softmax_forward(num_batches, num_elements, provider):
+    x = torch.randn(num_batches, num_elements, device='cuda')
 
-    x = torch.randn(m, n, requires_grad=True, device='cuda')
-    y = torch.softmax(x, 1)
-    t = torch.randn(m, n, device='cuda')
-
-    if provider == 'torch forward':
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: torch.softmax(x, 1))
-    elif provider == 'trident forward':
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: trident.operation.Softmax.apply(x, 1))
-    elif provider == 'torch backward':
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: y - t)
+    if provider == 'torch':
+        return triton.testing.do_bench(lambda: torch.softmax(x, 1))
     else:
-        avg_ms, min_ms, max_ms = triton.testing.do_bench(lambda: trident.operation.Softmax.backward(Context([y]), t))
-
-    gbps = lambda ms: (2 * x.nelement() * x.element_size() * 1e-12) / (ms * 1e-3)
-    return gbps(avg_ms), gbps(max_ms), gbps(min_ms)
+        return triton.testing.do_bench(lambda: trident.function.softmax(x, 1))
 
 
-if __name__ == '__main__':
-    benchmark.run(print_data=True, show_plots=False)
+def run_benchmarks(show_plots):
+    bench_softmax_forward.run(print_data=True, show_plots=show_plots)

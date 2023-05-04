@@ -23,18 +23,17 @@ import trident
 @triton.testing.perf_report(
     triton.testing.Benchmark(
         x_names=['num_elements'],
-        x_vals=[2 << i for i in range(8, 18)],
-        x_log=True,
+        x_vals=[2 << i for i in range(4, 14)],
         line_arg='provider',
         line_vals=['torch', 'trident'],
         line_names=['torch', 'trident'],
-        styles=[('blue', '-'), ('green', '-')],
-        ylabel='ms',
         plot_name='instance norm forward',
-        args={'num_batches': 512, 'num_channels': 3}
+        args={'num_batches': 32, 'num_channels': 64},
+        ylabel='milliseconds',
+        x_log=True
     )
 )
-def benchmark_instance_norm_forward(num_batches, num_channels, num_elements, provider):
+def bench_instance_norm_forward(num_batches, num_channels, num_elements, provider):
     x = torch.randn(num_batches, num_channels, num_elements, device='cuda')
 
     if provider == 'torch':
@@ -43,5 +42,5 @@ def benchmark_instance_norm_forward(num_batches, num_channels, num_elements, pro
         return triton.testing.do_bench(lambda: trident.function.instance_norm(x))
 
 
-if __name__ == '__main__':
-    benchmark_instance_norm_forward.run(print_data=True, show_plots=False)
+def run_benchmarks(show_plots):
+    bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
