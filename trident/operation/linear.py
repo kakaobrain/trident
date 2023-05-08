@@ -15,24 +15,50 @@ limitations under the License.
 """
 
 import torch
+import triton
 
-from trident import function
+from trident import kernel
 
 
 class Linear(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, w, b=None):
-        """
-        Applies a linear transformation on the input tensor x using the weight tensor w
-        and the bias tensor b, and returns the result.
+    def forward(ctx, *args, **kwargs):
+        x, w, b, activation = args
 
-        :param ctx:
-        :param x: Input tensor. The tensor shape is (m, k).
-        :param w: Weight tensor. The tensor shape is (n, k).
-        :param b: Bias tensor. The tensor shape is (n).
-        :return: Output tensor. The tensor shape is (m, n).
-        """
-        return function.linear(x, w, b)
+        assert x.is_cuda and x.is_contiguous()
+        assert w.is_cuda and w.is_contiguous()
+        assert x.shape[1] == w.shape[1]
+
+        if b is not None:
+            assert b.is_cuda and b.is_contiguous()
+            assert w.shape[0] == b.shape[0] if b.dim() == 1 else b.shape[1]
+
+        m, k = x.shape
+        n, _ = w.shape
+        grid = lambda meta: (triton.cdiv(m, meta['BLOCK_SIZE_M']), triton.cdiv(n, meta['BLOCK_SIZE_N']),)
+        y = torch.empty((m, n), device='cuda')
+
+        if b is None:
+            kernel.linear[grid](x, x.stride(0), x.stride(1),
+                                y, y.stride(0), y.stride(1),
+                                w, w.stride(0), w.stride(1),
+                                None, 0,
+                                m, k, n,
+                                ACTIVATION=activation,
+                                BLOCK_SIZE_K=16)
+        else:
+            assert b.is_cuda and b.is_contiguous()
+            assert w.shape[0] == b.shape[0] if b.dim() == 1 else b.shape[1]
+
+            kernel.linear[grid](x, x.stride(0), x.stride(1),
+                                y, y.stride(0), y.stride(1),
+                                w, w.stride(0), w.stride(1),
+                                b, b.stride(0) if b.dim() == 1 else b.stride(1),
+                                m, k, n,
+                                ACTIVATION=activation,
+                                BLOCK_SIZE_K=16)
+
+        return y
 
     @staticmethod
     def backward(ctx, *grad_outputs):

@@ -17,29 +17,51 @@ limitations under the License.
 import torch
 import triton
 
-from trident import kernel, function
+from trident import kernel
 
 
 class Softmax(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, dim=None):
-        """
-        Applies a softmax function to the input tensor and return the result.
+    def forward(ctx, *args, **kwargs):
+        x, dim = args
 
-        :param ctx: It can be used to store arbitrary data that can be then retrieved during the backward pass.
-        :param x: Input tensor.
-        :param dim: A dimension along which softmax will be computed.
-        :return: Output tensor.
-        """
+        assert x.is_cuda and x.is_contiguous()
         assert dim == 1
 
-        y = function.softmax(x, dim)
+        m, n = x.shape
+        block_size_n = triton.next_power_of_2(n)
+
+        def get_num_stages():
+            if block_size_n <= 2048:
+                return 4
+            if block_size_n <= 4096:
+                return 3
+            return 2
+
+        def get_num_warps():
+            if block_size_n >= 8192:
+                return 16
+            if block_size_n >= 4096:
+                return 8
+            if block_size_n >= 2048:
+                return 4
+            return 2
+
+        y = torch.empty_like(x)
+
+        assert y.is_cuda and x.is_contiguous
+
+        kernel.softmax_forward[(m,)](x, x.stride(0), x.stride(1), y, y.stride(0), y.stride(1), m, n,
+                                     BLOCK_SIZE_N=block_size_n, num_stages=get_num_stages(), num_warps=get_num_warps())
+
         ctx.save_for_backward(y)
 
         return y
 
     @staticmethod
-    def backward(ctx, t):
+    def backward(ctx, *grad_outputs):
+        t, = grad_outputs
+
         assert t.is_cuda and t.is_contiguous()
 
         y = ctx.saved_tensors[0]

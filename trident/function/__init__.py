@@ -14,7 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .instance_norm import *
-from .leaky_relu import *
-from .linear import *
-from .softmax import *
+from .function import *

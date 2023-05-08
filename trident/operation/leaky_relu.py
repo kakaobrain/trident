@@ -17,45 +17,54 @@ limitations under the License.
 import torch
 import triton
 
-from trident import kernel, function
+from trident import kernel
 
 
 class LeakyReLU(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, a):
-        """
-        Applies a leaky relu function to the input tensor and return the result.
+    def forward(ctx, *args, **kwargs):
+        x, negative_slope = args
 
-        :param ctx: Context object. It's used to store information for the backpropagation.
-        :param x: Input tensor.
-        :param a: Controls the angle of the negative slope.
-        :return: Output tensor.
-        """
-        y = function.leaky_relu(x, a)
+        assert x.is_cuda and x.is_contiguous()
+
+        size_0, size_1 = x.shape
+        y = torch.empty_like(x)
+
+        assert y.is_cuda and y.is_contiguous
+
+        def get_block_size():
+            return min(triton.next_power_of_2(size_1), 1 << 14)
+
+        grid = lambda meta: (size_0, triton.cdiv(size_1, meta['block_size']),)
+        kernel.leaky_relu_forward[grid](x, x.stride(0), x.stride(1),
+                                        y, y.stride(0), y.stride(1),
+                                        negative_slope, size_1,
+                                        block_size=get_block_size())
+
         ctx.save_for_backward(x)
-        ctx.a = a
+        ctx.negative_slope = negative_slope
 
         return y
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        x = ctx.saved_tensors[0]
-        a = ctx.a
+        x, = ctx.saved_tensors
+        negative_slope = ctx.negative_slope
 
         assert x.is_cuda and x.is_contiguous()
 
         x_shape_0, x_shape_1 = x.shape
-        d = torch.empty_like(x)
+        dx = torch.empty_like(x)
 
-        assert d.is_cuda and d.is_contiguous
+        assert dx.is_cuda and dx.is_contiguous
 
         def get_block_size():
             return min(triton.next_power_of_2(x_shape_1), 1 << 14)
 
         grid = lambda meta: (x_shape_0, triton.cdiv(x_shape_1, meta['block_size']),)
         kernel.leaky_relu_backward[grid](x, x.stride(0), x.stride(1),
-                                         d, d.stride(0), d.stride(1),
-                                         a, x_shape_1,
+                                         dx, dx.stride(0), dx.stride(1),
+                                         negative_slope, x_shape_1,
                                          block_size=get_block_size())
 
-        return d, None
+        return dx, None
