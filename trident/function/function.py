@@ -17,48 +17,37 @@ limitations under the License.
 from trident import operation
 
 
-def instance_norm(x, eps=1e-05):
+def instance_norm(input, eps=1e-05):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.
 
-    :param x: Input tensor.
-    :param eps: Epsilon.
-    :return: Output tensor.
+    See InstanceNorm2d for details.
     """
-    return operation.InstanceNorm.apply(x, eps)
+    return operation.InstanceNorm.apply(input, eps)
 
 
-def leaky_relu(x, a=0.01):
+def leaky_relu(input, negative_slope=0.01):
     """
-    Applies a leaky relu function to the input tensor and return the result.
+    Applies Leaky ReLU to an input.
 
-    :param x: Input tensor.
-    :param a: Controls the angle of the negative slope.
-    :return: Output tensor.
+    See LeakyReLU for more details.
     """
-    return operation.LeakyReLU.apply(x, a)
+    return operation.LeakyReLU.apply(input, negative_slope)
 
 
-def linear(x, w, b=None, activation=''):
+def linear(input, weight, bias=None, activation=''):
     """
-    Applies a linear transformation on the input tensor x using the weight tensor w
-    and the bias tensor b, and returns the result.
+    Applies Linear Transformation to an input.
 
-    :param x: Input tensor. The tensor shape is (*, in_features).
-    :param w: Weight tensor. The tensor shape is (out_features, in_features).
-    :param b: Bias tensor. The tensor shape is (out_features).
-    :param activation: Activation function. Supports for relu and leaky_relu.
-    :return: Output tensor. The tensor shape is (*,out_features).
+    See Linear for more details.
     """
-    return operation.Linear.apply(x, w, b, activation)
+    return operation.Linear.apply(input, weight, bias, activation)
 
 
-def softmax(x, dim=None):
+def softmax(input, dim=None):
     """
-    Applies a softmax function to the input tensor and return the result.
+    Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
 
-    :param x: Input tensor.
-    :param dim: A dimension along which softmax will be computed.
-    :return: Output tensor.
+    See Softmax for more details.
     """
-    return operation.Softmax.apply(x, dim)
+    return operation.Softmax.apply(input, dim)

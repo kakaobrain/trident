@@ -22,8 +22,8 @@ from trident import operation
 class InstanceNorm2d(torch.nn.Module):
     def __init__(self, num_features, eps=1e-05):
         """
-        Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as
-        described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization.
+        Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
+        Ingredient for Fast Stylization.
 
         Args:
             num_features: C from an expected input of size (N,C,H,W) or (C,H,W)
@@ -31,10 +31,18 @@ class InstanceNorm2d(torch.nn.Module):
         """
         super().__init__()
 
-        self.num_features = num_features
         self.eps = eps
 
     def forward(self, input):
+        """
+        Applies Instance Normalization to an input.
+
+        Args:
+            input: an input (N,C,H,W) or (C,H,W)
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
         assert input.dim() == 3 or input.dim() == 4
 
         x = InstanceNorm2d.__view(input)
@@ -58,47 +66,77 @@ class InstanceNorm2d(torch.nn.Module):
 class LeakyReLU(torch.nn.Module):
     def __init__(self, negative_slope=1e-2):
         """
-        Applies a leaky relu function to the input tensor and return the result.
+        Applies Leaky ReLU to an input.
 
-        :param negative_slope: Controls the angle of the negative slope.
+        Args:
+            negative_slope: Controls the angle of the negative slope(which is used for negative input values)
         """
         super().__init__()
 
         self.negative_slope = negative_slope
 
-    def forward(self, x):
-        return operation.LeakyReLU.apply(x, self.negative_slope)
+    def forward(self, input):
+        """
+        Applies Leaky ReLU to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+
+        """
+        return operation.LeakyReLU.apply(input, self.negative_slope)
 
 
 class Linear(torch.nn.Module):
     def __init__(self, in_features, out_features, bias=True):
         """
-        Applies a linear transformation to the incoming data.
-        Input shape is (*, in_features) and output shape is (*, out_features).
+        Applies Linear Transformation to an input.
 
-        :param in_features: Size of each input sample.
-        :param out_features: Size of each output sample
-        :param bias: If set to False, the layer will not learn an additive bias. Default is True.
+        Args:
+            in_features: size of each input sample
+            out_features: size of each output sample
+            bias: If set to False, the layer will not learn an additive bias
         """
         super().__init__()
 
         self.weight = torch.nn.Parameter(torch.randn(out_features, in_features, device='cuda'))
         self.bias = torch.nn.Parameter(torch.randn(out_features, device='cuda')) if bias else None
 
-    def forward(self, x):
-        return operation.Linear.apply(x, self.weight, self.bias)
+    def forward(self, input):
+        """
+        Applies Linear Transformation to an input.
+
+        Args:
+            input: an input (*, in_features)
+
+        Returns:
+            An output (*, out_features)
+        """
+        return operation.Linear.apply(input, self.weight, self.bias)
 
 
 class Softmax(torch.nn.Module):
     def __init__(self, dim=None):
         """
-        Applies a softmax function to the input tensor. Output tensor in the range [0,1] and sum to 1.
+        Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
 
-        :param dim: A dimension along which softmax will be computed.
+        Args:
+            dim: A dimension along which Softmax will be computed (so every slice along dim will sum to 1)
         """
         super().__init__()
 
         self.dim = dim
 
-    def forward(self, x):
-        return operation.Softmax.apply(x, self.dim)
+    def forward(self, input):
+        """
+        Applies Softmax to input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input with values in the range [0, 1]
+        """
+        return operation.Softmax.apply(input, self.dim)
