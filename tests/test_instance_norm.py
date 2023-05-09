@@ -21,6 +21,9 @@ from tests import utility
 
 
 def test_function(input_3d):
-    assert utility.equal(
-        torch.nn.functional.instance_norm(input_3d), trident.function.instance_norm(input_3d)
-    )
+    assert utility.equal(torch.nn.functional.instance_norm(input_3d), trident.function.instance_norm(input_3d))
+
+
+def test_module_2d(input_3d, input_4d):
+    assert utility.equal(torch.nn.InstanceNorm2d(64).forward(input_3d), trident.InstanceNorm2d(64).forward(input_3d))
+    assert utility.equal(torch.nn.InstanceNorm2d(64).forward(input_4d), trident.InstanceNorm2d(64).forward(input_4d))

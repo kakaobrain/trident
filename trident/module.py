@@ -19,6 +19,42 @@ import torch
 from trident import operation
 
 
+class InstanceNorm2d(torch.nn.Module):
+    def __init__(self, num_features, eps=1e-05):
+        """
+        Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as
+        described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization.
+
+        Args:
+            num_features: C from an expected input of size (N,C,H,W) or (C,H,W)
+            eps: a value added to the denominator for numerical stability
+        """
+        super().__init__()
+
+        self.num_features = num_features
+        self.eps = eps
+
+    def forward(self, input):
+        assert input.dim() == 3 or input.dim() == 4
+
+        x = InstanceNorm2d.__view(input)
+        y = operation.InstanceNorm.apply(x, self.eps)
+
+        return y.view(input.shape)
+
+    @staticmethod
+    def __shape(x):
+        if x.dim() == 3:
+            return 1, x.shape[0], x.shape[1], x.shape[2]
+        else:
+            return x.shape
+
+    @staticmethod
+    def __view(x):
+        num_batches, num_channels, height, width = InstanceNorm2d.__shape(x)
+        return x.view(num_batches, num_channels, height * width)
+
+
 class LeakyReLU(torch.nn.Module):
     def __init__(self, negative_slope=1e-2):
         """
