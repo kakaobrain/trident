@@ -14,8 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .instance_norm import *
-from .leaky_relu import *
-from .linear import *
-from .relu import *
-from .softmax import *
+import torch
+
+import trident
+from tests import utility
+
+
+def test_function(input_2d):
+    assert utility.equal(torch.nn.functional.relu(input_2d), trident.function.relu(input_2d))
+
+
+def test_module(input_2d, target):
+    assert utility.equal(torch.nn.ReLU().forward(input_2d), trident.ReLU().forward(input_2d))

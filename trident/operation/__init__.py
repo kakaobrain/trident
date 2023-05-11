@@ -17,4 +17,5 @@ limitations under the License.
 from .instance_norm import *
 from .leaky_relu import *
 from .linear import *
+from .relu import *
 from .softmax import *

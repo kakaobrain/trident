@@ -84,7 +84,6 @@ class LeakyReLU(torch.nn.Module):
 
         Returns:
             an output with the same dimension and shape as an input
-
         """
         return operation.LeakyReLU.apply(input, self.negative_slope)
 
@@ -115,6 +114,26 @@ class Linear(torch.nn.Module):
             An output (*, out_features)
         """
         return operation.Linear.apply(input, self.weight, self.bias)
+
+
+class ReLU(torch.nn.Module):
+    def __init__(self):
+        """
+        Applies Leaky ReLU to an input.
+        """
+        super().__init__()
+
+    def forward(self, input):
+        """
+        Applies Leaky ReLU to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return operation.ReLU.apply(input)
 
 
 class Softmax(torch.nn.Module):

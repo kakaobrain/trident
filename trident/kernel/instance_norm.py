@@ -18,6 +18,7 @@ import triton
 
 from trident import language
 
+
 @triton.jit
 def instance_norm_forward(x_ptr, x_batch_stride, x_channel_stride,
                           y_ptr, y_batch_stride, y_channel_stride,

@@ -44,6 +44,15 @@ def linear(input, weight, bias=None, activation=''):
     return operation.Linear.apply(input, weight, bias, activation)
 
 
+def relu(input):
+    """
+    Applies ReLU to an input.
+
+    See ReLU for more details.
+    """
+    return operation.ReLU.apply(input)
+
+
 def softmax(input, dim=None):
     """
     Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.

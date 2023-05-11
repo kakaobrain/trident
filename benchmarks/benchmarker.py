@@ -18,6 +18,7 @@ import argparse
 
 import benchmark_instance_norm
 import benchmark_linear
+import benchmark_relu
 import benchmark_softmax
 
 
@@ -26,11 +27,14 @@ def run_benchmarks(args):
         benchmark_instance_norm.run_benchmarks(args.show_plots)
     elif args.scenario == 'linear':
         benchmark_linear.run_benchmarks(args.show_plots)
+    elif args.scenario == 'relu':
+        benchmark_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'softmax':
         benchmark_softmax.run_benchmarks(args.show_plots)
     else:
         benchmark_instance_norm.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
+        benchmark_relu.run_benchmarks(args.show_plots)
         benchmark_softmax.run_benchmarks(args.show_plots)
 
 
@@ -47,6 +51,7 @@ def main():
         print(', '.join([
             'instance-norm',
             'linear',
+            'relu',
             'softmax'
         ]))
     else:
