@@ -17,6 +17,7 @@ limitations under the License.
 import argparse
 
 import benchmark_instance_norm
+import benchmark_leaky_relu
 import benchmark_linear
 import benchmark_relu
 import benchmark_softmax
@@ -25,6 +26,8 @@ import benchmark_softmax
 def run_benchmarks(args):
     if args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
+    elif args.scenario == 'leaky-relu':
+        benchmark_leaky_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'linear':
         benchmark_linear.run_benchmarks(args.show_plots)
     elif args.scenario == 'relu':
@@ -33,6 +36,7 @@ def run_benchmarks(args):
         benchmark_softmax.run_benchmarks(args.show_plots)
     else:
         benchmark_instance_norm.run_benchmarks(args.show_plots)
+        benchmark_leaky_relu.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
         benchmark_relu.run_benchmarks(args.show_plots)
         benchmark_softmax.run_benchmarks(args.show_plots)
@@ -50,6 +54,7 @@ def main():
     if args.list:
         print(', '.join([
             'instance-norm',
+            'leaky-relu',
             'linear',
             'relu',
             'softmax'
