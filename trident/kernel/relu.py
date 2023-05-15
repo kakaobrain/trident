@@ -25,8 +25,9 @@ class ReLU:
     def forward(x_ptr, y_ptr, stride, size,
                 block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
+        j = triton.language.program_id(1)
 
-        block = triton.language.arange(0, block_size)
+        block = triton.language.arange(0, block_size) + j * block_size
         mask = block < size
         span = i * stride + block
 
@@ -40,8 +41,9 @@ class ReLU:
     def backward(dx_ptr, x_ptr, stride, size,
                  block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
+        j = triton.language.program_id(1)
 
-        block = triton.language.arange(0, block_size)
+        block = triton.language.arange(0, block_size) + j * block_size
         mask = block < size
         span = i * stride + block
 
