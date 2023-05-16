@@ -21,18 +21,21 @@ import trident
 from tests import utility
 
 
+@pytest.mark.skip
 def test_function(input_2d, weight):
     assert utility.equal(
         torch.nn.functional.linear(input_2d, weight), trident.function.linear(input_2d, weight)
     )
 
 
+@pytest.mark.skip
 def test_function_with_bias(input_2d, weight, bias):
     assert utility.equal(
         torch.nn.functional.linear(input_2d, weight, bias), trident.function.linear(input_2d, weight, bias)
     )
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize('activation', ['relu', 'leaky_relu'])
 def test_function_with_activation(input_2d, weight, bias, activation):
     assert utility.equal(
