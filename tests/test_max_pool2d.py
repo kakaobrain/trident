@@ -14,29 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import triton
+import pytest
+import torch
+
+import trident
+from tests import utility
 
 
-@triton.jit
-def max2d(x):
-    return triton.language.max(triton.language.ravel(x), 0)
+@pytest.mark.parametrize('kernel_size', [2, 4, 8, 16])
+def test_function(input_4d, kernel_size):
+    assert utility.equal(
+        torch.nn.functional.max_pool2d(input_4d, kernel_size), trident.function.max_pool2d(input_4d, kernel_size)
+    )
 
 
-@triton.jit
-def pow2(x):
-    return x * x
-
-
-@triton.jit
-def var(mask, x, size, mean, dim=0, correction=1):
-    return triton.language.sum(pow2(triton.language.where(mask, x - mean, 0.0)), dim) / (size - correction)
-
-
-@triton.jit
-def relu(x):
-    return triton.language.where(x > 0, x, 0)
-
-
-@triton.jit
-def leaky_relu(x, a):
-    return triton.language.where(x > 0, x, 0) + a * triton.language.where(x > 0, 0, x)
+@pytest.mark.parametrize('kernel_size', [32, 64, 128, 256])
+def test_module(input_4d, kernel_size):
+    assert utility.equal(
+        torch.nn.MaxPool2d(kernel_size).forward(input_4d), trident.MaxPool2d(kernel_size).forward(input_4d)
+    )

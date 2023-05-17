@@ -111,9 +111,34 @@ class Linear(torch.nn.Module):
             input: an input (*, in_features)
 
         Returns:
-            An output (*, out_features)
+            an output (*, out_features)
         """
         return operation.Linear.apply(input, self.weight, self.bias)
+
+
+class MaxPool2d(torch.nn.Module):
+    def __init__(self, kernel_size):
+        """
+        Applies Max Pooling 2D to an input.
+
+        Args:
+            kernel_size: the size of the window to take a max over
+        """
+        super().__init__()
+
+        self.kernel_size = kernel_size
+
+    def forward(self, input):
+        """
+        Applies Max Pooling 2D to an input.
+
+        Args:
+            input: an input (N, C, inp_height, inp_width)
+
+        Returns:
+            an output (N, C, out_height, out_width)
+        """
+        return operation.MaxPool2d.apply(input, self.kernel_size)
 
 
 class ReLU(torch.nn.Module):

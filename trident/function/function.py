@@ -44,6 +44,15 @@ def linear(input, weight, bias=None, activation=''):
     return operation.Linear.apply(input, weight, bias, activation)
 
 
+def max_pool2d(input, kernel_size):
+    """
+    Applies Max Pooling 2D to an input.
+
+    See MaxPool2d for details.
+    """
+    return operation.MaxPool2d.apply(input, kernel_size)
+
+
 def relu(input):
     """
     Applies ReLU to an input.

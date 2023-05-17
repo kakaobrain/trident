@@ -19,6 +19,7 @@ import argparse
 import benchmark_instance_norm
 import benchmark_leaky_relu
 import benchmark_linear
+import benchmark_max_pool2d
 import benchmark_relu
 import benchmark_softmax
 
@@ -30,6 +31,8 @@ def run_benchmarks(args):
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'linear':
         benchmark_linear.run_benchmarks(args.show_plots)
+    elif args.scenario == 'max-pool2d':
+        benchmark_max_pool2d.run_benchmarks(args.show_plots)
     elif args.scenario == 'relu':
         benchmark_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'softmax':
@@ -38,6 +41,7 @@ def run_benchmarks(args):
         benchmark_instance_norm.run_benchmarks(args.show_plots)
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
+        benchmark_max_pool2d.run_benchmarks(args.show_plots)
         benchmark_relu.run_benchmarks(args.show_plots)
         benchmark_softmax.run_benchmarks(args.show_plots)
 
