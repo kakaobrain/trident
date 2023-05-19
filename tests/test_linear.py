@@ -18,27 +18,27 @@ import pytest
 import torch
 
 import trident
-from tests import utility
+from tests import util
 
 
 @pytest.mark.skip
-def test_function(input_2d, weight):
-    assert utility.equal(
-        torch.nn.functional.linear(input_2d, weight), trident.function.linear(input_2d, weight)
+def test_function(input2d, weight):
+    assert util.equal(
+        torch.nn.functional.linear(input2d, weight), trident.function.linear(input2d, weight)
     )
 
 
 @pytest.mark.skip
-def test_function_with_bias(input_2d, weight, bias):
-    assert utility.equal(
-        torch.nn.functional.linear(input_2d, weight, bias), trident.function.linear(input_2d, weight, bias)
+def test_function_with_bias(input2d, weight, bias):
+    assert util.equal(
+        torch.nn.functional.linear(input2d, weight, bias), trident.function.linear(input2d, weight, bias)
     )
 
 
 @pytest.mark.skip
 @pytest.mark.parametrize('activation', ['relu', 'leaky_relu'])
-def test_function_with_activation(input_2d, weight, bias, activation):
-    assert utility.equal(
-        utility.activate(torch.nn.functional.linear(input_2d, weight, bias), activation),
-        trident.function.linear(input_2d, weight, bias, activation)
+def test_function_with_activation(input2d, weight, bias, activation):
+    assert util.equal(
+        util.activate(torch.nn.functional.linear(input2d, weight, bias), activation),
+        trident.function.linear(input2d, weight, bias, activation)
     )

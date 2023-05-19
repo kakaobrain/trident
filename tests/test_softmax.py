@@ -17,18 +17,18 @@ limitations under the License.
 import torch
 
 import trident
-from tests import utility
+from tests import util
 
 
-def test_function(input_2d):
-    assert utility.equal(
-        torch.nn.functional.softmax(input_2d, 1), trident.function.softmax(input_2d, 1)
+def test_function(input2d):
+    assert util.equal(
+        torch.nn.functional.softmax(input2d, 1), trident.function.softmax(input2d, 1)
     )
 
 
-def test_module(input_2d, target):
-    x = utility.train(input_2d, target, torch.nn.Softmax(1))
-    y = utility.train(input_2d, target, trident.Softmax(1))
+def test_module(input2d, target):
+    x = util.train(input2d, target, torch.nn.Softmax(1))
+    y = util.train(input2d, target, trident.Softmax(1))
 
-    assert utility.equal(x, y)
-    assert utility.equal(x.grad, y.grad)
+    assert util.equal(x, y)
+    assert util.equal(x.grad, y.grad)

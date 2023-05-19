@@ -17,13 +17,13 @@ limitations under the License.
 import torch
 
 import trident
-from tests import utility
+from tests import util
 
 
-def test_function(input_3d):
-    assert utility.equal(torch.nn.functional.instance_norm(input_3d), trident.function.instance_norm(input_3d))
+def test_function(input3d):
+    assert util.equal(torch.nn.functional.instance_norm(input3d), trident.function.instance_norm(input3d))
 
 
-def test_module_2d(input_3d, input_4d):
-    assert utility.equal(torch.nn.InstanceNorm2d(64).forward(input_3d), trident.InstanceNorm2d(64).forward(input_3d))
-    assert utility.equal(torch.nn.InstanceNorm2d(64).forward(input_4d), trident.InstanceNorm2d(64).forward(input_4d))
+def test_module_2d(input3d, input4d):
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(input3d), trident.InstanceNorm2d(2).forward(input3d))
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(input4d), trident.InstanceNorm2d(2).forward(input4d))

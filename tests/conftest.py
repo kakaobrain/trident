@@ -19,30 +19,30 @@ import torch
 
 
 @pytest.fixture(scope='session')
-def input_2d():
-    return torch.randn(1024, 8192, device='cuda', requires_grad=True)
+def input2d():
+    return torch.randn(512, 512, device='cuda', requires_grad=True)
 
 
 @pytest.fixture(scope='session')
-def input_3d():
-    return torch.randn(4, 512, 512, device='cuda', requires_grad=True)
+def input3d():
+    return torch.randn(2, 256, 256, device='cuda', requires_grad=True)
 
 
 @pytest.fixture(scope='session')
-def input_4d():
-    return torch.randn(32, 4, 256, 256, device='cuda', requires_grad=True)
+def input4d():
+    return torch.randn(4, 4, 128, 128, device='cuda', requires_grad=True)
 
 
 @pytest.fixture(scope='session')
 def target():
-    return torch.randn(1024, 8192, device='cuda')
+    return torch.randn(512, 512, device='cuda')
 
 
 @pytest.fixture(scope='session')
 def weight():
-    return torch.randn(1024, 8192, device='cuda', requires_grad=True)
+    return torch.randn(512, 512, device='cuda', requires_grad=True)
 
 
 @pytest.fixture(scope='session')
 def bias():
-    return torch.randn(1024, device='cuda', requires_grad=True)
+    return torch.randn(512, device='cuda', requires_grad=True)

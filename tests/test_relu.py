@@ -17,12 +17,12 @@ limitations under the License.
 import torch
 
 import trident
-from tests import utility
+from tests import util
 
 
-def test_function(input_2d):
-    assert utility.equal(torch.nn.functional.relu(input_2d), trident.function.relu(input_2d))
+def test_function(input2d):
+    assert util.equal(torch.nn.functional.relu(input2d), trident.function.relu(input2d))
 
 
-def test_module(input_2d, target):
-    assert utility.equal(torch.nn.ReLU().forward(input_2d), trident.ReLU().forward(input_2d))
+def test_module(input2d, target):
+    assert util.equal(torch.nn.ReLU().forward(input2d), trident.ReLU().forward(input2d))
