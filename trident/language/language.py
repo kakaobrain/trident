@@ -18,6 +18,11 @@ import triton
 
 
 @triton.jit
+def max1d(x):
+    return triton.language.max(x, 0)
+
+
+@triton.jit
 def max2d(x):
     return triton.language.max(triton.language.ravel(x), 0)
 

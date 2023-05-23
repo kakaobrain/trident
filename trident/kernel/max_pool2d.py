@@ -43,9 +43,10 @@ class MaxPool2D:
 
         block = triton.language.arange(0, kernel_size)
         block = block[:, None] * x_row_stride + block[None, :]
+        block = triton.language.ravel(block)
 
         for i in range(0, num_kernels_per_col):
             x = triton.language.load(x_ptr + block)
-            y = language.max2d(x)
+            y = language.max1d(x)
             triton.language.store(y_ptr + i, y)
             block += kernel_size
