@@ -24,6 +24,18 @@ import benchmark_relu
 import benchmark_softmax
 
 
+def print_scenarios():
+    print(f'Following scenarios can be chosen:')
+    print(', '.join([
+        'instance-norm',
+        'leaky-relu',
+        'linear',
+        'max-pool2d',
+        'relu',
+        'softmax'
+    ]))
+
+
 def run_benchmarks(args):
     if args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
@@ -37,13 +49,15 @@ def run_benchmarks(args):
         benchmark_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'softmax':
         benchmark_softmax.run_benchmarks(args.show_plots)
-    else:
+    elif not args.scenario:
         benchmark_instance_norm.run_benchmarks(args.show_plots)
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
         benchmark_max_pool2d.run_benchmarks(args.show_plots)
         benchmark_relu.run_benchmarks(args.show_plots)
         benchmark_softmax.run_benchmarks(args.show_plots)
+    else:
+        print_scenarios()
 
 
 def main():
@@ -56,13 +70,7 @@ def main():
     args = parser.parse_args()
 
     if args.list:
-        print(', '.join([
-            'instance-norm',
-            'leaky-relu',
-            'linear',
-            'relu',
-            'softmax'
-        ]))
+        print_scenarios()
     else:
         run_benchmarks(args)
 
