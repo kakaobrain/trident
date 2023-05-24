@@ -27,24 +27,21 @@ class MaxPool2d(torch.autograd.Function):
         assert x.is_cuda and x.is_contiguous()
 
         num_batches, num_channels, num_rows, num_cols = x.shape
-        num_blocks = MaxPool2d.__get_out_size(num_rows, kernel_size)
-        num_kernels = MaxPool2d.__get_out_size(num_cols, kernel_size)
+        num_row_blocks = MaxPool2d.__get_out_size(num_rows, kernel_size)
+        num_col_blocks = MaxPool2d.__get_out_size(num_cols, kernel_size)
 
-        y = torch.empty(num_batches, num_channels, num_blocks, num_kernels, device='cuda')
+        y = torch.empty(num_batches, num_channels, num_row_blocks, num_col_blocks, device='cuda')
 
         assert y.is_contiguous()
 
-        grid = lambda meta: (num_batches * num_channels * num_blocks, )
+        block_size = max(num_cols // kernel_size // 4, 1)
+        grid = lambda meta: (num_batches * num_channels * num_row_blocks * num_col_blocks // block_size, )
         trident.kernel.MaxPool2D.forward[grid](x, x.stride(0), x.stride(1), x.stride(2),
                                                y, y.stride(0), y.stride(1), y.stride(2),
-                                               num_channels, num_rows, num_cols,
-                                               kernel_size=kernel_size)
-
+                                               num_channels, num_rows, num_cols, block_size,
+                                               kernel_size=kernel_size, num_stages=4)
         return y
 
     @staticmethod
     def __get_out_size(num_elements, kernel_size):
         return ((num_elements - (kernel_size - 1) - 1) // kernel_size) + 1
-
-
-

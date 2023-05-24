@@ -23,29 +23,36 @@ class MaxPool2D:
     @triton.jit
     def forward(x_ptr, x_batch_stride, x_channel_stride, x_row_stride,
                 y_ptr, y_batch_stride, y_channel_stride, y_row_stride,
-                num_channels, num_rows, num_cols,
+                num_channels, num_rows, num_cols, block_size,
                 kernel_size: triton.language.constexpr):
         program_id = triton.language.program_id(0)
 
-        num_blocks_per_row = num_rows // kernel_size
-        num_blocks_per_channel = num_blocks_per_row
-        num_blocks_per_batch = num_channels * num_blocks_per_channel
-        num_kernels_per_col = num_cols // kernel_size
+        num_row_kernels = num_rows // kernel_size
+        num_col_kernels = num_cols // kernel_size
+        num_col_blocks = num_col_kernels // block_size
+        num_channel_blocks = num_col_blocks * num_row_kernels
+        num_batch_blocks = num_channel_blocks * num_channels
 
-        batch = program_id // num_blocks_per_batch
-        channel = (program_id % num_blocks_per_batch) // num_blocks_per_channel
-        row = program_id % num_blocks_per_row
+        batch = program_id // num_batch_blocks
+        channel = (program_id % num_batch_blocks) // num_channel_blocks
+        row_block = ((program_id % num_batch_blocks) % num_channel_blocks) // num_col_blocks
+        col_block = ((program_id % num_batch_blocks) % num_channel_blocks) % num_col_blocks
+
+        x_row_block_stride = kernel_size * x_row_stride
+        x_col_block_stride = block_size * kernel_size
+        y_row_block_stride = y_row_stride
+        y_col_block_stride = block_size * col_block
 
         x_ptr += batch * x_batch_stride + channel * x_channel_stride
-        x_ptr += row * kernel_size * x_row_stride
+        x_ptr += row_block * x_row_block_stride + col_block * x_col_block_stride
         y_ptr += batch * y_batch_stride + channel * y_channel_stride
-        y_ptr += row * y_row_stride
+        y_ptr += row_block * y_row_block_stride + y_col_block_stride
 
         block = triton.language.arange(0, kernel_size)
         block = block[:, None] * x_row_stride + block[None, :]
         block = triton.language.ravel(block)
 
-        for i in range(0, num_kernels_per_col):
+        for i in range(0, block_size):
             x = triton.language.load(x_ptr + block)
             y = language.max1d(x)
             triton.language.store(y_ptr + i, y)
