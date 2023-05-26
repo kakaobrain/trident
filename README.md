@@ -6,7 +6,8 @@
 
 Trident is a performance library for machine learning applications intended for acceleration of training and inference.
 Trident includes highly optimized kernels, functions and modules for machine learning. Trident is implemented based on
-[OpenAI Triton](https://github.com/openai/triton).
+[OpenAI Triton](https://github.com/openai/triton). Check [Wiki](https://github.com/kakaobrain/trident/wiki) for more
+detail.
 
 ## 💻 Requirements
 
