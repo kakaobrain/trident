@@ -35,11 +35,12 @@ class MaxPool2d(torch.autograd.Function):
         assert y.is_contiguous()
 
         block_size = max(num_cols // kernel_size // 4, 1)
-        grid = lambda meta: (num_batches * num_channels * num_row_blocks * num_col_blocks // block_size, )
+        grid = lambda meta: (num_batches * num_channels * num_row_blocks * num_col_blocks // block_size,)
         trident.kernel.MaxPool2D.forward[grid](x, x.stride(0), x.stride(1), x.stride(2),
                                                y, y.stride(0), y.stride(1), y.stride(2),
-                                               num_channels, num_rows, num_cols, block_size,
-                                               kernel_size=kernel_size, num_stages=4)
+                                               num_channels, num_rows, num_cols,
+                                               kernel_size=kernel_size, block_size=block_size)
+
         return y
 
     @staticmethod

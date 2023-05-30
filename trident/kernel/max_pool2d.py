@@ -13,9 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import triton
 
-from trident import language
+import triton
 
 
 class MaxPool2D:
@@ -23,8 +22,8 @@ class MaxPool2D:
     @triton.jit
     def forward(x_ptr, x_batch_stride, x_channel_stride, x_row_stride,
                 y_ptr, y_batch_stride, y_channel_stride, y_row_stride,
-                num_channels, num_rows, num_cols, block_size,
-                kernel_size: triton.language.constexpr):
+                num_channels, num_rows, num_cols,
+                kernel_size: triton.language.constexpr, block_size: triton.language.constexpr):
         program_id = triton.language.program_id(0)
 
         num_row_kernels = num_rows // kernel_size
@@ -48,12 +47,13 @@ class MaxPool2D:
         y_ptr += batch * y_batch_stride + channel * y_channel_stride
         y_ptr += row_block * y_row_block_stride + y_col_block_stride
 
-        block = triton.language.arange(0, kernel_size)
-        block = block[:, None] * x_row_stride + block[None, :]
-        block = triton.language.ravel(block)
+        x_row_block = triton.language.arange(0, kernel_size)
+        x_row_block = triton.language.ravel(x_row_block[:, None] * x_row_stride + x_row_block[None, :])
+        x_col_block = triton.language.arange(0, block_size) * kernel_size
+        x_block = x_row_block[:, None] + x_col_block[None, :]
 
-        for i in range(0, block_size):
-            x = triton.language.load(x_ptr + block)
-            y = language.max1d(x)
-            triton.language.store(y_ptr + i, y)
-            block += kernel_size
+        x = triton.language.load(x_ptr + x_block)
+        y = triton.language.max(x, axis=0)
+        y_block = triton.language.arange(0, block_size)
+
+        triton.language.store(y_ptr + y_block, y)
