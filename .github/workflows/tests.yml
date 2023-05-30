@@ -32,6 +32,16 @@ jobs:
     - name: Check Python syntax errors
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    - name: Install Triton
+      run: |
+        pip uninstall -y triton
+        git clone https://github.com/openai/triton.git
+        pushd ./triton/python
+        python -m pip install cmake
+        python setup.py build
+        python setup.py install
+        popd
+        rm -rf ./triton
     - name: Set up environment variables
       run: |
         echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
