@@ -22,7 +22,7 @@ from trident import kernel
 
 class Linear(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, w, b, activation = args
 
         assert x.is_cuda and x.is_contiguous()
@@ -59,6 +59,10 @@ class Linear(torch.autograd.Function):
                                 BLOCK_SIZE_K=16)
 
         return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        pass
 
     @staticmethod
     def backward(ctx, *grad_outputs):

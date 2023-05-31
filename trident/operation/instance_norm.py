@@ -22,7 +22,7 @@ from trident import kernel
 
 class InstanceNorm(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, eps = args
 
         assert x.dim() == 3 and x.is_cuda and x.is_contiguous()
@@ -39,6 +39,10 @@ class InstanceNorm(torch.autograd.Function):
                                            block_size=triton.next_power_of_2(num_elements))
 
         return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        pass
 
     @staticmethod
     def backward(ctx, *grad_outputs):

@@ -22,7 +22,7 @@ from trident import kernel
 
 class LeakyReLU(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, negative_slope = args
 
         assert x.is_cuda and x.is_contiguous()
@@ -41,10 +41,14 @@ class LeakyReLU(torch.autograd.Function):
                                         negative_slope, size_1,
                                         block_size=get_block_size())
 
+        return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        x, negative_slope, = inputs
+
         ctx.save_for_backward(x)
         ctx.negative_slope = negative_slope
-
-        return y
 
     @staticmethod
     def backward(ctx, *grad_outputs):

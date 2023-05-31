@@ -22,7 +22,7 @@ from trident import kernel
 
 class Softmax(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, dim = args
 
         assert x.is_cuda and x.is_contiguous()
@@ -54,9 +54,11 @@ class Softmax(torch.autograd.Function):
         kernel.softmax_forward[(m,)](x, x.stride(0), x.stride(1), y, y.stride(0), y.stride(1), m, n,
                                      BLOCK_SIZE_N=block_size_n, num_stages=get_num_stages(), num_warps=get_num_warps())
 
-        ctx.save_for_backward(y)
-
         return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        ctx.save_for_backward(output)
 
     @staticmethod
     def backward(ctx, *grad_outputs):

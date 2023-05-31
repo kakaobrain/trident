@@ -21,7 +21,7 @@ import trident.kernel
 
 class MaxPool2d(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, kernel_size = args
 
         assert x.is_cuda and x.is_contiguous()
@@ -42,6 +42,10 @@ class MaxPool2d(torch.autograd.Function):
                                                kernel_size=kernel_size, block_size=block_size)
 
         return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        pass
 
     @staticmethod
     def __get_out_size(num_elements, kernel_size):

@@ -22,7 +22,7 @@ from trident import kernel
 
 class ReLU(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(*args, **kwargs):
         x, = args
 
         assert x.is_cuda and x.is_contiguous()
@@ -36,9 +36,13 @@ class ReLU(torch.autograd.Function):
         kernel.ReLU.forward[grid](x, y, x.stride(0), x.shape[1],
                                   block_size=block_size)
 
-        ctx.save_for_backward(x)
-
         return y
+
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        x, = inputs
+
+        ctx.save_for_backward(x)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
