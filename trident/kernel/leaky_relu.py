@@ -15,46 +15,47 @@ limitations under the License.
 """
 
 import triton
-import triton.language as tl
 
 from trident import language
 
 
-@triton.jit
-def leaky_relu_forward(x_ptr, x_stride_0, x_stride_1,
-                       y_ptr, y_stride_0, y_stride_1,
-                       a, size_1,
-                       block_size: tl.constexpr):
-    i = tl.program_id(0)
-    j = tl.program_id(1)
+class LeakyReLU:
+    @staticmethod
+    @triton.jit
+    def forward(x_ptr, x_stride,
+                y_ptr, y_stride,
+                a, size_1,
+                block_size: triton.language.constexpr):
+        i = triton.language.program_id(0)
+        j = triton.language.program_id(1)
 
-    block = tl.arange(0, block_size) + j * block_size
-    mask = block < size_1
+        block = triton.language.arange(0, block_size) + j * block_size
+        mask = block < size_1
 
-    x_ptr += i * x_stride_0 + block * x_stride_1
-    y_ptr += i * y_stride_0 + block * y_stride_1
+        x_ptr += i * x_stride + block
+        y_ptr += i * y_stride + block
 
-    x = tl.load(x_ptr, mask, 0.0)
-    y = language.leaky_relu(x, a)
+        x = triton.language.load(x_ptr, mask, 0.0)
+        y = language.leaky_relu(x, a)
 
-    tl.store(y_ptr, y, mask)
+        triton.language.store(y_ptr, y, mask)
 
+    @staticmethod
+    @triton.jit
+    def backward(x_ptr, x_stride,
+                 d_ptr, d_stride,
+                 a, size,
+                 block_size: triton.language.constexpr):
+        i = triton.language.program_id(0)
+        j = triton.language.program_id(1)
 
-@triton.jit
-def leaky_relu_backward(x_ptr, x_stride_0, x_stride_1,
-                        d_ptr, d_stride_0, d_stride_1,
-                        a, size,
-                        block_size: tl.constexpr):
-    i = tl.program_id(0)
-    j = tl.program_id(1)
+        block = triton.language.arange(0, block_size) + j * block_size
+        mask = block < size
 
-    block = tl.arange(0, block_size) + j * block_size
-    mask = block < size
+        x_ptr += i + block * x_stride
+        d_ptr += i + block * d_stride
 
-    x_ptr += i * x_stride_0 + block * x_stride_1
-    d_ptr += i * d_stride_0 + block * d_stride_1
+        x = triton.language.load(x_ptr, mask, 0.0)
+        d = triton.language.where(x > 0, 1, a)
 
-    x = tl.load(x_ptr, mask, 0.0)
-    d = tl.where(x > 0, 1, a)
-
-    tl.store(d_ptr, d, mask)
+        triton.language.store(d_ptr, d, mask)
