@@ -17,7 +17,7 @@ limitations under the License.
 import triton
 
 
-class MaxPool2D:
+class MaxPool2d:
     @staticmethod
     @triton.jit
     def forward(x_ptr, x_batch_stride, x_channel_stride, x_row_stride,

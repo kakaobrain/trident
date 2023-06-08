@@ -16,7 +16,7 @@ limitations under the License.
 
 import torch
 
-import trident.kernel
+from trident import kernel
 
 
 class MaxPool2d(torch.autograd.Function):
@@ -36,10 +36,10 @@ class MaxPool2d(torch.autograd.Function):
 
         block_size = max(num_cols // kernel_size // 4, 1)
         grid = lambda meta: (num_batches * num_channels * num_row_blocks * num_col_blocks // block_size,)
-        trident.kernel.MaxPool2D.forward[grid](x, x.stride(0), x.stride(1), x.stride(2),
-                                               y, y.stride(0), y.stride(1), y.stride(2),
-                                               num_channels, num_rows, num_cols,
-                                               kernel_size=kernel_size, block_size=block_size)
+        kernel.MaxPool2d.forward[grid](x, x.stride(0), x.stride(1), x.stride(2),
+                                       y, y.stride(0), y.stride(1), y.stride(2),
+                                       num_channels, num_rows, num_cols,
+                                       kernel_size=kernel_size, block_size=block_size)
 
         return y
 
