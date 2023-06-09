@@ -17,6 +17,15 @@ limitations under the License.
 from trident import operation
 
 
+def adaptive_avg_pool2d(input, output_size):
+    """
+    Applies Adaptive Average Pooling 2D to an input.
+
+    See AdaptiveAvgPool2d for details.
+    """
+    return operation.AdaptiveAvgPool2d.apply(input, output_size)
+
+
 def instance_norm(input, eps=1e-05):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.

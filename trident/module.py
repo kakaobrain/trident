@@ -19,6 +19,49 @@ import torch
 from trident import operation
 
 
+class AdaptiveAvgPool2d(torch.nn.Module):
+    def __init__(self, output_size):
+        """
+        Applies Adaptive Average Pooling 2D to an input.
+
+        Args:
+            output_size: the target output size.
+        """
+        super().__init__()
+
+        self.output_size = output_size
+
+    def forward(self, input):
+        """
+        Applies Adaptive Average Pooling 2D to an input.
+
+        Args:
+            input: an input (N, C, H, W) or (C, H, W)
+
+        Returns:
+            an output (N, C, T, T) or (C, T, T)
+
+        """
+        assert input.dim() == 3 or input.dim() == 4
+
+        x = AdaptiveAvgPool2d.__view(input)
+        y = operation.AdaptiveAvgPool2d.apply(x, self.output_size)
+
+        return y if y.dim() == 4 else y.squeeze()
+
+    @staticmethod
+    def __shape(x):
+        if x.dim() == 3:
+            return 1, x.shape[0], x.shape[1], x.shape[2]
+        else:
+            return x.shape
+
+    @staticmethod
+    def __view(x):
+        num_batches, num_channels, height, width = AdaptiveAvgPool2d.__shape(x)
+        return x.view(num_batches, num_channels, height, width)
+
+
 class InstanceNorm2d(torch.nn.Module):
     def __init__(self, num_features, eps=1e-05):
         """

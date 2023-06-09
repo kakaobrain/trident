@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from .adaptive_avg_pool2d import *
 from .instance_norm import *
 from .leaky_relu import *
 from .linear import *

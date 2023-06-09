@@ -18,6 +18,21 @@ import triton
 
 
 @triton.jit
+def batch(index, num_channels, num_rows, num_cols):
+    return index // (num_channels * num_rows * num_cols)
+
+
+@triton.jit
+def channel(index, num_channels, num_rows, num_cols):
+    return (index % (num_channels * num_rows * num_cols)) // (num_rows * num_cols)
+
+
+@triton.jit
+def col(index, num_cols):
+    return index % num_cols
+
+
+@triton.jit
 def max1d(x):
     return triton.language.max(x, 0)
 
@@ -30,6 +45,11 @@ def max2d(x):
 @triton.jit
 def pow2(x):
     return x * x
+
+
+@triton.jit
+def row(index, num_rows, num_cols):
+    return (index % (num_rows * num_cols)) // num_cols
 
 
 @triton.jit

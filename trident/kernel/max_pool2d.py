@@ -16,6 +16,8 @@ limitations under the License.
 
 import triton
 
+from trident import language
+
 
 class MaxPool2d:
     @staticmethod
@@ -29,13 +31,11 @@ class MaxPool2d:
         num_row_kernels = num_rows // kernel_size
         num_col_kernels = num_cols // kernel_size
         num_col_blocks = num_col_kernels // block_size
-        num_channel_blocks = num_col_blocks * num_row_kernels
-        num_batch_blocks = num_channel_blocks * num_channels
 
-        batch = program_id // num_batch_blocks
-        channel = (program_id % num_batch_blocks) // num_channel_blocks
-        row_block = ((program_id % num_batch_blocks) % num_channel_blocks) // num_col_blocks
-        col_block = ((program_id % num_batch_blocks) % num_channel_blocks) % num_col_blocks
+        batch = language.batch(program_id, num_channels, num_row_kernels, num_col_blocks)
+        channel = language.channel(program_id, num_channels, num_row_kernels, num_col_blocks)
+        row_block = language.row(program_id, num_row_kernels, num_col_blocks)
+        col_block = language.col(program_id, num_col_blocks)
 
         x_row_block_stride = kernel_size * x_row_stride
         x_col_block_stride = block_size * kernel_size

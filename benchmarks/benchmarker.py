@@ -16,6 +16,7 @@ limitations under the License.
 
 import argparse
 
+import benchmark_adaptive_avg_pool2d
 import benchmark_instance_norm
 import benchmark_leaky_relu
 import benchmark_linear
@@ -27,6 +28,7 @@ import benchmark_softmax
 def print_scenarios():
     print(f'Following scenarios can be chosen:')
     print(', '.join([
+        'adaptive-avg-pool2d',
         'instance-norm',
         'leaky-relu',
         'linear',
@@ -37,7 +39,9 @@ def print_scenarios():
 
 
 def run_benchmarks(args):
-    if args.scenario == 'instance-norm':
+    if args.scenario == 'adaptive-avg-pool2d':
+        benchmark_adaptive_avg_pool2d.run_benchmarks(args.show_plots)
+    elif args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
     elif args.scenario == 'leaky-relu':
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
