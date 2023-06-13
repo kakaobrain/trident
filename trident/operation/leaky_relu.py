@@ -69,4 +69,4 @@ class LeakyReLU(torch.autograd.Function):
                                         negative_slope, x_shape_1,
                                         block_size=get_block_size())
 
-        return dx, None
+        return torch.mul(grad_outputs[0], dx), None
