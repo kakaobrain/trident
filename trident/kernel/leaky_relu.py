@@ -50,8 +50,8 @@ class LeakyReLU:
         block = triton.language.arange(0, block_size) + j * block_size
         mask = block < size
 
-        x_ptr += i + block * x_stride
-        d_ptr += i + block * d_stride
+        x_ptr += i * x_stride + block
+        d_ptr += i * d_stride + block
 
         x = triton.language.load(x_ptr, mask, 0.0)
         d = triton.language.where(x > 0, 1, a)

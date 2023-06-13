@@ -12,21 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 import torch
 
 import trident
 from tests import util
 
 
-def test_function(input2d):
-    assert util.equal(
-        torch.nn.functional.leaky_relu(input2d), trident.function.leaky_relu(input2d)
-    )
+@pytest.mark.parametrize("shapes",
+                         [[(512, 512), (512, 1024), (1024, 512), (100, 200), (1, 1), (1, 100), (100, 1), (1025, 1)]])
+def test_forward(shapes):
+    for shape in shapes:
+        input = torch.randn(shape, device='cuda', requires_grad=True)
+        assert util.equal(
+            torch.nn.functional.leaky_relu(input), trident.function.leaky_relu(input)
+        ), f'test fail on input shape:{input.shape}'
 
 
-def test_module(input2d, target):
-    x = util.train(input2d, target, torch.nn.LeakyReLU())
-    y = util.train(input2d, target, trident.LeakyReLU())
+@pytest.mark.parametrize("shapes",
+                         [[(512, 512), (512, 1024), (1024, 512), (100, 200), (1, 1), (1, 100), (100, 1), (1025, 1)]])
+def test_backward(shapes):
+    for shape in shapes:
+        input = torch.randn(shape, device='cuda', requires_grad=False)
+        target = torch.randn(shape, device='cuda', requires_grad=False)
 
-    assert util.equal(x, y)
-    assert util.equal(x.grad, y.grad)
+        input_torch = input.clone()
+        input_torch.requires_grad = True
+
+        input_trident = input.clone()
+        input_trident.requires_grad = True
+
+        util.train(input_torch, target, torch.nn.LeakyReLU())
+        util.train(input_trident, target, trident.LeakyReLU())
+
+        assert util.equal(input_torch.grad, input_trident.grad), f'test fail on input shape:{input_torch.shape}'
