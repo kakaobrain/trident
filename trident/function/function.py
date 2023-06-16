@@ -24,6 +24,15 @@ def adaptive_avg_pool2d(input, output_size):
     return operation.AdaptiveAvgPool2d.apply(input, output_size)
 
 
+def conv2d(input, weight, bias=None):
+    """
+    Applies Convolution 2D to an input.
+
+    See Conv2d for details and output shape.
+    """
+    return operation.Conv2d.apply(input, weight, bias)
+
+
 def instance_norm(input, eps=1e-05):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.

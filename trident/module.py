@@ -59,6 +59,36 @@ class AdaptiveAvgPool2d(torch.nn.Module):
         return x.view(num_batches, num_channels, height, width)
 
 
+class Conv2d(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True):
+        """
+        Applies Convolution 2D to an input.
+
+        Args:
+            in_channels: number of channels in the input image
+            out_channels: number of channels produced by the convolution
+            kernel_size: size of the convolution kernel
+            bias: If True, adds a learnable bias to the output.
+        """
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.weight = torch.empty(out_channels, in_channels, kernel_size, kernel_size, device='cuda', dtype=torch.float)
+        self.bias = torch.empty(out_channels, device='cuda', dtype=torch.float) if bias else None
+
+    def forward(self, input):
+        """
+        Applies Convolution 2D to an input.
+
+        Args:
+            input: an input (N, C, H, W) or (C, H, W)
+
+        Returns:
+            an output (N, C, R, C) or (C, R, C)
+        """
+        return operation.Conv2d.apply(input, self.weight, self.bias)
+
+
 class InstanceNorm2d(torch.nn.Module):
     def __init__(self, num_features, eps=1e-05):
         """
