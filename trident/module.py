@@ -231,6 +231,31 @@ class ReLU(torch.nn.Module):
         return operation.ReLU.apply(input)
 
 
+class PReLU(torch.nn.Module):
+    def __init__(self, num_parameters=1, init=0.25):
+        """
+        Applies PReLU to an input.
+
+        Args:
+            num_parameters: number of weight to learn
+            init: the initial value of weight
+        """
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.empty(num_parameters, device='cuda').fill_(init))
+
+    def forward(self, input):
+        """
+        Applies PReLU to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return operation.PReLU.apply(input, self.weight)
+
+
 class Softmax(torch.nn.Module):
     def __init__(self, dim=None):
         """
