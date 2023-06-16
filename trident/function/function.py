@@ -69,6 +69,15 @@ def relu(input):
     return operation.ReLU.apply(input)
 
 
+def prelu(input, negative_slopes):
+    """
+    Applies PReLU to an input.
+
+    See PReLU for more details.
+    """
+    return operation.PReLU.apply(input, negative_slopes)
+
+
 def softmax(input, dim=None):
     """
     Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
