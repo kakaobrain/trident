@@ -51,6 +51,11 @@ def row(index, num_rows, num_cols):
 
 
 @triton.jit
+def sum(x):
+    return triton.language.sum(triton.language.ravel(x), 0)
+
+
+@triton.jit
 def var(mask, x, size, mean, dim=0, correction=1):
     return triton.language.sum(pow2(triton.language.where(mask, x - mean, 0.0)), dim) / (size - correction)
 
