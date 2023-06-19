@@ -1,7 +1,4 @@
 pytest
-torch
-torchvision
-torchaudio
+torch>=2.0.0
 matplotlib
 pandas
-triton
