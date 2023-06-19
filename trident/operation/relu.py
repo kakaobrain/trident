@@ -57,4 +57,4 @@ class ReLU(torch.autograd.Function):
         kernel.ReLU.backward[grid](dx, x, x.stride(0), x.shape[1],
                                    block_size=block_size)
 
-        return dx, None
+        return grad_outputs[0] * dx, None

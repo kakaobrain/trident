@@ -46,6 +46,6 @@ class ReLU:
         span = i * stride + block
 
         x = triton.language.load(x_ptr + span, mask, 0.0)
-        dx = triton.language.load.where(x > 0, 1, 0)
+        grad_x = triton.language.where(x > 0, 1, 0)
 
-        triton.language.store(dx_ptr + span, dx, mask)
+        triton.language.store(dx_ptr + span, grad_x, mask)
