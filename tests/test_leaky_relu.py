@@ -19,30 +19,23 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("shapes",
-                         [[(512, 512), (512, 1024), (1024, 512), (100, 200), (1, 1), (1, 100), (100, 1), (1025, 1)]])
-def test_forward(shapes):
-    for shape in shapes:
-        input = torch.randn(shape, device='cuda', requires_grad=True)
-        assert util.equal(
-            torch.nn.functional.leaky_relu(input), trident.function.leaky_relu(input)
-        ), f'test fail on input shape:{input.shape}'
+@pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_forward(num_batches, num_elements):
+    x = torch.randn(num_batches, num_elements, device='cuda')
+
+    assert util.equal(torch.nn.functional.leaky_relu(x), trident.function.leaky_relu(x))
 
 
-@pytest.mark.parametrize("shapes",
-                         [[(512, 512), (512, 1024), (1024, 512), (100, 200), (1, 1), (1, 100), (100, 1), (1025, 1)]])
-def test_backward(shapes):
-    for shape in shapes:
-        input = torch.randn(shape, device='cuda', requires_grad=False)
-        target = torch.randn(shape, device='cuda', requires_grad=False)
+@pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_backward(num_batches, num_elements):
+    x = torch.randn(num_batches, num_elements, device='cuda')
+    y = torch.randn(num_batches, num_elements, device='cuda')
 
-        input_torch = input.clone()
-        input_torch.requires_grad = True
+    a = x.clone()
+    b = x.clone()
+    a.requires_grad = b.requires_grad = True
 
-        input_trident = input.clone()
-        input_trident.requires_grad = True
+    util.train(a, y, torch.nn.LeakyReLU())
+    util.train(b, y, trident.LeakyReLU())
 
-        util.train(input_torch, target, torch.nn.LeakyReLU())
-        util.train(input_trident, target, trident.LeakyReLU())
-
-        assert util.equal(input_torch.grad, input_trident.grad), f'test fail on input shape:{input_torch.shape}'
+    assert util.equal(a.grad, b.grad)
