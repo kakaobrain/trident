@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 import torch
 
 import trident
@@ -24,9 +25,20 @@ def test_function(input2d):
     )
 
 
-def test_module(input2d, target):
-    x = util.train(input2d, target, torch.nn.Softmax(1))
-    y = util.train(input2d, target, trident.Softmax(1))
+def test_forward(input2d):
+    assert util.equal(torch.nn.Softmax(1).forward(input2d), trident.Softmax(1).forward(input2d))
 
-    assert util.equal(x, y)
-    assert util.equal(x.grad, y.grad)
+
+@pytest.mark.parametrize("num_batches, num_elements", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
+def test_backward(num_batches, num_elements):
+    t = torch.randn(num_batches, num_elements, device='cuda')
+    x = torch.randn(num_batches, num_elements, device='cuda')
+
+    a = x.clone()
+    b = x.clone()
+    a.requires_grad = b.requires_grad = True
+
+    util.train(a, t, torch.nn.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
+    util.train(b, t, trident.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
+
+    assert util.equal(a.grad, b.grad)
