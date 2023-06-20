@@ -68,23 +68,12 @@ class Softmax(torch.autograd.Function):
 
         assert y.is_cuda and y.is_contiguous()
 
-        m, n = y.shape
-        block_size_n = triton.next_power_of_2(n)
+        grad_x = torch.empty_like(y)
 
-        def get_num_warps():
-            if block_size_n >= 8192:
-                return 16
-            if block_size_n >= 2048:
-                return 4
-            return 2
+        assert grad_x.is_cuda and grad_x.is_contiguous
 
-        d = torch.empty_like(y)
+        for i, s in enumerate(y):
+            jacob = torch.diagflat(s) - torch.mm(s.unsqueeze(0).t(), s.unsqueeze(0))
+            grad_x[i] = torch.mm(t[i].unsqueeze(0), jacob)
 
-        assert d.is_cuda and d.is_contiguous
-
-        kernel.softmax_backward[(m,)](y, y.stride(0), y.stride(1),
-                                      t, t.stride(0), t.stride(1),
-                                      d, d.stride(0), d.stride(1),
-                                      n,
-                                      BLOCK_SIZE_N=block_size_n, num_warps=get_num_warps())
-        return d, None
+        return grad_x, None
