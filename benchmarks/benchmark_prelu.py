@@ -32,12 +32,13 @@ import trident
     )
 )
 def bench_prelu_forward(num_rows, num_cols, provider):
-    x = torch.randn(num_rows, num_cols, device='cuda')
+    inp = torch.randn(num_rows, num_cols, device='cuda')
+    wgt = torch.randn(1, device='cuda')
 
     if provider == 'torch':
-        return triton.testing.do_bench(lambda: torch.nn.functional.prelu(x))
+        return triton.testing.do_bench(lambda: torch.nn.functional.prelu(inp, wgt))
     else:
-        return triton.testing.do_bench(lambda: trident.function.prelu(x))
+        return triton.testing.do_bench(lambda: trident.function.prelu(inp, wgt))
 
 
 def run_benchmarks(show_plots):

@@ -78,13 +78,13 @@ def relu(input):
     return operation.ReLU.apply(input)
 
 
-def prelu(input, negative_slopes):
+def prelu(input, weight):
     """
     Applies PReLU to an input.
 
     See PReLU for more details.
     """
-    return operation.PReLU.apply(input, negative_slopes)
+    return operation.PReLU.apply(input, weight)
 
 
 def softmax(input, dim=None):
