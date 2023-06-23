@@ -19,22 +19,23 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('num_batches, in_channels, out_channels', [(1, 3, 1), (5, 4, 8), (6, 3, 9), (10, 16, 36)])
-def test_function(num_batches, in_channels, out_channels):
-    input = torch.randn(num_batches, in_channels, 5, 5, dtype=torch.float, device='cuda')
-    weight = torch.randn(out_channels, in_channels, 3, 3, dtype=torch.float, device='cuda')
-    bias = torch.randn(out_channels, dtype=torch.float, device='cuda')
+@pytest.mark.parametrize('num_bt, inp_ch, out_ch', [(1, 3, 1), (5, 4, 8), (6, 3, 9), (10, 16, 36)])
+def test_function(num_bt, inp_ch, out_ch):
+    inp = torch.randn(num_bt, inp_ch, 5, 5, device='cuda')
+    wgt = torch.randn(out_ch, inp_ch, 2, 2, device='cuda')
+    bis = torch.randn(out_ch, device='cuda')
 
-    assert util.equal(torch.nn.functional.conv2d(input, weight, bias), trident.function.conv2d(input, weight, bias))
-    assert util.equal(torch.nn.functional.conv2d(input, weight), trident.function.conv2d(input, weight))
+    assert util.equal(torch.nn.functional.conv2d(inp, wgt, bis), trident.function.conv2d(inp, wgt, bis))
+    assert util.equal(torch.nn.functional.conv2d(inp, wgt), trident.function.conv2d(inp, wgt))
 
 
-@pytest.mark.parametrize('in_channels, out_channels, kernel_size', [(1, 1, 3), (3, 16, 4), (4, 32, 5), (4, 4, 32)])
-def test_forward(in_channels, out_channels, kernel_size):
-    conv2d_tc = torch.nn.Conv2d(in_channels, out_channels, kernel_size, dtype=torch.float, device='cuda')
-    conv2d_td = trident.Conv2d(in_channels, out_channels, kernel_size)
-    conv2d_td.weight, conv2d_td.bias = conv2d_tc.weight, conv2d_tc.bias
+# @pytest.mark.skip
+@pytest.mark.parametrize('num_bt, inp_ch, wgt_sz', [(1, 1, 3), (3, 16, 4), (4, 32, 5), (4, 4, 32)])
+def test_forward(num_bt, inp_ch, wgt_sz):
+    inp = torch.randn(4, num_bt, 64, 64, device='cuda')
 
-    input = torch.randn(4, in_channels, 64, 64, dtype=torch.float, device='cuda')
+    lyr0 = torch.nn.Conv2d(num_bt, inp_ch, wgt_sz, dtype=torch.float, device='cuda')
+    lyr1 = trident.Conv2d(num_bt, inp_ch, wgt_sz)
+    lyr1.weight, lyr1.bias = lyr0.weight, lyr0.bias
 
-    assert util.equal(conv2d_tc.forward(input), conv2d_td.forward(input))
+    assert util.equal(lyr0.forward(inp), lyr1.forward(inp))
