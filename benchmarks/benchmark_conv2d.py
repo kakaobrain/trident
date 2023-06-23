@@ -20,25 +20,25 @@ import trident
 
 @triton.testing.perf_report(
     triton.testing.Benchmark(
-        x_names=['kernel_size'],
-        x_vals=[i for i in range(2, 23, 2)],
+        x_names=['wgt_sz'],
+        x_vals=[i for i in range(2, 13)],
         line_arg='provider',
         line_vals=['torch', 'trident'],
         line_names=['torch', 'trident'],
         plot_name='conv2d forward',
-        args={'num_batches': 1, 'in_channels': 3, 'in_size': 64, 'out_channels': 16},
+        args={'num_bt': 2, 'inp_ch': 3, 'inp_sz': 256, 'out_ch': 8},
         ylabel='milliseconds',
         x_log=True
     )
 )
-def bench_conv2d_forward(num_batches, in_channels, in_size, out_channels, kernel_size, provider):
-    input = torch.randn(num_batches, in_channels, in_size, in_size, dtype=torch.float, device='cuda')
-    weight = torch.randn(out_channels, in_channels, kernel_size, kernel_size, dtype=torch.float, device='cuda')
+def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, provider):
+    inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device='cuda')
+    wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device='cuda')
 
     if provider == 'torch':
-        return triton.testing.do_bench(lambda: torch.nn.functional.conv2d(input, weight))
+        return triton.testing.do_bench(lambda: torch.nn.functional.conv2d(inp, wgt))
     else:
-        return triton.testing.do_bench(lambda: trident.function.conv2d(input, weight))
+        return triton.testing.do_bench(lambda: trident.function.conv2d(inp, wgt))
 
 
 def run_benchmarks(show_plots):

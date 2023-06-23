@@ -20,42 +20,41 @@ from trident import language
 class Conv2d:
     @staticmethod
     @triton.jit
-    def forward(input_ptr, in_channels, in_height, in_width, in_batch_stride, in_channel_stride,
-                weight_ptr, wt_height, wt_width, wt_batch_stride, wt_channel_stride, bias_ptr,
-                output_ptr, out_channels, out_height, out_width, out_batch_stride, out_channel_stride, out_width_stride,
-                channel_block_size: triton.language.constexpr, weight_block_size: triton.language.constexpr):
-        program_id = triton.language.program_id(0)
+    def forward(inp_ptr, inp_ch, inp_h, inp_w, inp_bt_st, inp_ch_st, inp_h_st,
+                wgt_ptr, wgt_ch, wgt_h, wgt_w, wgt_bt_st, wgt_ch_st, bis_ptr,
+                out_ptr, out_ch, out_h, out_w, out_bt_st, out_ch_st, out_h_st,
+                wgt_c_bs: triton.language.constexpr, wgt_h_bs: triton.language.constexpr,
+                wgt_w_bs: triton.language.constexpr, grp_sz: triton.language.constexpr):
+        pid = triton.language.program_id(0)
+        num_grp = (out_h + grp_sz - 1) // grp_sz
+        bt = language.batch(pid, out_ch, num_grp, out_w)
+        ch = language.channel(pid, out_ch, num_grp, out_w)
+        grp = language.row(pid, num_grp, out_w)
+        h = grp * grp_sz
+        w = language.col(pid, out_w)
 
-        in_batch = language.batch(program_id, out_channels, out_height, out_width)
-        out_channel = language.channel(program_id, out_channels, out_height, out_width)
-        out_height = language.row(program_id, out_height, out_width)
-        out_width = language.col(program_id, out_width)
+        inp_ptr += bt * inp_bt_st + h * inp_h_st + w
+        wgt_ptr += ch * wgt_bt_st
+        out_ptr += bt * out_bt_st + ch * out_ch_st + h * out_h_st + w
 
-        channel_block = triton.language.arange(0, channel_block_size)
-        channel_mask = channel_block < in_channels
+        inp_blk = language.make_conv2d_blk(inp_ch_st, inp_w, wgt_c_bs, wgt_h_bs, wgt_w_bs)
+        inp_blk = triton.language.ravel(inp_blk)
+        inp_blk = language.make_group_blk(inp_blk, grp_sz, inp_w)
+        inp_msk = language.make_conv2d_msk(inp_ch, inp_h, inp_w, wgt_c_bs, wgt_h_bs, wgt_w_bs)
+        inp_msk = triton.language.ravel(inp_msk)
+        inp_msk = language.make_group_msk(inp_msk, grp_sz, h, out_h)
+        wgt_blk = language.make_conv2d_blk(wgt_ch_st, wgt_w, wgt_c_bs, wgt_h_bs, wgt_w_bs)
+        wgt_blk = triton.language.ravel(wgt_blk)
+        wgt_msk = language.make_conv2d_msk(wgt_ch, wgt_h, wgt_w, wgt_c_bs, wgt_h_bs, wgt_w_bs)
+        wgt_msk = triton.language.ravel(wgt_msk)
+        out_blk = triton.language.arange(0, grp_sz) * out_w
+        out_msk = triton.language.arange(0, grp_sz) + h < out_h
 
-        input_block = triton.language.arange(0, weight_block_size)
-        input_block = input_block[:, None] * in_width + input_block[None, :]
-        input_block = channel_block[:, None, None] * in_channel_stride + input_block[None, :, :]
+        inp = triton.language.load(inp_ptr + inp_blk, inp_msk, 0.0)
+        wgt = triton.language.load(wgt_ptr + wgt_blk, wgt_msk, 0.0)
+        out = triton.language.sum(inp * wgt[:, None], 0)
 
-        weight_block = triton.language.arange(0, weight_block_size)
-        weight_block = weight_block[:, None] * wt_width + weight_block[None, :]
-        weight_block = channel_block[:, None, None] * wt_channel_stride + weight_block[None, :, :]
+        if bis_ptr:
+            out += triton.language.load(bis_ptr + ch)
 
-        mask = triton.language.arange(0, weight_block_size) < wt_height
-        mask = mask[:, None] & mask[None, :]
-        mask = channel_mask[:, None, None] & mask[None, :, :]
-
-        input_ptr += in_batch * in_batch_stride + out_height * in_height + out_width
-        input = triton.language.load(input_ptr + input_block, mask, 0.0)
-
-        weight_ptr += out_channel * wt_batch_stride
-        weight = triton.language.load(weight_ptr + weight_block, mask, 0.0)
-
-        output = language.sum(input * weight)
-
-        if bias_ptr:
-            output += triton.language.load(bias_ptr + out_channel)
-
-        output_ptr += in_batch * out_batch_stride + out_channel * out_channel_stride + out_height * out_width_stride + out_width
-        triton.language.store(output_ptr, output)
+        triton.language.store(out_ptr + out_blk, out, out_msk)

@@ -31,6 +31,28 @@ def col(index, num_cols):
 
 
 @triton.jit
+def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
+    blk = triton.language.arange(0, w_bs)[:, None] + (triton.language.arange(0, h_bs) * w_st)[None, :]
+    return blk[:, :, None] + (triton.language.arange(0, ch_bs) * ch_st)[None, None, :]
+
+
+@triton.jit
+def make_conv2d_msk(ch, h, w, ch_bs, h_bs, w_bs):
+    msk = (triton.language.arange(0, w_bs) < w)[:, None] & (triton.language.arange(0, h_bs) < h)[None, :]
+    return msk[:, :, None] & (triton.language.arange(0, ch_bs) < ch)[None, None, :]
+
+
+@triton.jit
+def make_group_blk(blk, grp_sz, w):
+    return blk[:, None] + (triton.language.arange(0, grp_sz) * w)[None, :]
+
+
+@triton.jit
+def make_group_msk(blk, grp_sz, off, h):
+    return blk[:, None] & (triton.language.arange(0, grp_sz) + off < h)[None, :]
+
+
+@triton.jit
 def max1d(x):
     return triton.language.max(x, 0)
 
