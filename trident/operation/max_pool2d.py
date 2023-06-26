@@ -35,7 +35,7 @@ class MaxPool2d(torch.autograd.Function):
         out_h = MaxPool2d.__get_out_size(inp_h, knl_sz)
         out_w = MaxPool2d.__get_out_size(inp_w, knl_sz)
 
-        out = torch.empty(inp_bt, inp_ch, out_h, out_w, device='cuda')
+        out = torch.empty(inp_bt, inp_ch, out_h, out_w, dtype=inp.dtype, device='cuda')
 
         assert out.is_contiguous()
 

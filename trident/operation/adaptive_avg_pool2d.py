@@ -30,7 +30,7 @@ class AdaptiveAvgPool2d(torch.autograd.Function):
 
         kernel_size = (num_rows + output_size - 1) // output_size
 
-        y = torch.empty(num_batches, num_channels, output_size, output_size, device='cuda')
+        y = torch.empty(num_batches, num_channels, output_size, output_size, dtype=x.dtype, device='cuda')
 
         assert y.is_contiguous()
 

@@ -18,10 +18,13 @@ import trident
 from tests import util
 
 
-def test_function(input3d):
-    assert util.equal(torch.nn.functional.instance_norm(input3d), trident.function.instance_norm(input3d))
+def test_function(dtype):
+    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
+    assert util.equal(torch.nn.functional.instance_norm(inp), trident.function.instance_norm(inp))
 
 
-def test_module_2d(input3d, input4d):
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(input3d), trident.InstanceNorm2d(2).forward(input3d))
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(input4d), trident.InstanceNorm2d(2).forward(input4d))
+def test_forward(dtype):
+    inp3d = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
+    inp4d = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda', requires_grad=True)
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp3d), trident.InstanceNorm2d(2).forward(inp3d))
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp4d), trident.InstanceNorm2d(2).forward(inp4d))

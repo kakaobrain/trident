@@ -20,16 +20,18 @@ from tests import util
 
 
 @pytest.mark.parametrize('target_size', [2, 4, 8])
-def test_function(input4d, target_size):
+def test_function(target_size, dtype):
+    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda', requires_grad=True)
     assert util.equal(
-        torch.nn.functional.adaptive_avg_pool2d(input4d, target_size),
-        trident.function.adaptive_avg_pool2d(input4d, target_size)
+        torch.nn.functional.adaptive_avg_pool2d(inp, target_size),
+        trident.function.adaptive_avg_pool2d(inp, target_size)
     )
 
 
 @pytest.mark.parametrize('target_size', [2, 4, 8])
-def test_module(input3d, target_size):
+def test_forward(target_size, dtype):
+    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
     assert util.equal(
-        torch.nn.AdaptiveAvgPool2d(target_size).forward(input3d),
-        trident.AdaptiveAvgPool2d(target_size).forward(input3d)
+        torch.nn.AdaptiveAvgPool2d(target_size).forward(inp),
+        trident.AdaptiveAvgPool2d(target_size).forward(inp)
     )
