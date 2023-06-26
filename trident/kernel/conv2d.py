@@ -26,7 +26,7 @@ class Conv2d:
                 wgt_c_bs: triton.language.constexpr, wgt_h_bs: triton.language.constexpr,
                 wgt_w_bs: triton.language.constexpr, grp_sz: triton.language.constexpr):
         pid = triton.language.program_id(0)
-        num_grp = (out_h + grp_sz - 1) // grp_sz
+        num_grp = language.cdiv(out_w, grp_sz)
         bt = language.batch(pid, out_ch, num_grp, out_w)
         ch = language.channel(pid, out_ch, num_grp, out_w)
         grp = language.row(pid, num_grp, out_w)
