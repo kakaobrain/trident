@@ -13,38 +13,41 @@
 # limitations under the License.
 
 import torch
+import triton
 
-from trident import kernel
+from trident import kernel, math
 
 
 class MaxPool2d(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        x, kernel_size = args
-
-        assert x.is_cuda and x.is_contiguous()
-
-        num_batches, num_channels, num_rows, num_cols = x.shape
-        num_row_blocks = MaxPool2d.__get_out_size(num_rows, kernel_size)
-        num_col_blocks = MaxPool2d.__get_out_size(num_cols, kernel_size)
-
-        y = torch.empty(num_batches, num_channels, num_row_blocks, num_col_blocks, device='cuda')
-
-        assert y.is_contiguous()
-
-        block_size = max(num_cols // kernel_size // 4, 1)
-        grid = lambda meta: (num_batches * num_channels * num_row_blocks * num_col_blocks // block_size,)
-        kernel.MaxPool2d.forward[grid](x, x.stride(0), x.stride(1), x.stride(2),
-                                       y, y.stride(0), y.stride(1), y.stride(2),
-                                       num_channels, num_rows, num_cols,
-                                       kernel_size=kernel_size, block_size=block_size)
-
-        return y
+        return MaxPool2d.__forward(*args)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
         pass
 
     @staticmethod
-    def __get_out_size(num_elements, kernel_size):
-        return ((num_elements - (kernel_size - 1) - 1) // kernel_size) + 1
+    def __forward(inp, knl_sz):
+        assert inp.is_contiguous()
+
+        inp_bt, inp_ch, inp_h, inp_w = inp.shape
+        out_h = MaxPool2d.__get_out_size(inp_h, knl_sz)
+        out_w = MaxPool2d.__get_out_size(inp_w, knl_sz)
+
+        out = torch.empty(inp_bt, inp_ch, out_h, out_w, device='cuda')
+
+        assert out.is_contiguous()
+
+        grid = lambda meta: (inp_bt * inp_ch * out_h * math.cdiv(out_w, meta['grp_sz']),)
+        grp_sz = math.clamp(128 // triton.next_power_of_2(knl_sz), 1, triton.next_power_of_2(out_w))
+
+        kernel.MaxPool2d.forward[grid](inp, inp_ch, inp_w, inp.stride(0), inp.stride(1), inp.stride(2),
+                                       out, out_h, out_w, out.stride(0), out.stride(1), out.stride(2),
+                                       knl_sz, triton.next_power_of_2(knl_sz), grp_sz)
+
+        return out
+
+    @staticmethod
+    def __get_out_size(num_elem, knl_sz):
+        return ((num_elem - (knl_sz - 1) - 1) // knl_sz) + 1

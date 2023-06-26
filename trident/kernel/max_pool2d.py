@@ -20,38 +20,32 @@ from trident import language
 class MaxPool2d:
     @staticmethod
     @triton.jit
-    def forward(x_ptr, x_batch_stride, x_channel_stride, x_row_stride,
-                y_ptr, y_batch_stride, y_channel_stride, y_row_stride,
-                num_channels, num_rows, num_cols,
-                kernel_size: triton.language.constexpr, block_size: triton.language.constexpr):
-        program_id = triton.language.program_id(0)
+    def forward(inp_ptr, inp_ch, inp_w, inp_bt_st, inp_ch_st, inp_h_st,
+                out_ptr, out_h, out_w, out_bt_st, out_ch_st, out_h_st,
+                knl_sz,
+                knl_bs: triton.language.constexpr,
+                grp_sz: triton.language.constexpr):
+        pid = triton.language.program_id(0)
+        num_grp = language.cdiv(out_w, grp_sz)
+        bt = language.batch(pid, inp_ch, out_h, num_grp)
+        ch = language.channel(pid, inp_ch, out_h, num_grp)
+        h = language.row(pid, out_h, num_grp)
+        grp = language.col(pid, num_grp)
+        w = grp * grp_sz
 
-        num_row_kernels = num_rows // kernel_size
-        num_col_kernels = num_cols // kernel_size
-        num_col_blocks = num_col_kernels // block_size
+        inp_ptr += bt * inp_bt_st + ch * inp_ch_st + h * (knl_sz * inp_h_st) + w * knl_sz
+        out_ptr += bt * out_bt_st + ch * out_ch_st + h * out_h_st + w
 
-        batch = language.batch(program_id, num_channels, num_row_kernels, num_col_blocks)
-        channel = language.channel(program_id, num_channels, num_row_kernels, num_col_blocks)
-        row_block = language.row(program_id, num_row_kernels, num_col_blocks)
-        col_block = language.col(program_id, num_col_blocks)
+        inp_blk = language.make_conv2d_blk(1, inp_h_st, 1, knl_bs, knl_bs)
+        inp_blk = triton.language.ravel(inp_blk)
+        inp_blk = language.make_group_blk(inp_blk, grp_sz, knl_sz)
+        inp_msk = language.make_conv2d_msk(1, knl_sz, knl_sz, 1, knl_bs, knl_bs)
+        inp_msk = triton.language.ravel(inp_msk)
+        inp_msk = language.make_group_msk(inp_msk, grp_sz, w, out_h)
+        out_blk = triton.language.arange(0, grp_sz)
+        out_msk = triton.language.arange(0, grp_sz) + w < out_w
 
-        x_row_block_stride = kernel_size * x_row_stride
-        x_col_block_stride = block_size * kernel_size
-        y_row_block_stride = y_row_stride
-        y_col_block_stride = block_size * col_block
+        inp = triton.language.load(inp_ptr + inp_blk, inp_msk, -float('inf'))
+        out = triton.language.max(inp, axis=0)
 
-        x_ptr += batch * x_batch_stride + channel * x_channel_stride
-        x_ptr += row_block * x_row_block_stride + col_block * x_col_block_stride
-        y_ptr += batch * y_batch_stride + channel * y_channel_stride
-        y_ptr += row_block * y_row_block_stride + y_col_block_stride
-
-        x_row_block = triton.language.arange(0, kernel_size)
-        x_row_block = triton.language.ravel(x_row_block[:, None] * x_row_stride + x_row_block[None, :])
-        x_col_block = triton.language.arange(0, block_size) * kernel_size
-        x_block = x_row_block[:, None] + x_col_block[None, :]
-
-        x = triton.language.load(x_ptr + x_block)
-        y = triton.language.max(x, axis=0)
-        y_block = triton.language.arange(0, block_size)
-
-        triton.language.store(y_ptr + y_block, y)
+        triton.language.store(out_ptr + out_blk, out, out_msk)

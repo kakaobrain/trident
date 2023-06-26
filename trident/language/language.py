@@ -68,6 +68,11 @@ def pow2(x):
 
 
 @triton.jit
+def cdiv(x, y):
+    return (x + y - 1) // y
+
+
+@triton.jit
 def row(index, num_rows, num_cols):
     return (index % (num_rows * num_cols)) // num_cols
 
