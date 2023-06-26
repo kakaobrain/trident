@@ -16,6 +16,11 @@ import pytest
 import torch
 
 
+@pytest.fixture(scope='session', params=[torch.float32, torch.float16])
+def dtype(request):
+    return request.param
+
+
 @pytest.fixture(scope='session')
 def input2d():
     return torch.randn(512, 512, device='cuda', requires_grad=True)

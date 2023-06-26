@@ -19,12 +19,14 @@ import trident
 from tests import util
 
 
-def test_function(input2d):
-    assert util.equal(torch.nn.functional.relu(input2d), trident.function.relu(input2d))
+def test_function(dtype):
+    inp = torch.randn(512, 512, dtype=dtype, device='cuda', requires_grad=True)
+    assert util.equal(torch.nn.functional.relu(inp), trident.function.relu(inp))
 
 
-def test_forward(input2d, target):
-    assert util.equal(torch.nn.ReLU().forward(input2d), trident.ReLU().forward(input2d))
+def test_forward(dtype):
+    inp = torch.randn(512, 512, dtype=dtype, device='cuda', requires_grad=True)
+    assert util.equal(torch.nn.ReLU().forward(inp), trident.ReLU().forward(inp))
 
 
 @pytest.mark.parametrize("num_batches, num_elements", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])

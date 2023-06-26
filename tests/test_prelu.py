@@ -20,9 +20,9 @@ from tests import util
 
 
 @pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_forward(num_batches, num_elements):
-    w = torch.randn(num_elements, device='cuda')
-    x = torch.randn((num_batches, num_elements), device='cuda', requires_grad=True)
+def test_forward(num_batches, num_elements, dtype):
+    w = torch.randn(num_elements, dtype=dtype, device='cuda')
+    x = torch.randn((num_batches, num_elements), dtype=dtype, device='cuda', requires_grad=True)
     assert util.equal(
         torch.nn.functional.prelu(x, w), trident.function.prelu(x, w)
     )

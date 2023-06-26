@@ -20,8 +20,8 @@ from tests import util
 
 
 @pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_forward(num_batches, num_elements):
-    x = torch.randn(num_batches, num_elements, device='cuda')
+def test_forward(num_batches, num_elements, dtype):
+    x = torch.randn(num_batches, num_elements, dtype=dtype, device='cuda')
 
     assert util.equal(torch.nn.functional.leaky_relu(x), trident.function.leaky_relu(x))
 
