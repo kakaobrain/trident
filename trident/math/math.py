@@ -13,9 +13,5 @@
 # limitations under the License.
 
 
-def cdiv(x, y):
-    return (x + y - 1) // y
-
-
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))

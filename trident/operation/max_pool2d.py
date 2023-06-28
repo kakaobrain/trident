@@ -39,7 +39,7 @@ class MaxPool2d(torch.autograd.Function):
 
         assert out.is_contiguous()
 
-        grid = lambda meta: (inp_bt * inp_ch * out_h * math.cdiv(out_w, meta['grp_sz']),)
+        grid = lambda meta: (inp_bt * inp_ch * out_h * triton.cdiv(out_w, meta['grp_sz']),)
         grp_sz = math.clamp(128 // triton.next_power_of_2(knl_sz), 1, triton.next_power_of_2(out_w))
 
         kernel.MaxPool2d.forward[grid](inp, inp_ch, inp_w, inp.stride(0), inp.stride(1), inp.stride(2),
