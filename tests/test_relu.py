@@ -20,23 +20,23 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128)])
-def test_function(num_bt, num_elem, dtype):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+def test_function(num_bt, num_elem, dtype, device):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.relu(inp), trident.function.relu(inp))
 
 
 @pytest.mark.parametrize("num_bt, num_elem", [(2, 256), (1, 512)])
-def test_forward(num_bt, num_elem, dtype):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+def test_forward(num_bt, num_elem, dtype, device):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.ReLU().forward(inp), trident.ReLU().forward(inp))
 
 
 @pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
-def test_backward(num_bt, num_elem):
-    inp = torch.randn(num_bt, num_elem, device='cuda')
-    tgt = torch.randn(num_bt, num_elem, device='cuda')
+def test_backward(num_bt, num_elem, device):
+    inp = torch.randn(num_bt, num_elem, device=device)
+    tgt = torch.randn(num_bt, num_elem, device=device)
 
     x = inp.clone()
     a = inp.clone()

@@ -19,3 +19,12 @@ import torch
 @pytest.fixture(scope='session', params=[torch.float32, torch.float16])
 def dtype(request):
     return request.param
+
+
+def pytest_addoption(parser):
+    parser.addoption("--device", action="store", default="cuda")
+
+
+@pytest.fixture
+def device(request):
+    return request.config.getoption("--device")
