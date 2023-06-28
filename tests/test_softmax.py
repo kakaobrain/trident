@@ -19,26 +19,30 @@ import trident
 from tests import util
 
 
-def test_function(input2d):
-    assert util.equal(
-        torch.nn.functional.softmax(input2d, 1), trident.function.softmax(input2d, 1)
-    )
+@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128)])
+def test_function(num_bt, num_elem):
+    inp = torch.randn(num_bt, num_elem, device='cuda')
+
+    assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
 
 
-def test_forward(input2d):
-    assert util.equal(torch.nn.Softmax(1).forward(input2d), trident.Softmax(1).forward(input2d))
+@pytest.mark.parametrize("num_bt, num_elem", [(2, 256), (1, 512)])
+def test_forward(num_bt, num_elem):
+    inp = torch.randn(num_bt, num_elem, device='cuda')
+
+    assert util.equal(torch.nn.Softmax(1).forward(inp), trident.Softmax(1).forward(inp))
 
 
-@pytest.mark.parametrize("num_batches, num_elements", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
-def test_backward(num_batches, num_elements):
-    t = torch.randn(num_batches, num_elements, device='cuda')
-    x = torch.randn(num_batches, num_elements, device='cuda')
+@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
+def test_backward(num_bt, num_elem):
+    inp = torch.randn(num_bt, num_elem, device='cuda')
+    tgt = torch.randn(num_bt, num_elem, device='cuda')
 
-    a = x.clone()
-    b = x.clone()
-    a.requires_grad = b.requires_grad = True
+    x = inp.clone()
+    a = inp.clone()
+    x.requires_grad = a.requires_grad = True
 
-    util.train(a, t, torch.nn.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
-    util.train(b, t, trident.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
+    util.train(x, tgt, torch.nn.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
+    util.train(a, tgt, trident.Softmax(1), criterion=torch.nn.CrossEntropyLoss())
 
-    assert util.equal(a.grad, b.grad)
+    assert util.equal(x.grad, a.grad)

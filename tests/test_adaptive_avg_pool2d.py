@@ -19,19 +19,17 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('target_size', [2, 4, 8])
-def test_function(target_size, dtype):
-    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda', requires_grad=True)
+@pytest.mark.parametrize('tgt_sz', [2, 4, 8])
+def test_function(tgt_sz, dtype):
+    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda')
+
     assert util.equal(
-        torch.nn.functional.adaptive_avg_pool2d(inp, target_size),
-        trident.function.adaptive_avg_pool2d(inp, target_size)
+        torch.nn.functional.adaptive_avg_pool2d(inp, tgt_sz), trident.function.adaptive_avg_pool2d(inp, tgt_sz)
     )
 
 
-@pytest.mark.parametrize('target_size', [2, 4, 8])
-def test_forward(target_size, dtype):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
-    assert util.equal(
-        torch.nn.AdaptiveAvgPool2d(target_size).forward(inp),
-        trident.AdaptiveAvgPool2d(target_size).forward(inp)
-    )
+@pytest.mark.parametrize('tgt_sz', [2, 4, 8])
+def test_forward(tgt_sz, dtype):
+    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda')
+
+    assert util.equal(torch.nn.AdaptiveAvgPool2d(tgt_sz).forward(inp), trident.AdaptiveAvgPool2d(tgt_sz).forward(inp))

@@ -19,29 +19,28 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_forward(num_batches, num_elements, dtype):
-    w = torch.randn(num_elements, dtype=dtype, device='cuda')
-    x = torch.randn((num_batches, num_elements), dtype=dtype, device='cuda', requires_grad=True)
-    assert util.equal(
-        torch.nn.functional.prelu(x, w), trident.function.prelu(x, w)
-    )
+@pytest.mark.parametrize('num_bt, num_elem', [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_function(num_bt, num_elem, dtype):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+    wgt = torch.randn(num_elem, dtype=dtype, device='cuda')
+
+    assert util.equal(torch.nn.functional.prelu(inp, wgt), trident.function.prelu(inp, wgt))
 
 
-@pytest.mark.parametrize('num_batches, num_elements', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_backward(num_batches, num_elements):
-    x = torch.randn((num_batches, num_elements), device='cuda')
-    y = torch.randn((num_batches, num_elements), device='cuda')
+@pytest.mark.parametrize('num_bt, num_elem', [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_backward(num_bt, num_elem):
+    inp = torch.randn(num_bt, num_elem, device='cuda')
+    tgt = torch.randn(num_bt, num_elem, device='cuda')
 
-    a = x.clone()
-    b = x.clone()
-    a.requires_grad = b.requires_grad = True
+    x = inp.clone()
+    a = inp.clone()
+    x.requires_grad = a.requires_grad = True
 
-    prelu_a = torch.nn.PReLU(num_elements, 0.3, device='cuda')
-    prelu_b = trident.PReLU(num_elements, 0.3)
+    y = torch.nn.PReLU(num_elem, 0.3, device='cuda')
+    b = trident.PReLU(num_elem, 0.3)
 
-    util.train(a, y, prelu_a)
-    util.train(b, y, prelu_b)
+    util.train(x, tgt, y)
+    util.train(a, tgt, b)
 
-    assert util.equal(a.grad, b.grad)
-    assert util.equal(prelu_a.weight.grad, prelu_b.weight.grad)
+    assert util.equal(x.grad, a.grad)
+    assert util.equal(y.weight.grad, b.weight.grad)
