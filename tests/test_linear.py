@@ -20,23 +20,29 @@ from tests import util
 
 
 @pytest.mark.skip
-def test_function(input2d, weight):
-    assert util.equal(
-        torch.nn.functional.linear(input2d, weight), trident.function.linear(input2d, weight)
-    )
+def test_function():
+    inp = torch.randn(512, 512, device='cuda')
+    wgt = torch.randn(512, 512, device='cuda')
+
+    assert util.equal(torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt))
 
 
 @pytest.mark.skip
-def test_function_with_bias(input2d, weight, bias):
-    assert util.equal(
-        torch.nn.functional.linear(input2d, weight, bias), trident.function.linear(input2d, weight, bias)
-    )
+def test_function_with_bias():
+    inp = torch.randn(512, 512, device='cuda')
+    wgt = torch.randn(512, 512, device='cuda')
+    bis = torch.randn(512, device='cuda')
+
+    assert util.equal(torch.nn.functional.linear(inp, wgt, bis), trident.function.linear(inp, wgt, bis))
 
 
 @pytest.mark.skip
-@pytest.mark.parametrize('activation', ['relu', 'leaky_relu'])
-def test_function_with_activation(input2d, weight, bias, activation):
+@pytest.mark.parametrize('act', ['relu', 'leaky_relu'])
+def test_function_with_activation(act):
+    inp = torch.randn(512, 512, device='cuda')
+    wgt = torch.randn(512, 512, device='cuda')
+    bis = torch.randn(512, device='cuda')
+
     assert util.equal(
-        util.activate(torch.nn.functional.linear(input2d, weight, bias), activation),
-        trident.function.linear(input2d, weight, bias, activation)
+        util.activate(torch.nn.functional.linear(inp, wgt, bis), act), trident.function.linear(inp, wgt, bis, act)
     )

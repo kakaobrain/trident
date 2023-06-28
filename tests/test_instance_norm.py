@@ -19,12 +19,16 @@ from tests import util
 
 
 def test_function(dtype):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
+    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda')
+
     assert util.equal(torch.nn.functional.instance_norm(inp), trident.function.instance_norm(inp))
 
 
 def test_forward(dtype):
-    inp3d = torch.randn(2, 256, 256, dtype=dtype, device='cuda', requires_grad=True)
-    inp4d = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda', requires_grad=True)
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp3d), trident.InstanceNorm2d(2).forward(inp3d))
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp4d), trident.InstanceNorm2d(2).forward(inp4d))
+    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda')
+
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))
+
+    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda')
+
+    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))

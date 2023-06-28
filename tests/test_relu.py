@@ -19,26 +19,30 @@ import trident
 from tests import util
 
 
-def test_function(dtype):
-    inp = torch.randn(512, 512, dtype=dtype, device='cuda', requires_grad=True)
+@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128)])
+def test_function(num_bt, num_elem, dtype):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+
     assert util.equal(torch.nn.functional.relu(inp), trident.function.relu(inp))
 
 
-def test_forward(dtype):
-    inp = torch.randn(512, 512, dtype=dtype, device='cuda', requires_grad=True)
+@pytest.mark.parametrize("num_bt, num_elem", [(2, 256), (1, 512)])
+def test_forward(num_bt, num_elem, dtype):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+
     assert util.equal(torch.nn.ReLU().forward(inp), trident.ReLU().forward(inp))
 
 
-@pytest.mark.parametrize("num_batches, num_elements", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
-def test_backward(num_batches, num_elements):
-    x = torch.randn(num_batches, num_elements, device='cuda')
-    y = torch.randn(num_batches, num_elements, device='cuda')
+@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
+def test_backward(num_bt, num_elem):
+    inp = torch.randn(num_bt, num_elem, device='cuda')
+    tgt = torch.randn(num_bt, num_elem, device='cuda')
 
-    a = x.clone()
-    b = x.clone()
-    a.requires_grad = b.requires_grad = True
+    x = inp.clone()
+    a = inp.clone()
+    x.requires_grad = a.requires_grad = True
 
-    util.train(a, y, torch.nn.ReLU())
-    util.train(b, y, trident.ReLU())
+    util.train(x, tgt, torch.nn.ReLU())
+    util.train(a, tgt, trident.ReLU())
 
-    assert util.equal(a.grad, b.grad)
+    assert util.equal(x.grad, a.grad)

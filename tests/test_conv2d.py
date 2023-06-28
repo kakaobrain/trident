@@ -29,7 +29,6 @@ def test_function(num_bt, inp_ch, out_ch):
     assert util.equal(torch.nn.functional.conv2d(inp, wgt), trident.function.conv2d(inp, wgt))
 
 
-# @pytest.mark.skip
 @pytest.mark.parametrize('num_bt, inp_ch, wgt_sz', [(1, 1, 3), (3, 16, 4), (4, 32, 5), (4, 4, 32)])
 def test_forward(num_bt, inp_ch, wgt_sz):
     inp = torch.randn(4, num_bt, 64, 64, device='cuda')
