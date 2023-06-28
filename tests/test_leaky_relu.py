@@ -20,16 +20,16 @@ from tests import util
 
 
 @pytest.mark.parametrize('num_bt, num_elem', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_forward(num_bt, num_elem, dtype):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device='cuda')
+def test_forward(num_bt, num_elem, dtype, device):
+    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.leaky_relu(inp), trident.function.leaky_relu(inp))
 
 
 @pytest.mark.parametrize('num_bt, num_elem', [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_backward(num_bt, num_elem):
-    inp = torch.randn(num_bt, num_elem, device='cuda')
-    tgt = torch.randn(num_bt, num_elem, device='cuda')
+def test_backward(num_bt, num_elem, device):
+    inp = torch.randn(num_bt, num_elem, device=device)
+    tgt = torch.randn(num_bt, num_elem, device=device)
 
     x = inp.clone()
     a = inp.clone()

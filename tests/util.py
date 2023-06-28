@@ -19,19 +19,19 @@ def equal(a, b):
     return torch.allclose(a, b, atol=1e-2, rtol=0)
 
 
-def train(x, t, module, criterion=torch.nn.MSELoss()):
-    y = module(x)
+def train(inp, tgt, mod, crit=torch.nn.MSELoss()):
+    out = mod(inp)
+    out.retain_grad()
 
-    y.retain_grad()
-    criterion(y, t).backward()
+    crit(out, tgt).backward()
 
-    return y
+    return out
 
 
-def activate(x, activation):
-    if activation == 'relu':
-        return torch.relu(x)
-    elif activation == 'leaky_relu':
-        return torch.nn.functional.leaky_relu(x)
+def activate(inp, act):
+    if act == 'relu':
+        return torch.relu(inp)
+    elif act == 'leaky_relu':
+        return torch.nn.functional.leaky_relu(inp)
     else:
-        raise ValueError(f'{activation} is not supported.')
+        raise ValueError(f'{act} is not supported.')

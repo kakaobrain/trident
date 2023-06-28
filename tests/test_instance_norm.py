@@ -18,17 +18,17 @@ import trident
 from tests import util
 
 
-def test_function(dtype):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda')
+def test_function(dtype, device):
+    inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.instance_norm(inp), trident.function.instance_norm(inp))
 
 
-def test_forward(dtype):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device='cuda')
+def test_forward(dtype, device):
+    inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))
 
-    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device='cuda')
+    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))
