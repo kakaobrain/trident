@@ -28,9 +28,18 @@ def conv2d(input, weight, bias=None):
     """
     Applies Convolution 2D to an input.
 
-    See Conv2d for details and output shape.
+    See Conv2d for details.
     """
     return operation.Conv2d.apply(input, weight, bias)
+
+
+def dropout(input, p=0.5, training=True):
+    """
+    Applies Dropout to an input.
+
+    See Dropout for details.
+    """
+    return operation.Dropout.apply(input, p) if training else input.clone()
 
 
 def instance_norm(input, eps=1e-05):

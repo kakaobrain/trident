@@ -16,6 +16,7 @@ import argparse
 
 import benchmark_adaptive_avg_pool2d
 import benchmark_conv2d
+import benchmark_dropout
 import benchmark_instance_norm
 import benchmark_leaky_relu
 import benchmark_linear
@@ -30,6 +31,7 @@ def print_scenarios():
     print(', '.join([
         'adaptive-avg-pool2d',
         'conv2d',
+        'dropout',
         'instance-norm',
         'leaky-relu',
         'linear',
@@ -45,6 +47,8 @@ def run_benchmarks(args):
         benchmark_adaptive_avg_pool2d.run_benchmarks(args.show_plots)
     elif args.scenario == 'conv2d':
         benchmark_conv2d.run_benchmarks(args.show_plots)
+    elif args.scenario == 'dropout':
+        benchmark_dropout.run_benchmarks(args.show_plots)
     elif args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
     elif args.scenario == 'leaky-relu':
@@ -62,6 +66,7 @@ def run_benchmarks(args):
     elif not args.scenario:
         benchmark_instance_norm.run_benchmarks(args.show_plots)
         benchmark_conv2d.run_benchmarks(args.show_plots)
+        benchmark_dropout.run_benchmarks(args.show_plots)
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
         benchmark_max_pool2d.run_benchmarks(args.show_plots)
