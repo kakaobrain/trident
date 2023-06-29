@@ -89,6 +89,34 @@ class Conv2d(torch.nn.Module):
         return operation.Conv2d.apply(input, self.weight, self.bias)
 
 
+class Dropout(torch.nn.Module):
+    def __init__(self, p=0.5):
+        """
+        Applies Dropout to an input.
+
+        During training, randomly zeroes some of the elements of the input tensor with probability using samples from a
+        Bernoulli distribution. Each channel will be zeroed out independently on every forward call.
+
+        Args:
+            p: probability of an element to be zeroed
+        """
+        super().__init__()
+
+        self.p = p
+
+    def forward(self, input):
+        """
+        Applies Dropout to an input.
+
+        Args:
+            input: an input can be of any shape
+
+        Returns:
+            an output is of the same shape as input
+        """
+        return operation.Dropout.apply(input, self.p) if self.training else input.clone()
+
+
 class InstanceNorm2d(torch.nn.Module):
     def __init__(self, num_features, eps=1e-05):
         """
@@ -241,6 +269,7 @@ class PReLU(torch.nn.Module):
             init: the initial value of weight
         """
         super().__init__()
+
         self.weight = torch.nn.Parameter(torch.empty(num_parameters, device='cuda').fill_(init))
 
     def forward(self, input):
