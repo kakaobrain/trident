@@ -13,22 +13,23 @@
 # limitations under the License.
 
 import triton
-import triton.language as tl
+
+from trident import language
 
 
-@triton.jit
-def softmax_forward(x_ptr, stride_xm, stride_xn, y_ptr, stride_ym, stride_yn, size_m, size_n,
-                    BLOCK_SIZE_N: tl.constexpr):
-    i = tl.program_id(0)
+class Softmax:
+    @staticmethod
+    @triton.jit
+    def forward(inp_ptr, vec_sz, vec_st, out_ptr,
+                vec_bs: triton.language.constexpr, dtype: triton.language.constexpr):
+        pid = triton.language.program_id(0)
+        blk = triton.language.arange(0, vec_bs)
+        msk = blk < vec_sz
+        blk = blk + pid * vec_st
 
-    block_n = tl.arange(0, BLOCK_SIZE_N)
-    mask_x = block_n < size_n
+        inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
+        numer = language.exp(inp - triton.language.max(inp, 0), dtype)
+        denom = triton.language.sum(numer, 0)
+        out = numer / denom
 
-    x_ptr += i * stride_xm + block_n * stride_xn
-    x = tl.load(x_ptr, mask_x, -float('inf'))
-
-    numerator = tl.exp(x - tl.max(x, 0))
-    y = numerator / tl.sum(numerator, 0)
-
-    y_ptr += i * stride_ym + block_n * stride_yn
-    tl.store(y_ptr, y, mask_x)
+        triton.language.store(out_ptr + blk, out, msk)

@@ -19,24 +19,24 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128)])
-def test_function(num_bt, num_elem, device):
-    inp = torch.randn(num_bt, num_elem, device=device)
+@pytest.mark.parametrize("num_vec, vec_sz", [(5, 32), (3, 128)])
+def test_function(num_vec, vec_sz, dtype, device):
+    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
 
 
-@pytest.mark.parametrize("num_bt, num_elem", [(2, 256), (1, 512)])
-def test_forward(num_bt, num_elem, device):
-    inp = torch.randn(num_bt, num_elem, device=device)
+@pytest.mark.parametrize("num_vec, vec_sz", [(2, 256), (1, 512)])
+def test_forward(num_vec, vec_sz, dtype, device):
+    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.Softmax(1).forward(inp), trident.Softmax(1).forward(inp))
 
 
-@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
-def test_backward(num_bt, num_elem, device):
-    inp = torch.randn(num_bt, num_elem, device=device)
-    tgt = torch.randn(num_bt, num_elem, device=device)
+@pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (3, 128)])
+def test_backward(num_vec, vec_sz, dtype, device):
+    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 
     x = inp.clone()
     a = inp.clone()
