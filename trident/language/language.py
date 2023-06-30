@@ -31,6 +31,14 @@ def col(index, num_cols):
 
 
 @triton.jit
+def exp(x, dtype):
+    if dtype is triton.language.float32 or dtype is triton.language.float64:
+        return triton.language.exp(x)
+    else:
+        return triton.language.exp(x.to(triton.language.float32))
+
+
+@triton.jit
 def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
     blk = triton.language.arange(0, w_bs)[:, None] + (triton.language.arange(0, h_bs) * w_st)[None, :]
     return blk[:, :, None] + (triton.language.arange(0, ch_bs) * ch_st)[None, None, :]

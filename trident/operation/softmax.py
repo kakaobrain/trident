@@ -15,44 +15,13 @@
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, math
 
 
 class Softmax(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        x, dim = args
-
-        assert x.is_cuda and x.is_contiguous()
-        assert dim == 1
-
-        m, n = x.shape
-        block_size_n = triton.next_power_of_2(n)
-
-        def get_num_stages():
-            if block_size_n <= 2048:
-                return 4
-            if block_size_n <= 4096:
-                return 3
-            return 2
-
-        def get_num_warps():
-            if block_size_n >= 8192:
-                return 16
-            if block_size_n >= 4096:
-                return 8
-            if block_size_n >= 2048:
-                return 4
-            return 2
-
-        y = torch.empty_like(x)
-
-        assert y.is_cuda and x.is_contiguous
-
-        kernel.softmax_forward[(m,)](x, x.stride(0), x.stride(1), y, y.stride(0), y.stride(1), m, n,
-                                     BLOCK_SIZE_N=block_size_n, num_stages=get_num_stages(), num_warps=get_num_warps())
-
-        return y
+        return Softmax.__forward(*args, **kwargs)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
@@ -60,20 +29,35 @@ class Softmax(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        t, = grad_outputs
+        return Softmax.__backward(*grad_outputs, *ctx.saved_tensors)
 
-        assert t.is_cuda and t.is_contiguous()
+    @staticmethod
+    def __forward(inp, axis):
+        assert inp.is_contiguous()
+        assert axis == 1
 
-        y = ctx.saved_tensors[0]
+        num_vec, vec_sz = inp.shape
 
-        assert y.is_cuda and y.is_contiguous()
+        def grid(meta):
+            return (num_vec,)
 
-        grad_x = torch.empty_like(y)
+        out = torch.empty_like(inp)
+        vec_bs = triton.next_power_of_2(vec_sz)
+        num_wraps = math.clamp(triton.next_power_of_2(vec_sz // 512), 2, 32)
+
+        kernel.Softmax.forward[grid](inp, vec_sz, inp.stride(0), out,
+                                     vec_bs=vec_bs, dtype=inp.dtype, num_warps=num_wraps)
+
+        return out
+
+    @staticmethod
+    def __backward(grad_out, out):
+        grad_x = torch.empty_like(out)
 
         assert grad_x.is_cuda and grad_x.is_contiguous
 
-        for i, s in enumerate(y):
+        for i, s in enumerate(out):
             jacob = torch.diagflat(s) - torch.mm(s.unsqueeze(0).t(), s.unsqueeze(0))
-            grad_x[i] = torch.mm(t[i].unsqueeze(0), jacob)
+            grad_x[i] = torch.mm(grad_out[i].unsqueeze(0), jacob)
 
         return grad_x, None
