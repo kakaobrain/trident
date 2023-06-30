@@ -21,4 +21,5 @@ from .linear import *
 from .max_pool2d import *
 from .prelu import *
 from .relu import *
+from .silu import *
 from .softmax import *

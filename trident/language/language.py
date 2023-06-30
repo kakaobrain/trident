@@ -86,6 +86,14 @@ def row(index, num_rows, num_cols):
 
 
 @triton.jit
+def sigmoid(x, dtype):
+    if dtype is triton.language.float32 or dtype is triton.language.float64:
+        return triton.language.sigmoid(x)
+    else:
+        return triton.language.sigmoid(x.to(triton.language.float32))
+
+
+@triton.jit
 def sum(x):
     return triton.language.sum(triton.language.ravel(x), 0)
 

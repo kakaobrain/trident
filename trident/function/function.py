@@ -87,6 +87,15 @@ def relu(input):
     return operation.ReLU.apply(input)
 
 
+def silu(input):
+    """
+    Applies the Sigmoid Linear Unit to an input.
+
+    See SiLU for more details.
+    """
+    return operation.SiLU.apply(input)
+
+
 def prelu(input, weight):
     """
     Applies PReLU to an input.
