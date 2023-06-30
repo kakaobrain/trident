@@ -285,6 +285,26 @@ class PReLU(torch.nn.Module):
         return operation.PReLU.apply(input, self.weight)
 
 
+class SiLU(torch.nn.Module):
+    def __init__(self):
+        """
+        Applies the Sigmoid Linear Unit, element-wise to an input. The SiLU function is also known as the Swish.
+        """
+        super().__init__()
+
+    def forward(self, input):
+        """
+        Applies the Sigmoid Linear Unit to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return operation.SiLU.apply(input)
+
+
 class Softmax(torch.nn.Module):
     def __init__(self, dim=None):
         """

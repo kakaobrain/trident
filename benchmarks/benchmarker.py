@@ -23,6 +23,7 @@ import benchmark_linear
 import benchmark_max_pool2d
 import benchmark_prelu
 import benchmark_relu
+import benchmark_silu
 import benchmark_softmax
 
 
@@ -38,6 +39,7 @@ def print_scenarios():
         'max-pool2d',
         'prelu',
         'relu',
+        'silu',
         'softmax'
     ]))
 
@@ -61,6 +63,8 @@ def run_benchmarks(args):
         benchmark_prelu.run_benchmarks(args.show_plots)
     elif args.scenario == 'relu':
         benchmark_relu.run_benchmarks(args.show_plots)
+    elif args.scenario == 'silu':
+        benchmark_silu.run_benchmarks(args.show_plots)
     elif args.scenario == 'softmax':
         benchmark_softmax.run_benchmarks(args.show_plots)
     elif not args.scenario:
@@ -72,6 +76,7 @@ def run_benchmarks(args):
         benchmark_max_pool2d.run_benchmarks(args.show_plots)
         benchmark_prelu.run_benchmarks(args.show_plots)
         benchmark_relu.run_benchmarks(args.show_plots)
+        benchmark_silu.run_benchmarks(args.show_plots)
         benchmark_softmax.run_benchmarks(args.show_plots)
     else:
         print_scenarios()
