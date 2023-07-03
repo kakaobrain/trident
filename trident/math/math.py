@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import triton
+
 
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
+
+
+def multiple_of(x, y):
+    return triton.cdiv(x, y) * y

@@ -21,13 +21,25 @@ def batch(index, num_channels, num_rows, num_cols):
 
 
 @triton.jit
+def cdiv(x, y):
+    return (x + y - 1) // y
+
+
+@triton.jit
 def channel(index, num_channels, num_rows, num_cols):
     return (index % (num_channels * num_rows * num_cols)) // (num_rows * num_cols)
 
 
 @triton.jit
-def col(index, num_cols):
-    return index % num_cols
+def col(idx, num_col):
+    return idx % num_col
+
+
+@triton.jit
+def diagflat(x, sz):
+    vec = triton.language.arange(0, sz)
+    dig = vec[:, None] == vec[None, :]
+    return dig * triton.language.ravel(x)
 
 
 @triton.jit
@@ -36,6 +48,11 @@ def exp(x, dtype):
         return triton.language.exp(x)
     else:
         return triton.language.exp(x.to(triton.language.float32))
+
+
+@triton.jit
+def gemv(a, x):
+    return triton.language.sum(a * triton.language.trans(x), 1)
 
 
 @triton.jit
@@ -76,13 +93,8 @@ def pow2(x):
 
 
 @triton.jit
-def cdiv(x, y):
-    return (x + y - 1) // y
-
-
-@triton.jit
-def row(index, num_rows, num_cols):
-    return (index % (num_rows * num_cols)) // num_cols
+def row(idx, num_row, num_col):
+    return (idx % (num_row * num_col)) // num_col
 
 
 @triton.jit

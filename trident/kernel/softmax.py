@@ -33,3 +33,19 @@ class Softmax:
         out = numer / denom
 
         triton.language.store(out_ptr + blk, out, msk)
+
+    @staticmethod
+    @triton.jit
+    def backward(grad_out_ptr, out_ptr, vec_st, vec_sz, grad_inp_ptr,
+                 vec_bs: triton.language.constexpr):
+        pid = triton.language.program_id(0)
+        blk = triton.language.arange(0, vec_bs)
+        msk = blk < vec_sz
+        blk = blk + pid * vec_st
+
+        grad_out = triton.language.load(grad_out_ptr + blk, msk, 0)
+        out = triton.language.load(out_ptr + blk, msk, 0)
+        grad_inp = language.diagflat(out, vec_bs) - (out[:, None] * out[None, :])
+        grad_inp = language.gemv(grad_inp, grad_out[:, None])
+
+        triton.language.store(grad_inp_ptr + blk, grad_inp, msk)
