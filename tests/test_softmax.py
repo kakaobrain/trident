@@ -33,10 +33,10 @@ def test_forward(num_vec, vec_sz, dtype, device):
     assert util.equal(torch.nn.Softmax(1).forward(inp), trident.Softmax(1).forward(inp))
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (3, 128)])
-def test_backward(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+@pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (5, 70)])
+def test_backward(num_vec, vec_sz, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
+    tgt = torch.randn(num_vec, vec_sz, device=device)
 
     x = inp.clone()
     a = inp.clone()

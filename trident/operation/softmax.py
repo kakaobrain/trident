@@ -52,12 +52,17 @@ class Softmax(torch.autograd.Function):
 
     @staticmethod
     def __backward(grad_out, out):
-        grad_x = torch.empty_like(out)
+        assert grad_out.is_contiguous() and out.is_contiguous()
 
-        assert grad_x.is_cuda and grad_x.is_contiguous
+        num_vec, vec_sz = out.shape
 
-        for i, s in enumerate(out):
-            jacob = torch.diagflat(s) - torch.mm(s.unsqueeze(0).t(), s.unsqueeze(0))
-            grad_x[i] = torch.mm(grad_out[i].unsqueeze(0), jacob)
+        def grid(meta):
+            return (num_vec,)
 
-        return grad_x, None
+        grad_inp = torch.empty_like(out)
+        vec_bs = max(triton.next_power_of_2(vec_sz), 16)
+
+        kernel.Softmax.backward[grid](grad_out, out, out.stride(0), vec_sz, grad_inp,
+                                      vec_bs=vec_bs)
+
+        return grad_inp, None
