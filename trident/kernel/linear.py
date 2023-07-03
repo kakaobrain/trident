@@ -58,7 +58,7 @@ def linear(x_ptr, stride_x_m, stride_x_k,
 
         x = tl.load(x_ptr, mask_m & (range_k[None, :] + k < size_k), 0.0)
         w = tl.load(w_ptr, mask_n & (range_k[:, None] + k < size_k), 0.0)
-        total += tl.dot(x, w)
+        total += tl.dot(x, w, False)
 
         x_ptr += BLOCK_SIZE_K * stride_x_k
         w_ptr += BLOCK_SIZE_K * stride_w_k

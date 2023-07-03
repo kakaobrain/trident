@@ -19,7 +19,6 @@ import trident
 from tests import util
 
 
-@pytest.mark.skip
 def test_function(device):
     inp = torch.randn(512, 512, device=device)
     wgt = torch.randn(512, 512, device=device)
@@ -27,7 +26,6 @@ def test_function(device):
     assert util.equal(torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt))
 
 
-@pytest.mark.skip
 def test_function_with_bias(device):
     inp = torch.randn(512, 512, device=device)
     wgt = torch.randn(512, 512, device=device)
@@ -36,7 +34,6 @@ def test_function_with_bias(device):
     assert util.equal(torch.nn.functional.linear(inp, wgt, bis), trident.function.linear(inp, wgt, bis))
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize('act', ['relu', 'leaky_relu'])
 def test_function_with_activation(act, device):
     inp = torch.randn(512, 512, device=device)
