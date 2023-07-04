@@ -18,6 +18,7 @@ import benchmark_adaptive_avg_pool2d
 import benchmark_conv2d
 import benchmark_dropout
 import benchmark_instance_norm
+import benchmark_layer_norm
 import benchmark_leaky_relu
 import benchmark_linear
 import benchmark_max_pool2d
@@ -53,6 +54,8 @@ def run_benchmarks(args):
         benchmark_dropout.run_benchmarks(args.show_plots)
     elif args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
+    elif args.scenario == 'layer-norm':
+        benchmark_layer_norm.run_benchmarks(args.show_plots)
     elif args.scenario == 'leaky-relu':
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
     elif args.scenario == 'linear':
@@ -68,9 +71,11 @@ def run_benchmarks(args):
     elif args.scenario == 'softmax':
         benchmark_softmax.run_benchmarks(args.show_plots)
     elif not args.scenario:
-        benchmark_instance_norm.run_benchmarks(args.show_plots)
+        benchmark_adaptive_avg_pool2d.run_benchmarks(args.show_plots)
         benchmark_conv2d.run_benchmarks(args.show_plots)
         benchmark_dropout.run_benchmarks(args.show_plots)
+        benchmark_instance_norm.run_benchmarks(args.show_plots)
+        benchmark_layer_norm.run_benchmarks(args.show_plots)
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
         benchmark_linear.run_benchmarks(args.show_plots)
         benchmark_max_pool2d.run_benchmarks(args.show_plots)
