@@ -161,6 +161,50 @@ class InstanceNorm2d(torch.nn.Module):
         return x.view(num_batches, num_channels, height * width)
 
 
+class LayerNorm(torch.nn.Module):
+    def __init__(self, normalized_shape, eps=1e-05, elementwise_affine=True, device=None, dtype=None):
+        """
+        Applies Layer Normalization to an input as described in the paper Layer Normalization.
+
+        Args:
+            normalized_shape: input shape from an expected input of size
+            elementwise_affine: a boolean value that when set to True, this module has learnable per-element affine
+                                parameters initialized to ones (for weights) and zeros (for biases)
+            eps: a value added to the denominator for numerical stability
+            device: the desired device of returned tensor
+            dtype: the desired data type of returned tensor
+        """
+        super().__init__()
+
+        self.normalized_shape = normalized_shape
+        self.eps = eps
+        self.device = device
+        self.dtype = dtype
+
+        if elementwise_affine:
+            self.weight = torch.nn.Parameter(torch.empty(normalized_shape, device=device, dtype=dtype).fill_(1))
+            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, device=device, dtype=dtype))
+        else:
+            self.weight = None
+            self.bias = None
+
+    def forward(self, input):
+        """
+        Applies Layer Normalization to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        inp = input.view(-1, self.normalized_shape[0])
+        mean = torch.empty(inp.shape[0], device=self.device, dtype=self.dtype)
+        std = torch.empty(inp.shape[0], device=self.device, dtype=self.dtype)
+
+        return operation.LayerNorm.apply(input, self.normalized_shape, self.weight, self.bias, self.eps, mean, std)
+
+
 class LeakyReLU(torch.nn.Module):
     def __init__(self, negative_slope=1e-2):
         """

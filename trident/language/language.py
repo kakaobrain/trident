@@ -52,7 +52,7 @@ def exp(x, dtype):
 
 @triton.jit
 def gemv(a, x):
-    return triton.language.sum(a * triton.language.trans(x), 1)
+    return triton.language.sum(a * triton.language.trans(x[:, None]), 1)
 
 
 @triton.jit
@@ -78,12 +78,7 @@ def make_group_msk(blk, grp_sz, off, h):
 
 
 @triton.jit
-def max1d(x):
-    return triton.language.max(x, 0)
-
-
-@triton.jit
-def max2d(x):
+def max(x):
     return triton.language.max(triton.language.ravel(x), 0)
 
 

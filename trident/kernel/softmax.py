@@ -46,6 +46,6 @@ class Softmax:
         grad_out = triton.language.load(grad_out_ptr + blk, msk, 0)
         out = triton.language.load(out_ptr + blk, msk, 0)
         grad_inp = language.diagflat(out, vec_bs) - (out[:, None] * out[None, :])
-        grad_inp = language.gemv(grad_inp, grad_out[:, None])
+        grad_inp = language.gemv(grad_inp, grad_out)
 
         triton.language.store(grad_inp_ptr + blk, grad_inp, msk)

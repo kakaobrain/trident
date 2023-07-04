@@ -51,6 +51,15 @@ def instance_norm(input, eps=1e-05):
     return operation.InstanceNorm.apply(input, eps)
 
 
+def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
+    """
+    Applies Layer Normalization for last certain number of dimensions.
+
+    See LayerNorm for details.
+    """
+    return operation.LayerNorm.apply(input, normalized_shape, weight, bias, eps, None, None)
+
+
 def leaky_relu(input, negative_slope=0.01):
     """
     Applies Leaky ReLU to an input.
