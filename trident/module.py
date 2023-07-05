@@ -118,7 +118,7 @@ class Dropout(torch.nn.Module):
 
 
 class InstanceNorm2d(torch.nn.Module):
-    def __init__(self, num_features, eps=1e-05):
+    def __init__(self, num_features, eps=1e-05, dtype=None, device=None):
         """
         Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
         Ingredient for Fast Stylization.
@@ -129,7 +129,10 @@ class InstanceNorm2d(torch.nn.Module):
         """
         super().__init__()
 
+        self.num_features = num_features
         self.eps = eps
+        self.dtype = dtype
+        self.device = device
 
     def forward(self, input):
         """
@@ -143,10 +146,10 @@ class InstanceNorm2d(torch.nn.Module):
         """
         assert input.dim() == 3 or input.dim() == 4
 
-        x = InstanceNorm2d.__view(input)
-        y = operation.InstanceNorm.apply(x, self.eps)
+        inp = InstanceNorm2d.__view(input)
+        out = operation.InstanceNorm.apply(inp, self.eps, self.dtype)
 
-        return y.view(input.shape)
+        return out.view(input.shape)
 
     @staticmethod
     def __shape(x):

@@ -29,7 +29,7 @@ class LayerNorm:
 
         inp = triton.language.load(inp_ptr + inp_blk, msk, 0)
         mean = language.sum(inp) / vec_sz
-        var = language.var(msk, inp, vec_sz, mean, correction=0)
+        var = language.var(msk, inp, vec_sz, mean, corr=0)
         std = language.std(var, eps)
         out = (inp - mean) / std
 

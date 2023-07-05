@@ -48,7 +48,7 @@ def instance_norm(input, eps=1e-05):
 
     See InstanceNorm2d for details.
     """
-    return operation.InstanceNorm.apply(input, eps)
+    return operation.InstanceNorm.apply(input, eps, input.dtype)
 
 
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):

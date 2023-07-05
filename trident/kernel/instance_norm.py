@@ -14,27 +14,30 @@
 
 import triton
 
-from trident import language
+from trident import language, kernel
 
 
-@triton.jit
-def instance_norm_forward(x_ptr, x_batch_stride, x_channel_stride,
-                          y_ptr, y_batch_stride, y_channel_stride,
-                          num_elements, eps,
-                          block_size: triton.language.constexpr):
-    batch = triton.language.program_id(0)
-    channel = triton.language.program_id(1)
+class InstanceNorm:
+    @staticmethod
+    @triton.jit
+    def forward(inp_ptr, num_ch, vec_sz, eps, out_ptr,
+                vec_blk_sz: triton.language.constexpr, dtype: triton.language.constexpr):
+        pid = triton.language.program_id(0)
+        bt = pid // num_ch
+        ch = language.col(pid, num_ch)
 
-    block = triton.language.arange(0, block_size)
-    mask = block < num_elements
+        off = bt * (num_ch * vec_sz) + ch * vec_sz
+        inp_ptr += off
+        out_ptr += off
 
-    x_ptr += batch * x_batch_stride + channel * x_channel_stride
-    y_ptr += batch * y_batch_stride + channel * y_channel_stride
+        mean = kernel.mean(inp_ptr, vec_sz, vec_blk_sz, dtype)
+        var = kernel.var(inp_ptr, vec_sz, mean, vec_blk_sz, dtype)
+        std = language.std(var, eps)
 
-    x = triton.language.load(x_ptr + block, mask, 0.0)
+        for off in range(0, vec_sz, vec_blk_sz):
+            blk = triton.language.arange(0, vec_blk_sz) + off
+            msk = blk < vec_sz
 
-    mean = triton.language.sum(x, 0) / num_elements
-    var = language.var(mask, x, num_elements, mean, correction=0)
-    y = (x - mean) / triton.language.sqrt(var + eps)
-
-    triton.language.store(y_ptr + block, y, mask)
+            inp = triton.language.load(inp_ptr + blk, msk, 0)
+            out = language.norm(inp, mean, std)
+            triton.language.store(out_ptr + blk, out, msk)

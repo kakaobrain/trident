@@ -19,5 +19,21 @@ def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
 
+def is_pow2(x):
+    return x > 0 and (x & (x - 1)) == 0
+
+
 def multiple_of(x, y):
     return triton.cdiv(x, y) * y
+
+
+def prev_pow2(x):
+    x |= x >> 1
+    x |= x >> 2
+    x |= x >> 4
+    x |= x >> 8
+    x |= x >> 16
+    x |= x >> 32
+    x -= x >> 1
+
+    return x
