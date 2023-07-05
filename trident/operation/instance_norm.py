@@ -12,31 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class InstanceNorm(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        x, eps = args
-
-        assert x.dim() == 3 and x.is_cuda and x.is_contiguous()
-
-        num_batches, num_channels, num_elements = x.shape
-        y = torch.empty_like(x)
-
-        assert y.is_cuda and x.is_contiguous
-
-        grid = lambda meta: (num_batches, num_channels,)
-        kernel.instance_norm_forward[grid](x, x.stride(0), x.stride(1),
-                                           y, y.stride(0), y.stride(1),
-                                           num_elements, eps,
-                                           block_size=triton.next_power_of_2(num_elements))
-
-        return y
+        return InstanceNorm.__forward(*args, **kwargs)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
@@ -45,3 +31,20 @@ class InstanceNorm(torch.autograd.Function):
     @staticmethod
     def backward(ctx, *grad_outputs):
         raise NotImplementedError("The backward of Instance Norm isn't implemented.")
+
+    @staticmethod
+    def __forward(inp, eps, dtype):
+        assert inp.dim() == 3 and inp.is_cuda and inp.is_contiguous()
+
+        num_batches, num_ch, vec_sz = inp.shape
+
+        def grid(meta):
+            return [num_batches * num_ch]
+
+        out = torch.empty_like(inp)
+        vec_blk_sz = min(util.get_block_size(inp.element_size()), triton.next_power_of_2(vec_sz))
+
+        kernel.InstanceNorm.forward[grid](inp, num_ch, vec_sz, eps, out, vec_blk_sz, util.map_dtype(dtype),
+                                          num_warps=16)
+
+        return out

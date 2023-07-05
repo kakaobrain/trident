@@ -83,6 +83,11 @@ def max(x):
 
 
 @triton.jit
+def norm(x, mean, std):
+    return (x - mean) / std
+
+
+@triton.jit
 def pow2(x):
     return x * x
 
@@ -111,8 +116,8 @@ def std(var, eps=1e-05):
 
 
 @triton.jit
-def var(mask, x, size, mean, dim=0, correction=1):
-    return triton.language.sum(pow2(triton.language.where(mask, x - mean, 0.0)), dim) / (size - correction)
+def var(msk, x, sz, mean, axis=0, corr=1):
+    return triton.language.sum(pow2(triton.language.where(msk, x - mean, 0.0)), axis) / (sz - corr)
 
 
 @triton.jit

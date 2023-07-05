@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 import torch
 
 import trident
 from tests import util
 
 
-def test_function(dtype, device):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
+@pytest.mark.parametrize('num_ch, w, h', [(1, 64, 64), (5, 20, 20)])
+def test_function(num_ch, w, h, dtype, device):
+    inp = torch.randn(num_ch, w, h, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.instance_norm(inp), trident.function.instance_norm(inp))
 
 
-def test_forward(dtype, device):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
+@pytest.mark.parametrize('num_bt, num_ch, w, h', [(1, 3, 256, 256), (4, 4, 150, 150)])
+def test_forward(num_bt, num_ch, w, h, dtype, device):
+    inp = torch.randn(num_bt, num_ch, w, h, dtype=dtype, device=device)
 
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))
-
-    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device=device)
-
-    assert util.equal(torch.nn.InstanceNorm2d(2).forward(inp), trident.InstanceNorm2d(2).forward(inp))
+    assert util.equal(
+        torch.nn.InstanceNorm2d(num_ch, dtype=dtype, device=device).forward(inp),
+        trident.InstanceNorm2d(num_ch, dtype=dtype, device=device).forward(inp)
+    )
