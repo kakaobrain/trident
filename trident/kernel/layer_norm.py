@@ -29,9 +29,8 @@ class LayerNorm:
 
         inp = triton.language.load(inp_ptr + inp_blk, msk, 0)
         mean = language.sum(inp) / vec_sz
-        var = language.pow2(triton.language.where(msk, inp - mean, 0))
-        var = language.sum(var) / vec_sz
-        std = triton.language.sqrt(var + eps)
+        var = language.var(msk, inp, vec_sz, mean, correction=0)
+        std = language.std(var, eps)
         out = (inp - mean) / std
 
         if wgt_ptr:

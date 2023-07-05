@@ -106,6 +106,11 @@ def sum(x):
 
 
 @triton.jit
+def std(var, eps=1e-05):
+    return triton.language.sqrt(var + eps)
+
+
+@triton.jit
 def var(mask, x, size, mean, dim=0, correction=1):
     return triton.language.sum(pow2(triton.language.where(mask, x - mean, 0.0)), dim) / (size - correction)
 
