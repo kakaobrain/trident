@@ -17,6 +17,7 @@ import argparse
 import benchmark_adaptive_avg_pool2d
 import benchmark_conv2d
 import benchmark_dropout
+import benchmark_gelu
 import benchmark_instance_norm
 import benchmark_layer_norm
 import benchmark_leaky_relu
@@ -34,6 +35,7 @@ def print_scenarios():
         'adaptive-avg-pool2d',
         'conv2d',
         'dropout',
+        'gelu',
         'instance-norm',
         'leaky-relu',
         'linear',
@@ -52,6 +54,8 @@ def run_benchmarks(args):
         benchmark_conv2d.run_benchmarks(args.show_plots)
     elif args.scenario == 'dropout':
         benchmark_dropout.run_benchmarks(args.show_plots)
+    elif args.scenario == 'gelu':
+        benchmark_gelu.run_benchmarks(args.show_plots)
     elif args.scenario == 'instance-norm':
         benchmark_instance_norm.run_benchmarks(args.show_plots)
     elif args.scenario == 'layer-norm':
@@ -74,6 +78,7 @@ def run_benchmarks(args):
         benchmark_adaptive_avg_pool2d.run_benchmarks(args.show_plots)
         benchmark_conv2d.run_benchmarks(args.show_plots)
         benchmark_dropout.run_benchmarks(args.show_plots)
+        benchmark_gelu.run_benchmarks(args.show_plots)
         benchmark_instance_norm.run_benchmarks(args.show_plots)
         benchmark_layer_norm.run_benchmarks(args.show_plots)
         benchmark_leaky_relu.run_benchmarks(args.show_plots)
