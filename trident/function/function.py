@@ -42,6 +42,15 @@ def dropout(input, p=0.5, training=True):
     return operation.Dropout.apply(input, p) if training else input.clone()
 
 
+def gelu(input, approximate='none'):
+    """
+    Applies the Gaussian Error Linear Units to an input.
+
+    See GELU for details.
+    """
+    return operation.GELU.apply(input)
+
+
 def instance_norm(input, eps=1e-05):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.

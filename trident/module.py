@@ -117,6 +117,26 @@ class Dropout(torch.nn.Module):
         return operation.Dropout.apply(input, self.p) if self.training else input.clone()
 
 
+class GELU(torch.nn.Module):
+    def __init__(self):
+        """
+        Applies the Gaussian Error Linear Units to an input.
+        """
+        super().__init__()
+
+    def forward(self, input):
+        """
+        Applies the Gaussian Error Linear Units to an input.
+
+        Args:
+            input: an input can be of any shape
+
+        Returns:
+            an output is of the same shape as input
+        """
+        return operation.GELU.apply(input)
+
+
 class InstanceNorm2d(torch.nn.Module):
     def __init__(self, num_features, eps=1e-05, dtype=None, device=None):
         """

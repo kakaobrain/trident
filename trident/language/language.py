@@ -51,6 +51,11 @@ def exp(x, dtype):
 
 
 @triton.jit
+def gelu(x):
+    return 0.5 * x * (1 + tanh(0.797884560803 * (x + 0.044715 * pow3(x))))
+
+
+@triton.jit
 def gemv(a, x):
     return triton.language.sum(a * triton.language.trans(x[:, None]), 1)
 
@@ -93,6 +98,11 @@ def pow2(x):
 
 
 @triton.jit
+def pow3(x):
+    return x * x * x
+
+
+@triton.jit
 def row(idx, num_row, num_col):
     return (idx % (num_row * num_col)) // num_col
 
@@ -113,6 +123,11 @@ def sum(x):
 @triton.jit
 def std(var, eps=1e-05):
     return triton.language.sqrt(var + eps)
+
+
+@triton.jit
+def tanh(x):
+    return (exp(x, x.dtype) - exp(-x, x.dtype)) / (exp(x, x.dtype) + exp(-x, x.dtype))
 
 
 @triton.jit

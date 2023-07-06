@@ -28,7 +28,7 @@ def map_dtype(dtype):
         raise NotImplementedError(dtype)
 
 
-def get_shared_memory_size_per_pu():
+def get_shared_memory_size_per_block():
     device = driver.Device(torch.cuda.current_device())
     attrs = device.get_attributes()
     shm_sz = attrs.get(driver.device_attribute.MAX_SHARED_MEMORY_PER_MULTIPROCESSOR)
@@ -40,5 +40,5 @@ def get_shared_memory_size_per_pu():
 
 
 def get_block_size(elem_sz):
-    return get_shared_memory_size_per_pu() // elem_sz
+    return get_shared_memory_size_per_block() // elem_sz
 
