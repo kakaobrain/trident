@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .adaptive_avg_pool2d import *
+from .batch_norm import *
 from .conv2d import *
 from .dropout import *
 from .gelu import *

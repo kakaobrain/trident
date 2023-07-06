@@ -15,6 +15,7 @@
 import argparse
 
 import benchmark_adaptive_avg_pool2d
+import benchmark_batch_norm
 import benchmark_conv2d
 import benchmark_dropout
 import benchmark_gelu
@@ -33,6 +34,7 @@ def print_scenarios():
     print(f'Following scenarios can be chosen:')
     print(', '.join([
         'adaptive-avg-pool2d',
+        'batch-norm',
         'conv2d',
         'dropout',
         'gelu',
@@ -50,6 +52,8 @@ def print_scenarios():
 def run_benchmarks(args):
     if args.scenario == 'adaptive-avg-pool2d':
         benchmark_adaptive_avg_pool2d.run_benchmarks(args.mode, args.show_plots)
+    elif args.scenario == 'batch-norm':
+        benchmark_batch_norm.run_benchmarks(args.mode, args.show_plots)
     elif args.scenario == 'conv2d':
         benchmark_conv2d.run_benchmarks(args.mode, args.show_plots)
     elif args.scenario == 'dropout':
@@ -76,6 +80,7 @@ def run_benchmarks(args):
         benchmark_softmax.run_benchmarks(args.mode, args.show_plots)
     elif not args.scenario:
         benchmark_adaptive_avg_pool2d.run_benchmarks(args.mode, args.show_plots)
+        benchmark_batch_norm.run_benchmarks(args.mode, args.show_plots)
         benchmark_conv2d.run_benchmarks(args.mode, args.show_plots)
         benchmark_dropout.run_benchmarks(args.mode, args.show_plots)
         benchmark_gelu.run_benchmarks(args.mode, args.show_plots)

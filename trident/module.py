@@ -59,6 +59,63 @@ class AdaptiveAvgPool2d(torch.nn.Module):
         return x.view(num_batches, num_channels, height, width)
 
 
+class BatchNorm1d(torch.nn.Module):
+    def __init__(self, num_features, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True,
+                 device=None, dtype=None):
+        """
+        Applies Batch Normalization over a 2D or 3D inputs.
+
+        Args:
+            num_features: number of features
+            eps: a value added to the denominator for numerical stability
+            momentum: the value used for the running_mean and running_var computation.
+            affine: a boolean value that when set to True, this module has learnable affine parameters.
+            track_running_stats: a boolean value that when set to True, this module tracks
+                the running mean and variance, and when set to False, this module does not track such statistics,
+                and initializes the statistics as None.
+        """
+        super().__init__()
+
+        self.eps = eps
+        self.momentum = momentum
+        self.track_running_stats = track_running_stats
+        self.device = device
+        self.dtype = dtype
+
+        if affine:
+            self.weight = torch.nn.Parameter(torch.empty(num_features, device=device, dtype=dtype).fill_(1))
+            self.bias = torch.nn.Parameter(torch.zeros(num_features, device=device, dtype=dtype))
+        else:
+            self.register_parameter('weight', None)
+            self.register_parameter('bias', None)
+
+        if self.track_running_stats:
+            self.running_mean = torch.zeros(num_features, device=device, dtype=dtype)
+            self.running_var = torch.ones(num_features, device=device, dtype=dtype)
+        else:
+            self.register_parameter('running_mean', None)
+            self.register_parameter('running_var', None)
+
+    def forward(self, input):
+        """
+        Applies Batch Normalization to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        assert input.dim() == 2
+        assert input.shape[0] > 1
+
+        if self.track_running_stats:
+            self.running_mean = input.mean(axis=0) * self.momentum + self.running_mean * (1 - self.momentum)
+            self.running_var = input.var(axis=0) * self.momentum + self.running_var * (1 - self.momentum)
+
+        return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps)
+
+
 class Conv2d(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias=True):
         """

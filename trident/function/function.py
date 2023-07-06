@@ -24,6 +24,20 @@ def adaptive_avg_pool2d(input, output_size):
     return operation.AdaptiveAvgPool2d.apply(input, output_size)
 
 
+def batch_norm(input, running_mean=None, running_var=None, eps=1e-05, training=False):
+    """
+    Applies Batch Normalization for last certain number of dimensions.
+
+    See BatchNorm for details.
+    """
+    if training:
+        running_mean, running_var = None, None
+    else:
+        assert running_mean is not None and running_var is not None
+
+    return operation.BatchNorm.apply(input, None, None, eps, running_mean, running_var)
+
+
 def conv2d(input, weight, bias=None):
     """
     Applies Convolution 2D to an input.
