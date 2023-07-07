@@ -15,9 +15,6 @@
 import torch
 import triton
 
-from pycuda import driver
-from trident import math
-
 
 def map_dtype(dtype):
     if dtype == torch.float32:
@@ -29,16 +26,9 @@ def map_dtype(dtype):
 
 
 def get_shared_memory_size_per_block():
-    device = driver.Device(torch.cuda.current_device())
-    attrs = device.get_attributes()
-    shm_sz = attrs.get(driver.device_attribute.MAX_SHARED_MEMORY_PER_MULTIPROCESSOR)
-
-    if math.is_pow2(shm_sz):
-        return shm_sz
-    else:
-        return math.prev_pow2(shm_sz)
+    return 64 * 1024
 
 
-def get_block_size(elem_sz):
+def get_proper_block_size(elem_sz):
     return get_shared_memory_size_per_block() // elem_sz
 
