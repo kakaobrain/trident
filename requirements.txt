@@ -1,4 +1,3 @@
-pycuda
 pytest
 torch>=2.0.0
 matplotlib

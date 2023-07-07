@@ -39,7 +39,7 @@ class GELU(torch.autograd.Function):
             return [triton.cdiv(inp_sz, meta['blk_sz'])]
 
         out = torch.empty_like(inp)
-        blk_sz = min(util.get_block_size(inp.element_size()), triton.next_power_of_2(inp_sz))
+        blk_sz = min(util.get_proper_block_size(inp.element_size()), triton.next_power_of_2(inp_sz))
 
         kernel.GELU.forward[grid](inp, inp_sz, out, blk_sz)
 
@@ -53,7 +53,7 @@ class GELU(torch.autograd.Function):
             return [triton.cdiv(inp_sz, meta['blk_sz'])]
 
         grad_inp = torch.empty_like(inp)
-        blk_sz = min(util.get_block_size(inp.element_size()), triton.next_power_of_2(inp_sz))
+        blk_sz = min(util.get_proper_block_size(inp.element_size()), triton.next_power_of_2(inp_sz))
 
         kernel.GELU.backward[grid](grad_out, inp, grad_inp, inp_sz, blk_sz)
 
