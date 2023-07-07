@@ -21,7 +21,7 @@ class Softmax:
     @staticmethod
     @triton.jit
     def forward(inp_ptr, vec_sz, vec_st, out_ptr,
-                vec_bs: triton.language.constexpr, dtype: triton.language.constexpr):
+                vec_bs: triton.language.constexpr):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, vec_bs)
         msk = blk < vec_sz

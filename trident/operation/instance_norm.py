@@ -42,7 +42,7 @@ class InstanceNorm(torch.autograd.Function):
             return [num_batches * num_ch]
 
         out = torch.empty_like(inp)
-        vec_blk_sz = min(util.get_proper_block_size(inp.element_size()), triton.next_power_of_2(vec_sz))
+        vec_blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
 
         kernel.InstanceNorm.forward[grid](inp, num_ch, vec_sz, eps, out, vec_blk_sz, util.map_dtype(dtype),
                                           num_warps=16)

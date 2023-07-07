@@ -29,6 +29,6 @@ def get_shared_memory_size_per_block():
     return 64 * 1024
 
 
-def get_proper_block_size(elem_sz):
-    return get_shared_memory_size_per_block() // elem_sz
+def get_proper_block_size(num_elem, elem_sz):
+    return min(triton.next_power_of_2(num_elem), get_shared_memory_size_per_block() // elem_sz)
 
