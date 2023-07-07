@@ -16,29 +16,25 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['kernel_size'],
-        x_vals=[2 ** x for x in range(1, 9)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='max pooling 2d forward',
-        args={'num_batches': 2, 'num_channels': 3, 'num_rows': 512, 'num_cols': 512},
-        ylabel='milliseconds',
-        x_log=True
-    )
+@util.report(
+    'max pool2d forward', 'knl_sz', [3 * i for i in range(1, 21)], {'num_bt': 2, 'num_ch': 3, 'h': 512, 'w': 512}
 )
-def bench_max_pool2d_forward(num_batches, num_channels, num_rows, num_cols, kernel_size, provider):
-    x = torch.randn(num_batches, num_channels, num_rows, num_cols, device='cuda')
+def bench_max_pool2d_forward(num_bt, num_ch, h, w, knl_sz, ctx):
+    inp = torch.randn(num_bt, num_ch, h, w, device='cuda')
 
-    if provider == 'torch':
-        return triton.testing.do_bench(lambda: torch.nn.functional.max_pool2d(x, kernel_size))
+    if ctx == 'torch':
+        return triton.testing.do_bench(lambda: torch.nn.functional.max_pool2d(inp, knl_sz))
     else:
-        return triton.testing.do_bench(lambda: trident.function.max_pool2d(x, kernel_size))
+        return triton.testing.do_bench(lambda: trident.function.max_pool2d(inp, knl_sz))
 
 
-def run_benchmarks(show_plots):
-    bench_max_pool2d_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_max_pool2d_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_max_pool2d_forward.run(print_data=True, show_plots=show_plots)

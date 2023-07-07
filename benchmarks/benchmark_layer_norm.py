@@ -16,30 +16,41 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['vec_sz'],
-        x_vals=[512 * i for i in range(1, 21)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='layer norm',
-        args={'num_vec': 3},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_layer_norm_forward(num_vec, vec_sz, provider):
+@util.report('forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 3})
+def bench_layer_norm_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device='cuda')
     norm_sh = (inp.shape[-1],)
 
-    if provider == 'torch':
+    if ctx == 'torch':
         return triton.testing.do_bench(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
     else:
         return triton.testing.do_bench(lambda: trident.function.layer_norm(inp, norm_sh))
 
 
-def run_benchmarks(show_plots):
-    bench_layer_norm_forward.run(print_data=True, show_plots=show_plots)
+@util.report('backward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 3})
+def bench_layer_norm_backward(num_vec, vec_sz, ctx):
+    inp = torch.randn(num_vec, vec_sz, device='cuda', requires_grad=True)
+    norm_sh = [inp.shape[-1]]
+
+    if ctx == 'torch':
+        lyr = torch.nn.LayerNorm(norm_sh, dtype=torch.float32, device='cuda')
+    else:
+        lyr = trident.LayerNorm(norm_sh, dtype=torch.float32, device='cuda')
+
+    out = lyr.forward(inp)
+    grad_out = torch.ones_like(inp)
+
+    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+
+
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_layer_norm_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        bench_layer_norm_backward.run(print_data=True, show_plots=show_plots)
+    else:
+        bench_layer_norm_forward.run(print_data=True, show_plots=show_plots)
+        bench_layer_norm_backward.run(print_data=True, show_plots=show_plots)

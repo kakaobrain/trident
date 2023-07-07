@@ -16,29 +16,23 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['vec_sz'],
-        x_vals=[512 * i for i in range(1, 11)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='gelu forward',
-        args={'num_vec': 1},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_gelu_forward(num_vec, vec_sz, provider):
+@util.report('gelu forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 1})
+def bench_gelu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device='cuda')
 
-    if provider == 'torch':
+    if ctx == 'torch':
         return triton.testing.do_bench(lambda: torch.nn.functional.gelu(inp))
     else:
         return triton.testing.do_bench(lambda: trident.function.gelu(inp))
 
 
-def run_benchmarks(show_plots):
-    bench_gelu_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_gelu_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_gelu_forward.run(print_data=True, show_plots=show_plots)

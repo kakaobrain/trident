@@ -16,29 +16,23 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['inp_sz'],
-        x_vals=[2 ** i for i in range(8, 30, 2)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='dropout forward',
-        args={'p': 0.5},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_dropout_forward(p, inp_sz, provider):
+@util.report('dropout forward', 'inp_sz', [512 * i for i in range(1, 21)], {'p': 0.5})
+def bench_dropout_forward(p, inp_sz, ctx):
     inp = torch.randn(inp_sz, device='cuda')
 
-    if provider == 'torch':
+    if ctx == 'torch':
         return triton.testing.do_bench(lambda: torch.nn.functional.dropout(inp, p))
     else:
         return triton.testing.do_bench(lambda: trident.function.dropout(inp, p))
 
 
-def run_benchmarks(show_plots):
-    bench_dropout_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_dropout_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_dropout_forward.run(print_data=True, show_plots=show_plots)
