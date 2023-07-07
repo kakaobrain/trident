@@ -17,7 +17,7 @@ import functools
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class LayerNorm(torch.autograd.Function):
@@ -44,10 +44,11 @@ class LayerNorm(torch.autograd.Function):
             return (num_vec,)
 
         out = torch.empty_like(inp)
-        vec_bs = triton.next_power_of_2(vec_sz)
+        blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
+        dtype = util.map_dtype(inp.dtype)
 
         kernel.LayerNorm.forward[grid](inp.view(num_vec, vec_sz), vec_sz, wgt, bis, eps, mean, std,
-                                       out.view(num_vec, vec_sz), vec_bs=vec_bs)
+                                       out.view(num_vec, vec_sz), blk_sz=blk_sz, dtype=dtype)
 
         return out
 
@@ -62,13 +63,13 @@ class LayerNorm(torch.autograd.Function):
         grad_inp = torch.empty_like(inp)
         grad_wgt = None if wgt is None else torch.zeros_like(wgt)
         grad_bis = None if bis is None else torch.zeros_like(bis)
-        vec_bs = triton.next_power_of_2(vec_sz)
+        blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
 
         # TODO: Create a tensor in a kernel after a bug of Triton is fixed.
         wgt = torch.zeros(vec_sz, device='cuda').fill_(1) if wgt is None else wgt
 
         kernel.LayerNorm.backward[grid](grad_out, inp, grad_inp, vec_sz, wgt, grad_wgt, grad_bis, mean, std,
-                                        vec_bs=vec_bs)
+                                        blk_sz=blk_sz)
 
         return grad_inp, None, grad_wgt, grad_bis, None, None, None, None,
 

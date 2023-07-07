@@ -21,7 +21,7 @@ import trident
 @triton.testing.perf_report(
     triton.testing.Benchmark(
         x_names=['vec_sz'],
-        x_vals=[2 << i for i in range(5, 15)],
+        x_vals=[512 * i for i in range(1, 21)],
         line_arg='provider',
         line_vals=['torch', 'trident'],
         line_names=['torch', 'trident'],

@@ -45,8 +45,7 @@ class Softmax(torch.autograd.Function):
         vec_bs = triton.next_power_of_2(vec_sz)
         num_warps = math.clamp(triton.next_power_of_2(vec_sz // 512), 2, 32)
 
-        kernel.Softmax.forward[grid](inp, vec_sz, inp.stride(0), out,
-                                     vec_bs=vec_bs, dtype=inp.dtype, num_warps=num_warps)
+        kernel.Softmax.forward[grid](inp, vec_sz, inp.stride(0), out, vec_bs=vec_bs, num_warps=num_warps)
 
         return out
 
