@@ -43,8 +43,8 @@ def diagflat(x, sz):
 
 
 @triton.jit
-def exp(x, dtype):
-    if dtype is triton.language.float32 or dtype is triton.language.float64:
+def exp(x):
+    if x.dtype is triton.language.float32 or x.dtype is triton.language.float64:
         return triton.language.exp(x)
     else:
         return triton.language.exp(x.to(triton.language.float32))
@@ -127,7 +127,7 @@ def std(var, eps=1e-05):
 
 @triton.jit
 def tanh(x):
-    return (exp(x, x.dtype) - exp(-x, x.dtype)) / (exp(x, x.dtype) + exp(-x, x.dtype))
+    return (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 
 
 @triton.jit

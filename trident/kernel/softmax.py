@@ -28,7 +28,7 @@ class Softmax:
         blk = blk + pid * vec_st
 
         inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
-        numer = language.exp(inp - triton.language.max(inp, 0), dtype)
+        numer = language.exp(inp - triton.language.max(inp, 0))
         denom = triton.language.sum(numer, 0)
         out = numer / denom
 
