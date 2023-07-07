@@ -16,29 +16,23 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['num_cols'],
-        x_vals=[2 << i for i in range(8, 18)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='leaky relu forward',
-        args={'num_rows': 32},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_leaky_relu_forward(num_rows, num_cols, provider):
-    x = torch.randn(num_rows, num_cols, device='cuda')
+@util.report('leaky relu forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 64})
+def bench_leaky_relu_forward(num_vec, vec_sz, ctx):
+    inp = torch.randn(num_vec, vec_sz, device='cuda')
 
-    if provider == 'torch':
-        return triton.testing.do_bench(lambda: torch.nn.functional.leaky_relu(x))
+    if ctx == 'torch':
+        return triton.testing.do_bench(lambda: torch.nn.functional.leaky_relu(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.leaky_relu(x))
+        return triton.testing.do_bench(lambda: trident.function.leaky_relu(inp))
 
 
-def run_benchmarks(show_plots):
-    bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)

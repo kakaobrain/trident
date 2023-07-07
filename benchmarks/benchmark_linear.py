@@ -13,36 +13,28 @@
 # limitations under the License.
 
 import torch
-import torch.nn.functional as tf
 import triton
-import triton.testing as tt
 
 import trident
+import util
 
 
-@tt.perf_report(
-    tt.Benchmark(
-        x_names=['num_elements'],
-        x_vals=[2 << i for i in range(4, 14)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='linear forward',
-        args={'in_features': 32, 'out_features': 32},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_linear_forward(in_features, out_features, num_elements, provider):
-    x = torch.randn(in_features, num_elements, device='cuda')
-    w = torch.randn(out_features, num_elements, device='cuda')
-    b = torch.randn(out_features, device='cuda')
+@util.report('linear forward', 'k', [256 * i for i in range(1, 21)], {'m': 32, 'n': 32})
+def bench_linear_forward(m, n, k, ctx):
+    inp = torch.randn(m, k, device='cuda')
+    wgt = torch.randn(n, k, device='cuda')
+    bis = torch.randn(n, device='cuda')
 
-    if provider == 'torch':
-        return triton.testing.do_bench(lambda: tf.linear(x, w, b))
+    if ctx == 'torch':
+        return triton.testing.do_bench(lambda: torch.nn.functional.linear(inp, wgt, bis))
     else:
-        return triton.testing.do_bench(lambda: trident.function.linear(x, w, b))
+        return triton.testing.do_bench(lambda: trident.function.linear(inp, wgt, bis))
 
 
-def run_benchmarks(show_plots):
-    bench_linear_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_linear_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_linear_forward.run(print_data=True, show_plots=show_plots)

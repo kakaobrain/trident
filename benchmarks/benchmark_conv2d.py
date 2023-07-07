@@ -16,30 +16,26 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['wgt_sz'],
-        x_vals=[i for i in range(2, 13)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='conv2d forward',
-        args={'num_bt': 2, 'inp_ch': 3, 'inp_sz': 256, 'out_ch': 8},
-        ylabel='milliseconds',
-        x_log=True
-    )
+@util.report(
+    'conv2d forward', 'wgt_sz', [3 * i for i in range(1, 21)], {'num_bt': 2, 'inp_ch': 3, 'inp_sz': 256, 'out_ch': 8}
 )
-def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, provider):
+def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
     inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device='cuda')
     wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device='cuda')
 
-    if provider == 'torch':
+    if ctx == 'torch':
         return triton.testing.do_bench(lambda: torch.nn.functional.conv2d(inp, wgt))
     else:
         return triton.testing.do_bench(lambda: trident.function.conv2d(inp, wgt))
 
 
-def run_benchmarks(show_plots):
-    bench_conv2d_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_conv2d_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_conv2d_forward.run(print_data=True, show_plots=show_plots)

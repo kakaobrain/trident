@@ -16,30 +16,24 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['num_cols'],
-        x_vals=[2 << i for i in range(8, 18)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='prelu forward',
-        args={'num_rows': 32},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_prelu_forward(num_rows, num_cols, provider):
-    inp = torch.randn(num_rows, num_cols, device='cuda')
+@util.report('prelu forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 16})
+def bench_prelu_forward(num_vec, vec_sz, ctx):
+    inp = torch.randn(num_vec, vec_sz, device='cuda')
     wgt = torch.randn(1, device='cuda')
 
-    if provider == 'torch':
+    if ctx == 'torch':
         return triton.testing.do_bench(lambda: torch.nn.functional.prelu(inp, wgt))
     else:
         return triton.testing.do_bench(lambda: trident.function.prelu(inp, wgt))
 
 
-def run_benchmarks(show_plots):
-    bench_prelu_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_prelu_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_prelu_forward.run(print_data=True, show_plots=show_plots)

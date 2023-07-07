@@ -16,29 +16,23 @@ import torch
 import triton
 
 import trident
+import util
 
 
-@triton.testing.perf_report(
-    triton.testing.Benchmark(
-        x_names=['num_elements'],
-        x_vals=[512 * i for i in range(1, 11)],
-        line_arg='provider',
-        line_vals=['torch', 'trident'],
-        line_names=['torch', 'trident'],
-        plot_name='instance norm forward',
-        args={'num_batches': 32, 'num_channels': 64},
-        ylabel='milliseconds',
-        x_log=True
-    )
-)
-def bench_instance_norm_forward(num_batches, num_channels, num_elements, provider):
-    x = torch.randn(num_batches, num_channels, num_elements, device='cuda')
+@util.report('instance norm forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_bt': 32, 'num_ch': 64})
+def bench_instance_norm_forward(num_bt, num_ch, vec_sz, ctx):
+    inp = torch.randn(num_bt, num_ch, vec_sz, device='cuda')
 
-    if provider == 'torch':
-        return triton.testing.do_bench(lambda: torch.nn.functional.instance_norm(x))
+    if ctx == 'torch':
+        return triton.testing.do_bench(lambda: torch.nn.functional.instance_norm(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.instance_norm(x))
+        return triton.testing.do_bench(lambda: trident.function.instance_norm(inp))
 
 
-def run_benchmarks(show_plots):
-    bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
+def run_benchmarks(mode, show_plots):
+    if mode == 'forward':
+        bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
+    elif mode == 'backward':
+        pass
+    else:
+        bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
