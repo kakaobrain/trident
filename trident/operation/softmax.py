@@ -15,7 +15,7 @@
 import torch
 import triton
 
-from trident import kernel, math
+from trident import kernel, math, util
 
 
 class Softmax(torch.autograd.Function):
@@ -39,13 +39,13 @@ class Softmax(torch.autograd.Function):
         num_vec, vec_sz = inp.shape
 
         def grid(meta):
-            return (num_vec,)
+            return [num_vec]
 
         out = torch.empty_like(inp)
-        vec_bs = triton.next_power_of_2(vec_sz)
+        blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
         num_warps = math.clamp(triton.next_power_of_2(vec_sz // 512), 2, 32)
 
-        kernel.Softmax.forward[grid](inp, vec_sz, inp.stride(0), out, vec_bs=vec_bs, num_warps=num_warps)
+        kernel.Softmax.forward[grid](inp, vec_sz, out, blk_sz, num_warps=num_warps)
 
         return out
 
@@ -56,12 +56,11 @@ class Softmax(torch.autograd.Function):
         num_vec, vec_sz = out.shape
 
         def grid(meta):
-            return (num_vec,)
+            return [num_vec]
 
         grad_inp = torch.empty_like(out)
-        vec_bs = max(triton.next_power_of_2(vec_sz), 16)
+        blk_sz = max(triton.next_power_of_2(vec_sz), 16)
 
-        kernel.Softmax.backward[grid](grad_out, out, out.stride(0), vec_sz, grad_inp,
-                                      vec_bs=vec_bs)
+        kernel.Softmax.backward[grid](grad_out, out, vec_sz, grad_inp, blk_sz)
 
         return grad_inp, None

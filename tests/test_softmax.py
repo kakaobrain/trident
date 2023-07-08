@@ -19,14 +19,14 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(5, 32), (3, 128)])
+@pytest.mark.parametrize("num_vec, vec_sz", [(5, 32), (2, 30000)])
 def test_function(num_vec, vec_sz, dtype, device):
     inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(2, 256), (1, 512)])
+@pytest.mark.parametrize("num_vec, vec_sz", [(3, 256), (2, 500)])
 def test_forward(num_vec, vec_sz, dtype, device):
     inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 

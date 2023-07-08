@@ -14,38 +14,42 @@
 
 import triton
 
-from trident import language
+from trident import language, kernel
 
 
 class Softmax:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, vec_sz, vec_st, out_ptr,
-                vec_bs: triton.language.constexpr):
+    def forward(inp_ptr, vec_sz, out_ptr, blk_sz: triton.language.constexpr):
         pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, vec_bs)
-        msk = blk < vec_sz
-        blk = blk + pid * vec_st
+        off = pid * vec_sz
+        inp_ptr += off
+        out_ptr += off
+        max = kernel.maximum(inp_ptr, vec_sz, blk_sz)
+        acc = 0.0
 
-        inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
-        numer = language.exp(inp - triton.language.max(inp, 0))
-        denom = triton.language.sum(numer, 0)
-        out = numer / denom
+        for blk_off in range(0, vec_sz, blk_sz):
+            blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
+            inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
+            num = language.exp(inp - max)
+            acc += triton.language.sum(num, 0)
 
-        triton.language.store(out_ptr + blk, out, msk)
+        for blk_off in range(0, vec_sz, blk_sz):
+            blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
+            inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
+            out = language.exp(inp - max) / acc
+            triton.language.store(out_ptr + blk, out, msk)
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, out_ptr, vec_st, vec_sz, grad_inp_ptr,
-                 vec_bs: triton.language.constexpr):
+    def backward(grad_out_ptr, out_ptr, vec_sz, grad_inp_ptr, blk_sz: triton.language.constexpr):
         pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, vec_bs)
-        msk = blk < vec_sz
-        blk = blk + pid * vec_st
+        blk, msk = language.make_block(vec_sz, blk_sz, 0)
+        blk = blk + pid * vec_sz
 
         grad_out = triton.language.load(grad_out_ptr + blk, msk, 0)
         out = triton.language.load(out_ptr + blk, msk, 0)
-        grad_inp = language.diagflat(out, vec_bs) - (out[:, None] * out[None, :])
+        grad_inp = language.diagflat(out, blk_sz) - (out[:, None] * out[None, :])
         grad_inp = language.gemv(grad_inp, grad_out)
 
         triton.language.store(grad_inp_ptr + blk, grad_inp, msk)
