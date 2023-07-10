@@ -32,12 +32,9 @@ jobs:
       - name: Check Python syntax errors
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-      - name: Install Triton
+      - name: Install Trident
         run: |
-          bash install_dependencies.sh
-      - name: Set up environment variables
-        run: |
-          echo "PYTHONPATH=$PYTHONPATH:$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          bash install_package.sh
       - name: Test with pytest
         run: |
-          pytest tests
+          pytest .
