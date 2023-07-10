@@ -17,12 +17,5 @@ detail.
 ## 📦 Installation
 
 ```bash
-pip install git+https://github.com/kakaobrain/trident.git@main
-```
-
-Trident requires the latest version of [OpenAI Triton](https://github.com/openai/triton) so you needs to install it
-manually.
-
-```bash
-bash install_dependencies.sh
+bash install_package.sh
 ```

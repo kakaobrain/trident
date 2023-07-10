@@ -21,12 +21,9 @@ setuptools.setup(
     author='Kakao Brain Corp',
     packages=setuptools.find_packages(),
     install_requires=[
-        'torch',
-        'torchvision',
-        'torchaudio',
+        'pytest',
         'matplotlib',
-        'pandas',
-        'triton'
+        'pandas'
     ],
     classifiers=[
         'Development Status :: 1 - Alpha',
