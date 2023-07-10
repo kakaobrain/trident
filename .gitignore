@@ -335,4 +335,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Dependencies
+.triton/
+
 # End of https://www.toptal.com/developers/gitignore/api/pycharm+all,python,macos,linux,windows
