@@ -66,7 +66,7 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
 
     See LayerNorm for details.
     """
-    return operation.LayerNorm.apply(input, normalized_shape, weight, bias, eps, None, None)
+    return operation.LayerNorm.apply(input, normalized_shape, weight, bias, eps)
 
 
 def leaky_relu(input, negative_slope=0.01):

@@ -31,7 +31,7 @@ class InstanceNorm:
         out_ptr += off
 
         mean = kernel.mean(inp_ptr, vec_sz, vec_blk_sz, dtype)
-        var = kernel.var(inp_ptr, vec_sz, mean, vec_blk_sz, dtype)
+        var = kernel.variance(inp_ptr, vec_sz, mean, vec_blk_sz, dtype)
         std = language.std(var, eps)
 
         for off in range(0, vec_sz, vec_blk_sz):
