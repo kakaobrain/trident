@@ -18,7 +18,12 @@ from trident import language
 
 
 @triton.jit
-def mean(x_ptr, x_sz, blk_sz: triton.language.constexpr, dtype: triton.language.constexpr):
+def mean(
+    x_ptr,
+    x_sz,
+    blk_sz: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
     res = triton.language.zeros([blk_sz], dtype)
 
     for off in range(0, x_sz, blk_sz):
@@ -32,7 +37,13 @@ def mean(x_ptr, x_sz, blk_sz: triton.language.constexpr, dtype: triton.language.
 
 
 @triton.jit
-def variance(x_ptr, x_sz, mean, blk_sz: triton.language.constexpr, dtype: triton.language.constexpr):
+def variance(
+    x_ptr,
+    x_sz,
+    mean,
+    blk_sz: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
     res = triton.language.zeros([blk_sz], triton.language.float32)
 
     for blk_off in range(0, x_sz, blk_sz):

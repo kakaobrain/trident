@@ -23,11 +23,17 @@ from tests import util
 def test_function(knl_sz, dtype, device):
     inp = torch.randn(2, 3, 128, 128, dtype=dtype, device=device)
 
-    assert util.equal(torch.nn.functional.max_pool2d(inp, knl_sz), trident.function.max_pool2d(inp, knl_sz))
+    assert util.equal(
+        torch.nn.functional.max_pool2d(inp, knl_sz),
+        trident.function.max_pool2d(inp, knl_sz),
+    )
 
 
 @pytest.mark.parametrize("knl_sz", [32, 64, 96, 128])
 def test_forward(knl_sz, dtype, device):
     inp = torch.randn(10, 7, 256, 256, dtype=dtype, device=device)
 
-    assert util.equal(torch.nn.MaxPool2d(knl_sz).forward(inp), trident.MaxPool2d(knl_sz).forward(inp))
+    assert util.equal(
+        torch.nn.MaxPool2d(knl_sz).forward(inp),
+        trident.MaxPool2d(knl_sz).forward(inp),
+    )

@@ -105,8 +105,15 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--scenario", type=str, help="specify a scenario to run")
-    parser.add_argument("--mode", type=str, choices=["forward", "backward"], help="specify a mode to run")
-    parser.add_argument("--list", action="store_true", help="list all scenarios can be run")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["forward", "backward"],
+        help="specify a mode to run",
+    )
+    parser.add_argument(
+        "--list", action="store_true", help="list all scenarios can be run"
+    )
     parser.add_argument("--show-plots", action="store_true", help="show plots")
 
     args = parser.parse_args()

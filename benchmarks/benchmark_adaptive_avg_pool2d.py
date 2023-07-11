@@ -19,14 +19,23 @@ import util
 import trident
 
 
-@util.report("adaptive avg pool2d forward", "out_sz", [2**i for i in range(1, 11)], {"h": 512, "w": 512})
+@util.report(
+    "adaptive avg pool2d forward",
+    "out_sz",
+    [2**i for i in range(1, 11)],
+    {"h": 512, "w": 512},
+)
 def bench_adaptive_avg_pool2d_forward(out_sz, h, w, ctx):
     inp = torch.randn(1, 1, h, w, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.adaptive_avg_pool2d(inp, out_sz))
+        return triton.testing.do_bench(
+            lambda: torch.nn.functional.adaptive_avg_pool2d(inp, out_sz)
+        )
     else:
-        return triton.testing.do_bench(lambda: trident.function.adaptive_avg_pool2d(inp, out_sz))
+        return triton.testing.do_bench(
+            lambda: trident.function.adaptive_avg_pool2d(inp, out_sz)
+        )
 
 
 def run_benchmarks(mode, show_plots):

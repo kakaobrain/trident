@@ -32,7 +32,13 @@ class GELU:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, inp_ptr, grad_inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
+    def backward(
+        grad_out_ptr,
+        inp_ptr,
+        grad_inp_ptr,
+        inp_sz,
+        blk_sz: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, blk_sz) + pid * blk_sz
         msk = blk < inp_sz

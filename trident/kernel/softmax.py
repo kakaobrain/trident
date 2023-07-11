@@ -42,7 +42,13 @@ class Softmax:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, out_ptr, vec_sz, grad_inp_ptr, blk_sz: triton.language.constexpr):
+    def backward(
+        grad_out_ptr,
+        out_ptr,
+        vec_sz,
+        grad_inp_ptr,
+        blk_sz: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         blk, msk = language.make_block(vec_sz, blk_sz, 0)
         blk = blk + pid * vec_sz

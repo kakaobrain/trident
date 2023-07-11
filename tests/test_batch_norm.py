@@ -19,7 +19,9 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_vec, vec_sz, training", [(1, 5, False), (3, 16, False), (7, 30, True)])
+@pytest.mark.parametrize(
+    "num_vec, vec_sz, training", [(1, 5, False), (3, 16, False), (7, 30, True)]
+)
 def test_function(num_vec, vec_sz, training, dtype, device):
     inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
     m = torch.zeros(vec_sz, dtype=dtype, device=device)

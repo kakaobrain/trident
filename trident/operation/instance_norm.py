@@ -47,7 +47,14 @@ class InstanceNorm(torch.autograd.Function):
         num_warps = util.get_num_warps(vec_sz, inp.element_size(), 4)
 
         kernel.InstanceNorm.forward[grid](
-            inp, num_ch, vec_sz, eps, out, vec_blk_sz, util.map_dtype(dtype), num_warps=num_warps
+            inp,
+            num_ch,
+            vec_sz,
+            eps,
+            out,
+            vec_blk_sz,
+            util.map_dtype(dtype),
+            num_warps=num_warps,
         )
 
         return out

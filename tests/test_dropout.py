@@ -23,7 +23,9 @@ def test_function(dtype, device):
     inp = torch.randn(8, dtype=dtype, device=device)
     p = 0.0
 
-    assert util.equal(torch.nn.functional.dropout(inp, p), trident.function.dropout(inp, p))
+    assert util.equal(
+        torch.nn.functional.dropout(inp, p), trident.function.dropout(inp, p)
+    )
 
 
 def test_forward(dtype, device):

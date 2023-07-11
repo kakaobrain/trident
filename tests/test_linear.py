@@ -23,7 +23,9 @@ def test_function(device):
     inp = torch.randn(512, 512, device=device)
     wgt = torch.randn(512, 512, device=device)
 
-    assert util.equal(torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt))
+    assert util.equal(
+        torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt)
+    )
 
 
 def test_function_with_bias(device):
@@ -31,7 +33,10 @@ def test_function_with_bias(device):
     wgt = torch.randn(512, 512, device=device)
     bis = torch.randn(512, device=device)
 
-    assert util.equal(torch.nn.functional.linear(inp, wgt, bis), trident.function.linear(inp, wgt, bis))
+    assert util.equal(
+        torch.nn.functional.linear(inp, wgt, bis),
+        trident.function.linear(inp, wgt, bis),
+    )
 
 
 @pytest.mark.parametrize("act", ["relu", "leaky_relu"])
@@ -41,5 +46,6 @@ def test_function_with_activation(act, device):
     bis = torch.randn(512, device=device)
 
     assert util.equal(
-        util.activate(torch.nn.functional.linear(inp, wgt, bis), act), trident.function.linear(inp, wgt, bis, act)
+        util.activate(torch.nn.functional.linear(inp, wgt, bis), act),
+        trident.function.linear(inp, wgt, bis, act),
     )

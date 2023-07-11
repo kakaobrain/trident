@@ -26,21 +26,27 @@ def test_forward(num_vec, vec_sz, dtype, device):
         inp.shape[-1],
     ]
 
-    assert util.equal(torch.nn.functional.layer_norm(inp, norm_sh), trident.function.layer_norm(inp, norm_sh))
+    assert util.equal(
+        torch.nn.functional.layer_norm(inp, norm_sh),
+        trident.function.layer_norm(inp, norm_sh),
+    )
 
     wgt = torch.randn(norm_sh, dtype=dtype, device=device)
 
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, wgt, None), trident.function.layer_norm(inp, norm_sh, wgt, None)
+        torch.nn.functional.layer_norm(inp, norm_sh, wgt, None),
+        trident.function.layer_norm(inp, norm_sh, wgt, None),
     )
 
     bis = torch.randn(norm_sh, dtype=dtype, device=device)
 
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, None, bis), trident.function.layer_norm(inp, norm_sh, None, bis)
+        torch.nn.functional.layer_norm(inp, norm_sh, None, bis),
+        trident.function.layer_norm(inp, norm_sh, None, bis),
     )
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, wgt, bis), trident.function.layer_norm(inp, norm_sh, wgt, bis)
+        torch.nn.functional.layer_norm(inp, norm_sh, wgt, bis),
+        trident.function.layer_norm(inp, norm_sh, wgt, bis),
     )
 
 
@@ -54,8 +60,12 @@ def test_backward(num_vec, vec_sz, elem_afn, dtype, device):
     a = inp.clone()
     x.requires_grad = a.requires_grad = True
 
-    lyr0 = torch.nn.LayerNorm(norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device)
-    lyr1 = trident.LayerNorm(norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device)
+    lyr0 = torch.nn.LayerNorm(
+        norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device
+    )
+    lyr1 = trident.LayerNorm(
+        norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device
+    )
 
     util.train(x, tgt, lyr0)
     util.train(a, tgt, lyr1)

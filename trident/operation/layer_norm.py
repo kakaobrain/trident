@@ -33,7 +33,9 @@ class LayerNorm(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return LayerNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.norm_sh, ctx.eps)
+        return LayerNorm.__backward(
+            *grad_outputs, *ctx.saved_tensors, ctx.norm_sh, ctx.eps
+        )
 
     @staticmethod
     def __forward(inp, norm_sh, wgt, bis, eps):
@@ -76,7 +78,9 @@ class LayerNorm(torch.autograd.Function):
             "num_warps": util.get_num_warps(vec_sz, inp.element_size()),
         }
 
-        kernel.LayerNorm.backward[grid](grad_out, inp, grad_inp, vec_sz, wgt, grad_wgt, grad_bis, eps, **cfg)
+        kernel.LayerNorm.backward[grid](
+            grad_out, inp, grad_inp, vec_sz, wgt, grad_wgt, grad_bis, eps, **cfg
+        )
 
         return (
             grad_inp,

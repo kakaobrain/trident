@@ -25,7 +25,9 @@ def get_configs_linear_io_bound():
             for num_warps in [2, 4]:
                 configs.append(
                     triton.Config(
-                        {"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": block_size_n}, num_stages=num_stages, num_warps=num_warps
+                        {"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": block_size_n},
+                        num_stages=num_stages,
+                        num_warps=num_warps,
                     )
                 )
     return configs

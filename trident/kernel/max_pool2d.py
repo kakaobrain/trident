@@ -45,7 +45,9 @@ class MaxPool2d:
         grp = language.col(pid, num_grp)
         w = grp * grp_sz
 
-        inp_ptr += bt * inp_bt_st + ch * inp_ch_st + h * (knl_sz * inp_h_st) + w * knl_sz
+        inp_ptr += (
+            bt * inp_bt_st + ch * inp_ch_st + h * (knl_sz * inp_h_st) + w * knl_sz
+        )
         out_ptr += bt * out_bt_st + ch * out_ch_st + h * out_h_st + w
 
         inp_blk = language.make_conv2d_blk(1, inp_h_st, 1, knl_bs, knl_bs)

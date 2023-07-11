@@ -19,7 +19,12 @@ import util
 import trident
 
 
-@util.report("instance norm forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32, "num_ch": 64})
+@util.report(
+    "instance norm forward",
+    "vec_sz",
+    [256 * i for i in range(1, 21)],
+    {"num_bt": 32, "num_ch": 64},
+)
 def bench_instance_norm_forward(num_bt, num_ch, vec_sz, ctx):
     inp = torch.randn(num_bt, num_ch, vec_sz, device="cuda")
 

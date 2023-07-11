@@ -37,7 +37,15 @@ class PReLU(torch.autograd.Function):
             size_0,
             triton.cdiv(size_1, meta["block_size"]),
         )
-        kernel.PReLU.forward[grid](x, x.stride(0), y, y.stride(0), negative_slopes, size_1, block_size=block_size)
+        kernel.PReLU.forward[grid](
+            x,
+            x.stride(0),
+            y,
+            y.stride(0),
+            negative_slopes,
+            size_1,
+            block_size=block_size,
+        )
 
         return y
 
@@ -70,6 +78,15 @@ class PReLU(torch.autograd.Function):
             triton.cdiv(x_shape_1, meta["block_size"]),
         )
 
-        kernel.PReLU.backward[grid](x, x.stride(0), dx, dx.stride(0), w, dw, x_shape_1, block_size=get_block_size())
+        kernel.PReLU.backward[grid](
+            x,
+            x.stride(0),
+            dx,
+            dx.stride(0),
+            w,
+            dw,
+            x_shape_1,
+            block_size=get_block_size(),
+        )
 
         return grad_outputs[0] * dx, grad_outputs[0] * dw, None

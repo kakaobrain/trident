@@ -36,12 +36,19 @@ class Conv2d(torch.autograd.Function):
         out_h = Conv2d.__get_out_size(inp_h, wgt_h, 1)
         out_w = Conv2d.__get_out_size(inp_w, wgt_w, 1)
 
-        out = torch.zeros(inp_bt, out_ch, out_h, out_w, dtype=torch.float, device="cuda")
+        out = torch.zeros(
+            inp_bt, out_ch, out_h, out_w, dtype=torch.float, device="cuda"
+        )
 
         assert out.is_contiguous()
 
         def grid(meta):
-            return (inp_bt * out_ch * ((out_h + meta["grp_sz"] - 1) // meta["grp_sz"]) * out_w,)
+            return (
+                inp_bt
+                * out_ch
+                * ((out_h + meta["grp_sz"] - 1) // meta["grp_sz"])
+                * out_w,
+            )
 
         kernel.Conv2d.forward[grid](
             inp,

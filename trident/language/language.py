@@ -62,13 +62,18 @@ def gemv(a, x):
 
 @triton.jit
 def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
-    blk = triton.language.arange(0, w_bs)[:, None] + (triton.language.arange(0, h_bs) * w_st)[None, :]
+    blk = (
+        triton.language.arange(0, w_bs)[:, None]
+        + (triton.language.arange(0, h_bs) * w_st)[None, :]
+    )
     return blk[:, :, None] + (triton.language.arange(0, ch_bs) * ch_st)[None, None, :]
 
 
 @triton.jit
 def make_conv2d_msk(ch, h, w, ch_bs, h_bs, w_bs):
-    msk = (triton.language.arange(0, w_bs) < w)[:, None] & (triton.language.arange(0, h_bs) < h)[None, :]
+    msk = (triton.language.arange(0, w_bs) < w)[:, None] & (
+        triton.language.arange(0, h_bs) < h
+    )[None, :]
     return msk[:, :, None] & (triton.language.arange(0, ch_bs) < ch)[None, None, :]
 
 
@@ -138,7 +143,9 @@ def tanh(x):
 
 @triton.jit
 def var(msk, x, sz, mean, axis=0, corr=1):
-    return triton.language.sum(pow2(triton.language.where(msk, x - mean, 0.0)), axis) / (sz - corr)
+    return triton.language.sum(
+        pow2(triton.language.where(msk, x - mean, 0.0)), axis
+    ) / (sz - corr)
 
 
 @triton.jit

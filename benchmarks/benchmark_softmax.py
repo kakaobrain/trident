@@ -19,7 +19,12 @@ import util
 import trident
 
 
-@util.report("softmax forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32})
+@util.report(
+    "softmax forward",
+    "vec_sz",
+    [256 * i for i in range(1, 21)],
+    {"num_bt": 32},
+)
 def bench_softmax_forward(num_bt, vec_sz, ctx):
     inp = torch.randn(num_bt, vec_sz, device="cuda")
 
@@ -29,7 +34,12 @@ def bench_softmax_forward(num_bt, vec_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.softmax(inp, 1))
 
 
-@util.report("softmax backward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32})
+@util.report(
+    "softmax backward",
+    "vec_sz",
+    [256 * i for i in range(1, 21)],
+    {"num_bt": 32},
+)
 def bench_softmax_backward(num_bt, vec_sz, ctx):
     inp = torch.randn(num_bt, vec_sz, device="cuda", requires_grad=True)
 

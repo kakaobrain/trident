@@ -30,12 +30,21 @@ class AdaptiveAvgPool2d(torch.autograd.Function):
 
         kernel_size = (num_rows + output_size - 1) // output_size
 
-        y = torch.empty(num_batches, num_channels, output_size, output_size, dtype=x.dtype, device="cuda")
+        y = torch.empty(
+            num_batches,
+            num_channels,
+            output_size,
+            output_size,
+            dtype=x.dtype,
+            device="cuda",
+        )
 
         assert y.is_contiguous()
 
         block_size = max(output_size // 2, 1)
-        grid = lambda meta: (num_batches * num_channels * output_size * output_size // block_size,)
+        grid = lambda meta: (
+            num_batches * num_channels * output_size * output_size // block_size,
+        )
         kernel.AdaptiveAvgPool2d.forward[grid](
             x,
             x.stride(0),

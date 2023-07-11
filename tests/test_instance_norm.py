@@ -23,7 +23,10 @@ from tests import util
 def test_function(num_ch, w, h, dtype, device):
     inp = torch.randn(num_ch, w, h, dtype=dtype, device=device)
 
-    assert util.equal(torch.nn.functional.instance_norm(inp), trident.function.instance_norm(inp))
+    assert util.equal(
+        torch.nn.functional.instance_norm(inp),
+        trident.function.instance_norm(inp),
+    )
 
 
 @pytest.mark.parametrize("num_bt, num_ch, w, h", [(1, 3, 256, 256), (4, 4, 150, 150)])

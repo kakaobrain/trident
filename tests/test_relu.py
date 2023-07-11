@@ -33,7 +33,9 @@ def test_forward(num_bt, num_elem, dtype, device):
     assert util.equal(torch.nn.ReLU().forward(inp), trident.ReLU().forward(inp))
 
 
-@pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)])
+@pytest.mark.parametrize(
+    "num_bt, num_elem", [(5, 32), (4, 64), (3, 128), (2, 256), (1, 512)]
+)
 def test_backward(num_bt, num_elem, device):
     inp = torch.randn(num_bt, num_elem, device=device)
     tgt = torch.randn(num_bt, num_elem, device=device)

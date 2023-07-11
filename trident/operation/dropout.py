@@ -42,7 +42,12 @@ class Dropout(torch.autograd.Function):
 
         out = torch.empty_like(inp)
         kernel.Dropout.forward[grid](
-            inp, inp_sz, p, torch.random.seed(), out, inp_bs=min(triton.next_power_of_2(inp_sz), 1024)
+            inp,
+            inp_sz,
+            p,
+            torch.random.seed(),
+            out,
+            inp_bs=min(triton.next_power_of_2(inp_sz), 1024),
         )
         return out
 
@@ -54,5 +59,11 @@ class Dropout(torch.autograd.Function):
             return (triton.cdiv(out_sz, meta["out_bs"]),)
 
         grad_inp = torch.empty_like(out)
-        kernel.Dropout.backward[grid](grad_out, out, out_sz, grad_inp, out_bs=min(triton.next_power_of_2(out_sz), 1024))
+        kernel.Dropout.backward[grid](
+            grad_out,
+            out,
+            out_sz,
+            grad_inp,
+            out_bs=min(triton.next_power_of_2(out_sz), 1024),
+        )
         return grad_inp, None, None

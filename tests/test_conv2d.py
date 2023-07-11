@@ -19,17 +19,26 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_bt, inp_ch, out_ch", [(1, 3, 1), (5, 4, 8), (6, 3, 9), (10, 16, 36)])
+@pytest.mark.parametrize(
+    "num_bt, inp_ch, out_ch", [(1, 3, 1), (5, 4, 8), (6, 3, 9), (10, 16, 36)]
+)
 def test_function(num_bt, inp_ch, out_ch, device):
     inp = torch.randn(num_bt, inp_ch, 5, 5, device=device)
     wgt = torch.randn(out_ch, inp_ch, 2, 2, device=device)
     bis = torch.randn(out_ch, device=device)
 
-    assert util.equal(torch.nn.functional.conv2d(inp, wgt, bis), trident.function.conv2d(inp, wgt, bis))
-    assert util.equal(torch.nn.functional.conv2d(inp, wgt), trident.function.conv2d(inp, wgt))
+    assert util.equal(
+        torch.nn.functional.conv2d(inp, wgt, bis),
+        trident.function.conv2d(inp, wgt, bis),
+    )
+    assert util.equal(
+        torch.nn.functional.conv2d(inp, wgt), trident.function.conv2d(inp, wgt)
+    )
 
 
-@pytest.mark.parametrize("num_bt, inp_ch, wgt_sz", [(1, 1, 3), (3, 16, 4), (4, 32, 5), (4, 4, 32)])
+@pytest.mark.parametrize(
+    "num_bt, inp_ch, wgt_sz", [(1, 1, 3), (3, 16, 4), (4, 32, 5), (4, 4, 32)]
+)
 def test_forward(num_bt, inp_ch, wgt_sz, device):
     inp = torch.randn(4, num_bt, 64, 64, device=device)
 

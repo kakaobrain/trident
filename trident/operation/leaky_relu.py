@@ -38,7 +38,13 @@ class LeakyReLU(torch.autograd.Function):
             triton.cdiv(size_1, meta["block_size"]),
         )
         kernel.LeakyReLU.forward[grid](
-            x, x.stride(0), y, y.stride(0), negative_slope, size_1, block_size=get_block_size()
+            x,
+            x.stride(0),
+            y,
+            y.stride(0),
+            negative_slope,
+            size_1,
+            block_size=get_block_size(),
         )
 
         return y
@@ -73,7 +79,13 @@ class LeakyReLU(torch.autograd.Function):
             triton.cdiv(x_shape_1, meta["block_size"]),
         )
         kernel.LeakyReLU.backward[grid](
-            x, x.stride(0), dx, dx.stride(0), negative_slope, x_shape_1, block_size=get_block_size()
+            x,
+            x.stride(0),
+            dx,
+            dx.stride(0),
+            negative_slope,
+            x_shape_1,
+            block_size=get_block_size(),
         )
 
         return torch.mul(grad_outputs[0], dx), None

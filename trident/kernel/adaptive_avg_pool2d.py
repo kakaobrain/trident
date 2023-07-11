@@ -47,7 +47,9 @@ class AdaptiveAvgPool2d:
         col = block * block_size
 
         row_offset = (row * (num_rows / output_size)).to(triton.language.int32)
-        col_offsets = (triton.language.arange(0, block_size) + col) * (num_cols / output_size)
+        col_offsets = (triton.language.arange(0, block_size) + col) * (
+            num_cols / output_size
+        )
         col_offsets = col_offsets.to(triton.language.int32)
 
         x_ptr += batch * x_batch_stride + channel * x_channel_stride
@@ -56,7 +58,9 @@ class AdaptiveAvgPool2d:
         y_ptr += row * y_row_stride + col
 
         kernel_block = triton.language.arange(0, kernel_size)
-        kernel_block = triton.language.ravel(kernel_block[:, None] * x_row_stride + kernel_block[None, :])
+        kernel_block = triton.language.ravel(
+            kernel_block[:, None] * x_row_stride + kernel_block[None, :]
+        )
         x_block = kernel_block[:, None] + col_offsets[None, :]
 
         x = triton.language.load(x_ptr + x_block)

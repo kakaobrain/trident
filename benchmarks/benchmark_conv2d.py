@@ -20,7 +20,10 @@ import trident
 
 
 @util.report(
-    "conv2d forward", "wgt_sz", [3 * i for i in range(1, 21)], {"num_bt": 2, "inp_ch": 3, "inp_sz": 256, "out_ch": 8}
+    "conv2d forward",
+    "wgt_sz",
+    [3 * i for i in range(1, 21)],
+    {"num_bt": 2, "inp_ch": 3, "inp_sz": 256, "out_ch": 8},
 )
 def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
     inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device="cuda")

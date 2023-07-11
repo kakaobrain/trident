@@ -23,7 +23,9 @@ from tests import util
 def test_function(num_vec, vec_sz, dtype, device):
     inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
 
-    assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
+    assert util.equal(
+        torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1)
+    )
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(3, 256), (2, 500)])

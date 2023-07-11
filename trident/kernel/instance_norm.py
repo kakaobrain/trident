@@ -21,7 +21,13 @@ class InstanceNorm:
     @staticmethod
     @triton.jit
     def forward(
-        inp_ptr, num_ch, vec_sz, eps, out_ptr, vec_blk_sz: triton.language.constexpr, dtype: triton.language.constexpr
+        inp_ptr,
+        num_ch,
+        vec_sz,
+        eps,
+        out_ptr,
+        vec_blk_sz: triton.language.constexpr,
+        dtype: triton.language.constexpr,
     ):
         pid = triton.language.program_id(0)
         bt = pid // num_ch
