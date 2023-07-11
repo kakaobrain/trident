@@ -14,28 +14,28 @@
 
 import torch
 import triton
+import util
 
 import trident
-import util
 
 
 @util.report(
-    'conv2d forward', 'wgt_sz', [3 * i for i in range(1, 21)], {'num_bt': 2, 'inp_ch': 3, 'inp_sz': 256, 'out_ch': 8}
+    "conv2d forward", "wgt_sz", [3 * i for i in range(1, 21)], {"num_bt": 2, "inp_ch": 3, "inp_sz": 256, "out_ch": 8}
 )
 def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
-    inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device='cuda')
-    wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device='cuda')
+    inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device="cuda")
+    wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.conv2d(inp, wgt))
     else:
         return triton.testing.do_bench(lambda: trident.function.conv2d(inp, wgt))
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_conv2d_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         pass
     else:
         bench_conv2d_forward.run(print_data=True, show_plots=show_plots)

@@ -20,10 +20,7 @@ from trident import language
 class LeakyReLU:
     @staticmethod
     @triton.jit
-    def forward(x_ptr, x_stride,
-                y_ptr, y_stride,
-                a, size_1,
-                block_size: triton.language.constexpr):
+    def forward(x_ptr, x_stride, y_ptr, y_stride, a, size_1, block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
         j = triton.language.program_id(1)
 
@@ -40,10 +37,7 @@ class LeakyReLU:
 
     @staticmethod
     @triton.jit
-    def backward(x_ptr, x_stride,
-                 d_ptr, d_stride,
-                 a, size,
-                 block_size: triton.language.constexpr):
+    def backward(x_ptr, x_stride, d_ptr, d_stride, a, size, block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
         j = triton.language.program_id(1)
 

@@ -33,23 +33,26 @@ class PReLU(torch.autograd.Function):
 
         block_size = min(triton.next_power_of_2(size_1), 1 << 14)
 
-        grid = lambda meta: (size_0, triton.cdiv(size_1, meta['block_size']),)
-        kernel.PReLU.forward[grid](x, x.stride(0),
-                                   y, y.stride(0),
-                                   negative_slopes, size_1,
-                                   block_size=block_size)
+        grid = lambda meta: (
+            size_0,
+            triton.cdiv(size_1, meta["block_size"]),
+        )
+        kernel.PReLU.forward[grid](x, x.stride(0), y, y.stride(0), negative_slopes, size_1, block_size=block_size)
 
         return y
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        x, negative_slopes, = inputs
+        (
+            x,
+            negative_slopes,
+        ) = inputs
         ctx.save_for_backward(x)
         ctx.negative_slopes = negative_slopes
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        x, = ctx.saved_tensors
+        (x,) = ctx.saved_tensors
         w = ctx.negative_slopes
 
         assert x.is_cuda and x.is_contiguous()
@@ -62,11 +65,11 @@ class PReLU(torch.autograd.Function):
         def get_block_size():
             return min(triton.next_power_of_2(x_shape_1), 1 << 14)
 
-        grid = lambda meta: (x_shape_0, triton.cdiv(x_shape_1, meta['block_size']),)
+        grid = lambda meta: (
+            x_shape_0,
+            triton.cdiv(x_shape_1, meta["block_size"]),
+        )
 
-        kernel.PReLU.backward[grid](x, x.stride(0),
-                                    dx, dx.stride(0),
-                                    w, dw, x_shape_1,
-                                    block_size=get_block_size())
+        kernel.PReLU.backward[grid](x, x.stride(0), dx, dx.stride(0), w, dw, x_shape_1, block_size=get_block_size())
 
         return grad_outputs[0] * dx, grad_outputs[0] * dw, None

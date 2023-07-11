@@ -19,21 +19,21 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('vec_sz', [10, 16])
+@pytest.mark.parametrize("vec_sz", [10, 16])
 def test_function(vec_sz, dtype, device):
     inp = torch.randn(vec_sz, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.gelu(inp), trident.function.gelu(inp))
 
 
-@pytest.mark.parametrize('vec_sz', [3, 16384])
+@pytest.mark.parametrize("vec_sz", [3, 16384])
 def test_forward(vec_sz, dtype, device):
     inp = torch.randn(vec_sz, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.GELU().forward(inp), trident.GELU().forward(inp))
 
 
-@pytest.mark.parametrize('vec_sz', [1, 20000])
+@pytest.mark.parametrize("vec_sz", [1, 20000])
 def test_backward(vec_sz, dtype, device):
     inp = torch.randn(vec_sz, dtype=dtype, device=device)
     tgt = torch.randn(vec_sz, dtype=dtype, device=device)

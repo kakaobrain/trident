@@ -56,7 +56,7 @@ def dropout(input, p=0.5, training=True):
     return operation.Dropout.apply(input, p) if training else input.clone()
 
 
-def gelu(input, approximate='none'):
+def gelu(input, approximate="none"):
     """
     Applies the Gaussian Error Linear Units to an input.
 
@@ -92,7 +92,7 @@ def leaky_relu(input, negative_slope=0.01):
     return operation.LeakyReLU.apply(input, negative_slope)
 
 
-def linear(input, weight, bias=None, activation=''):
+def linear(input, weight, bias=None, activation=""):
     """
     Applies Linear Transformation to an input.
 

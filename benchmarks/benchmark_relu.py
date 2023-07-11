@@ -14,25 +14,25 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('relu forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 32})
+
+@util.report("relu forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 32})
 def bench_relu_forward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device='cuda')
+    inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.relu(inp))
     else:
         return triton.testing.do_bench(lambda: trident.function.relu(inp))
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_relu_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         pass
     else:
         bench_relu_forward.run(print_data=True, show_plots=show_plots)

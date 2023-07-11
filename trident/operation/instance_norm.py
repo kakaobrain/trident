@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+
 import torch
 import triton
 
@@ -45,7 +46,8 @@ class InstanceNorm(torch.autograd.Function):
         vec_blk_sz = util.get_block_size(vec_sz, inp.element_size())
         num_warps = util.get_num_warps(vec_sz, inp.element_size(), 4)
 
-        kernel.InstanceNorm.forward[grid](inp, num_ch, vec_sz, eps, out, vec_blk_sz, util.map_dtype(dtype),
-                                          num_warps=num_warps)
+        kernel.InstanceNorm.forward[grid](
+            inp, num_ch, vec_sz, eps, out, vec_blk_sz, util.map_dtype(dtype), num_warps=num_warps
+        )
 
         return out

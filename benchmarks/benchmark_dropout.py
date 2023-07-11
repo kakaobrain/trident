@@ -14,25 +14,25 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('dropout forward', 'inp_sz', [512 * i for i in range(1, 21)], {'p': 0.5})
+
+@util.report("dropout forward", "inp_sz", [512 * i for i in range(1, 21)], {"p": 0.5})
 def bench_dropout_forward(p, inp_sz, ctx):
-    inp = torch.randn(inp_sz, device='cuda')
+    inp = torch.randn(inp_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.dropout(inp, p))
     else:
         return triton.testing.do_bench(lambda: trident.function.dropout(inp, p))
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_dropout_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         pass
     else:
         bench_dropout_forward.run(print_data=True, show_plots=show_plots)

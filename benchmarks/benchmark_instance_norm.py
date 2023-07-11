@@ -14,25 +14,25 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('instance norm forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_bt': 32, 'num_ch': 64})
+
+@util.report("instance norm forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32, "num_ch": 64})
 def bench_instance_norm_forward(num_bt, num_ch, vec_sz, ctx):
-    inp = torch.randn(num_bt, num_ch, vec_sz, device='cuda')
+    inp = torch.randn(num_bt, num_ch, vec_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.instance_norm(inp))
     else:
         return triton.testing.do_bench(lambda: trident.function.instance_norm(inp))
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         pass
     else:
         bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)

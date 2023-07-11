@@ -33,7 +33,7 @@ def test_forward(dtype, device):
     assert util.equal(torch.nn.Dropout(p).forward(inp), trident.Dropout(p).forward(inp))
 
 
-@pytest.mark.parametrize('p', [0.0, 1.0])
+@pytest.mark.parametrize("p", [0.0, 1.0])
 def test_backward(p, dtype, device):
     inp = torch.randn(8, dtype=dtype, device=device)
     tgt = torch.randn(8, dtype=dtype, device=device)

@@ -14,26 +14,26 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('softmax forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_bt': 32})
+
+@util.report("softmax forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32})
 def bench_softmax_forward(num_bt, vec_sz, ctx):
-    inp = torch.randn(num_bt, vec_sz, device='cuda')
+    inp = torch.randn(num_bt, vec_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.softmax(inp, 1))
     else:
         return triton.testing.do_bench(lambda: trident.function.softmax(inp, 1))
 
 
-@util.report('softmax backward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_bt': 32})
+@util.report("softmax backward", "vec_sz", [256 * i for i in range(1, 21)], {"num_bt": 32})
 def bench_softmax_backward(num_bt, vec_sz, ctx):
-    inp = torch.randn(num_bt, vec_sz, device='cuda', requires_grad=True)
+    inp = torch.randn(num_bt, vec_sz, device="cuda", requires_grad=True)
 
-    if ctx == 'torch':
+    if ctx == "torch":
         lyr = torch.nn.Softmax(1)
     else:
         lyr = trident.Softmax(1)
@@ -45,9 +45,9 @@ def bench_softmax_backward(num_bt, vec_sz, ctx):
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_softmax_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         bench_softmax_backward.run(print_data=True, show_plots=show_plots)
     else:
         bench_softmax_forward.run(print_data=True, show_plots=show_plots)

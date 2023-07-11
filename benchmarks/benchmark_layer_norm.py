@@ -14,31 +14,31 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 3})
+
+@util.report("forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 3})
 def bench_layer_norm_forward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device='cuda')
+    inp = torch.randn(num_vec, vec_sz, device="cuda")
     norm_sh = (inp.shape[-1],)
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
     else:
         return triton.testing.do_bench(lambda: trident.function.layer_norm(inp, norm_sh))
 
 
-@util.report('backward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 3})
+@util.report("backward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 3})
 def bench_layer_norm_backward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device='cuda', requires_grad=True)
+    inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
     norm_sh = [inp.shape[-1]]
 
-    if ctx == 'torch':
-        lyr = torch.nn.LayerNorm(norm_sh, dtype=torch.float32, device='cuda')
+    if ctx == "torch":
+        lyr = torch.nn.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")
     else:
-        lyr = trident.LayerNorm(norm_sh, dtype=torch.float32, device='cuda')
+        lyr = trident.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")
 
     out = lyr.forward(inp)
     grad_out = torch.ones_like(inp)
@@ -47,9 +47,9 @@ def bench_layer_norm_backward(num_vec, vec_sz, ctx):
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_layer_norm_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         bench_layer_norm_backward.run(print_data=True, show_plots=show_plots)
     else:
         bench_layer_norm_forward.run(print_data=True, show_plots=show_plots)

@@ -36,18 +36,40 @@ class Conv2d(torch.autograd.Function):
         out_h = Conv2d.__get_out_size(inp_h, wgt_h, 1)
         out_w = Conv2d.__get_out_size(inp_w, wgt_w, 1)
 
-        out = torch.zeros(inp_bt, out_ch, out_h, out_w, dtype=torch.float, device='cuda')
+        out = torch.zeros(inp_bt, out_ch, out_h, out_w, dtype=torch.float, device="cuda")
 
         assert out.is_contiguous()
 
         def grid(meta):
-            return (inp_bt * out_ch * ((out_h + meta['grp_sz'] - 1) // meta['grp_sz']) * out_w,)
+            return (inp_bt * out_ch * ((out_h + meta["grp_sz"] - 1) // meta["grp_sz"]) * out_w,)
 
-        kernel.Conv2d.forward[grid](inp, inp_ch, inp_h, inp_w, inp.stride(0), inp.stride(1), inp.stride(2),
-                                    wgt, wgt_ch, wgt_h, wgt_w, wgt.stride(0), wgt.stride(1), bis,
-                                    out, out_ch, out_h, out_w, out.stride(0), out.stride(1), out.stride(2),
-                                    triton.next_power_of_2(wgt_ch), triton.next_power_of_2(wgt_h),
-                                    triton.next_power_of_2(wgt_w), max(512 // triton.next_power_of_2(wgt_w), 1))
+        kernel.Conv2d.forward[grid](
+            inp,
+            inp_ch,
+            inp_h,
+            inp_w,
+            inp.stride(0),
+            inp.stride(1),
+            inp.stride(2),
+            wgt,
+            wgt_ch,
+            wgt_h,
+            wgt_w,
+            wgt.stride(0),
+            wgt.stride(1),
+            bis,
+            out,
+            out_ch,
+            out_h,
+            out_w,
+            out.stride(0),
+            out.stride(1),
+            out.stride(2),
+            triton.next_power_of_2(wgt_ch),
+            triton.next_power_of_2(wgt_h),
+            triton.next_power_of_2(wgt_w),
+            max(512 // triton.next_power_of_2(wgt_w), 1),
+        )
 
         return out
 

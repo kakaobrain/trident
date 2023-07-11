@@ -43,9 +43,9 @@ class BatchNorm(torch.autograd.Function):
         out = torch.empty_like(inp)
         bt_blk_sz = triton.next_power_of_2(bt_sz)
 
-        kernel.BatchNorm.forward[grid](inp, vec_sz, bt_sz, wgt, bis, eps,
-                                       running_mean, running_var,
-                                       out, blk_sz=bt_blk_sz)
+        kernel.BatchNorm.forward[grid](
+            inp, vec_sz, bt_sz, wgt, bis, eps, running_mean, running_var, out, blk_sz=bt_blk_sz
+        )
         return out
 
     @staticmethod
@@ -59,8 +59,8 @@ class BatchNorm(torch.autograd.Function):
         grad_wgt = torch.empty_like(wgt) if wgt is not None else None
         grad_bis = torch.empty_like(bis) if bis is not None else None
         bt_blk_sz = triton.next_power_of_2(bt_sz)
-        kernel.BatchNorm.backward[grid](grad_out, inp, grad_inp, vec_sz, bt_sz, wgt,
-                                        grad_wgt, grad_bis, eps,
-                                        blk_sz=bt_blk_sz)
+        kernel.BatchNorm.backward[grid](
+            grad_out, inp, grad_inp, vec_sz, bt_sz, wgt, grad_wgt, grad_bis, eps, blk_sz=bt_blk_sz
+        )
 
         return grad_inp, grad_wgt, grad_bis, None, None, None

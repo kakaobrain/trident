@@ -20,8 +20,7 @@ from trident import language
 class SiLU:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, inp_sz, out_ptr,
-                inp_bs: triton.language.constexpr, dtype: triton.language.constexpr):
+    def forward(inp_ptr, inp_sz, out_ptr, inp_bs: triton.language.constexpr, dtype: triton.language.constexpr):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz
@@ -33,8 +32,9 @@ class SiLU:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, inp_ptr, inp_sz, grad_inp_ptr,
-                 inp_bs: triton.language.constexpr, dtype: triton.language.constexpr):
+    def backward(
+        grad_out_ptr, inp_ptr, inp_sz, grad_inp_ptr, inp_bs: triton.language.constexpr, dtype: triton.language.constexpr
+    ):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz

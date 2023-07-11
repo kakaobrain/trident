@@ -19,14 +19,14 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('knl_sz', [2, 3, 4, 5, 6, 7, 8])
+@pytest.mark.parametrize("knl_sz", [2, 3, 4, 5, 6, 7, 8])
 def test_function(knl_sz, dtype, device):
     inp = torch.randn(2, 3, 128, 128, dtype=dtype, device=device)
 
     assert util.equal(torch.nn.functional.max_pool2d(inp, knl_sz), trident.function.max_pool2d(inp, knl_sz))
 
 
-@pytest.mark.parametrize('knl_sz', [32, 64, 96, 128])
+@pytest.mark.parametrize("knl_sz", [32, 64, 96, 128])
 def test_forward(knl_sz, dtype, device):
     inp = torch.randn(10, 7, 256, 256, dtype=dtype, device=device)
 

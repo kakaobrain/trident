@@ -15,20 +15,16 @@
 import setuptools
 
 setuptools.setup(
-    name='trident',
-    version='0.1.0',
-    description='A performance library for machine learning applications',
-    author='Kakao Brain Corp',
+    name="trident",
+    version="0.1.0",
+    description="A performance library for machine learning applications",
+    author="Kakao Brain Corp",
     packages=setuptools.find_packages(),
-    install_requires=[
-        'pytest',
-        'matplotlib',
-        'pandas'
-    ],
+    install_requires=["pytest", "matplotlib", "pandas"],
     classifiers=[
-        'Development Status :: 1 - Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache License 2.0',
-        'Programming Language :: Python :: 3.8'
-    ]
+        "Development Status :: 1 - Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache License 2.0",
+        "Programming Language :: Python :: 3.8",
+    ],
 )

@@ -14,7 +14,7 @@
 
 import triton
 
-from trident import language, kernel
+from trident import kernel, language
 
 
 class Softmax:
@@ -30,13 +30,13 @@ class Softmax:
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
-            inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
+            inp = triton.language.load(inp_ptr + blk, msk, -float("inf"))
             num = language.exp(inp - max)
             acc += triton.language.sum(num, 0)
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
-            inp = triton.language.load(inp_ptr + blk, msk, -float('inf'))
+            inp = triton.language.load(inp_ptr + blk, msk, -float("inf"))
             out = language.exp(inp - max) / acc
             triton.language.store(out_ptr + blk, out, msk)
 
