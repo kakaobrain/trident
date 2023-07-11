@@ -19,3 +19,11 @@ detail.
 ```bash
 bash install_package.sh
 ```
+
+## 🧑‍💻Contribution
+
+You must set up `pre-commit` to maintain the consistent coding style.
+
+```bash
+pre-commit install
+```
