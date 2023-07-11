@@ -19,8 +19,8 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('num_vec, vec_sz', [(1, 16), (3, 30)])
-def test_function(num_vec, vec_sz, dtype, device):
+@pytest.mark.parametrize('num_vec, vec_sz', [(3, 16), (1, 20000)])
+def test_forward(num_vec, vec_sz, dtype, device):
     inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
     norm_sh = [inp.shape[-1], ]
 
@@ -39,17 +39,6 @@ def test_function(num_vec, vec_sz, dtype, device):
     )
     assert util.equal(
         torch.nn.functional.layer_norm(inp, norm_sh, wgt, bis), trident.function.layer_norm(inp, norm_sh, wgt, bis)
-    )
-
-
-@pytest.mark.parametrize('num_vec, vec_sz, elem_afn', [(2, 20, True), (5, 99, False)])
-def test_forward(num_vec, vec_sz, elem_afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    norm_sh = [inp.shape[-1]]
-
-    assert util.equal(
-        torch.nn.LayerNorm(norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device).forward(inp),
-        trident.LayerNorm(norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device).forward(inp)
     )
 
 

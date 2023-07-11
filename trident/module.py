@@ -14,7 +14,7 @@
 
 import torch
 
-from trident import operation
+from trident import function, operation
 
 
 class AdaptiveAvgPool2d(torch.nn.Module):
@@ -204,12 +204,14 @@ class LayerNorm(torch.nn.Module):
         self.device = device
         self.dtype = dtype
 
+        cfg = {'device': device, 'dtype': dtype}
+
         if elementwise_affine:
-            self.weight = torch.nn.Parameter(torch.empty(normalized_shape, device=device, dtype=dtype).fill_(1))
-            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, device=device, dtype=dtype))
+            self.weight = torch.nn.Parameter(torch.empty(normalized_shape, **cfg).fill_(1))
+            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, **cfg))
         else:
-            self.weight = None
-            self.bias = None
+            self.register_parameter('weight', None)
+            self.register_parameter('bias', None)
 
     def forward(self, input):
         """
@@ -221,11 +223,7 @@ class LayerNorm(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        inp = input.view(-1, self.normalized_shape[0])
-        mean = torch.empty(inp.shape[0], device=self.device, dtype=self.dtype)
-        std = torch.empty(inp.shape[0], device=self.device, dtype=self.dtype)
-
-        return operation.LayerNorm.apply(input, self.normalized_shape, self.weight, self.bias, self.eps, mean, std)
+        return function.layer_norm(input, self.normalized_shape, self.weight, self.bias, self.eps)
 
 
 class LeakyReLU(torch.nn.Module):

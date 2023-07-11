@@ -15,7 +15,6 @@
 import functools
 
 import torch
-import triton
 
 from trident import kernel, util
 
@@ -27,49 +26,57 @@ class LayerNorm(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        inp, norm_sh, wgt, bis, eps, mean, std = inputs
-        ctx.save_for_backward(inp, wgt, bis, mean, std)
+        inp, norm_sh, wgt, bis, eps = inputs
+        ctx.save_for_backward(inp, wgt, bis)
         ctx.norm_sh = norm_sh
+        ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return LayerNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.norm_sh)
+        return LayerNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.norm_sh, ctx.eps)
 
     @staticmethod
-    def __forward(inp, norm_sh, wgt, bis, eps, mean, std):
+    def __forward(inp, norm_sh, wgt, bis, eps):
         vec_sz = LayerNorm.__get_vec_sz(norm_sh)
         num_vec = inp.numel() // vec_sz
 
-        def grid(meta):
-            return (num_vec,)
-
         out = torch.empty_like(inp)
-        blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
-        dtype = util.map_dtype(inp.dtype)
 
-        kernel.LayerNorm.forward[grid](inp.view(num_vec, vec_sz), vec_sz, wgt, bis, eps, mean, std,
-                                       out.view(num_vec, vec_sz), blk_sz=blk_sz, dtype=dtype)
+        def grid(meta):
+            return [num_vec]
+
+        cfg = {
+            'blk_sz': util.get_block_size(vec_sz, inp.element_size()),
+            'dtype': util.map_dtype(inp.dtype),
+            'num_warps': util.get_num_warps(vec_sz, inp.element_size())
+        }
+
+        kernel.LayerNorm.forward[grid](inp, vec_sz, wgt, bis, eps, out, **cfg)
 
         return out
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, mean, std, norm_sh):
+    def __backward(grad_out, inp, wgt, bis, norm_sh, eps):
         vec_sz = LayerNorm.__get_vec_sz(norm_sh)
         num_vec = inp.numel() // vec_sz
-
-        def grid(meta):
-            return (num_vec,)
 
         grad_inp = torch.empty_like(inp)
         grad_wgt = None if wgt is None else torch.zeros_like(wgt)
         grad_bis = None if bis is None else torch.zeros_like(bis)
-        blk_sz = util.get_proper_block_size(vec_sz, inp.element_size())
+
+        def grid(meta):
+            return [num_vec]
 
         # TODO: Create a tensor in a kernel after a bug of Triton is fixed.
         wgt = torch.zeros(vec_sz, device='cuda').fill_(1) if wgt is None else wgt
 
-        kernel.LayerNorm.backward[grid](grad_out, inp, grad_inp, vec_sz, wgt, grad_wgt, grad_bis, mean, std,
-                                        blk_sz=blk_sz)
+        cfg = {
+            'blk_sz': util.get_block_size(vec_sz, inp.element_size()),
+            'dtype': util.map_dtype(inp.dtype),
+            'num_warps': util.get_num_warps(vec_sz, inp.element_size())
+        }
+
+        kernel.LayerNorm.backward[grid](grad_out, inp, grad_inp, vec_sz, wgt, grad_wgt, grad_bis, eps, **cfg)
 
         return grad_inp, None, grad_wgt, grad_bis, None, None, None, None,
 
