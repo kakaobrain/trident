@@ -20,9 +20,18 @@ from trident import language
 class BatchNorm:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, vec_sz, bt_sz, wgt_ptr, bis_ptr, eps,
-                running_mean_ptr, running_var_ptr, out_ptr,
-                blk_sz: triton.language.constexpr):
+    def forward(
+        inp_ptr,
+        vec_sz,
+        bt_sz,
+        wgt_ptr,
+        bis_ptr,
+        eps,
+        running_mean_ptr,
+        running_var_ptr,
+        out_ptr,
+        blk_sz: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, blk_sz)
         inp_blk = blk * vec_sz + pid
@@ -52,9 +61,18 @@ class BatchNorm:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, inp_ptr, grad_inp_ptr, vec_sz, bt_sz, wgt_ptr,
-                 grad_wgt_ptr, grad_bis_ptr, eps,
-                 blk_sz: triton.language.constexpr):
+    def backward(
+        grad_out_ptr,
+        inp_ptr,
+        grad_inp_ptr,
+        vec_sz,
+        bt_sz,
+        wgt_ptr,
+        grad_wgt_ptr,
+        grad_bis_ptr,
+        eps,
+        blk_sz: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, blk_sz)
         inp_blk = blk * vec_sz + pid

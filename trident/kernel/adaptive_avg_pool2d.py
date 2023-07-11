@@ -20,10 +20,22 @@ from trident import language
 class AdaptiveAvgPool2d:
     @staticmethod
     @triton.jit
-    def forward(x_ptr, x_batch_stride, x_channel_stride, x_row_stride,
-                y_ptr, y_batch_stride, y_channel_stride, y_row_stride,
-                num_channels, num_rows, num_cols, output_size,
-                kernel_size: triton.language.constexpr, block_size: triton.language.constexpr):
+    def forward(
+        x_ptr,
+        x_batch_stride,
+        x_channel_stride,
+        x_row_stride,
+        y_ptr,
+        y_batch_stride,
+        y_channel_stride,
+        y_row_stride,
+        num_channels,
+        num_rows,
+        num_cols,
+        output_size,
+        kernel_size: triton.language.constexpr,
+        block_size: triton.language.constexpr,
+    ):
         program_id = triton.language.program_id(0)
 
         num_blocks = output_size // block_size
@@ -35,7 +47,7 @@ class AdaptiveAvgPool2d:
         col = block * block_size
 
         row_offset = (row * (num_rows / output_size)).to(triton.language.int32)
-        col_offsets = ((triton.language.arange(0, block_size) + col) * (num_cols / output_size))
+        col_offsets = (triton.language.arange(0, block_size) + col) * (num_cols / output_size)
         col_offsets = col_offsets.to(triton.language.int32)
 
         x_ptr += batch * x_batch_stride + channel * x_channel_stride

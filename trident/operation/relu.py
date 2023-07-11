@@ -21,7 +21,7 @@ from trident import kernel
 class ReLU(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        x, = args
+        (x,) = args
 
         assert x.is_cuda and x.is_contiguous()
 
@@ -30,21 +30,20 @@ class ReLU(torch.autograd.Function):
 
         assert y.is_cuda and y.is_contiguous()
 
-        grid = lambda meta: (x.shape[0], triton.cdiv(x.shape[1], meta['block_size']))
-        kernel.ReLU.forward[grid](x, y, x.stride(0), x.shape[1],
-                                  block_size=block_size)
+        grid = lambda meta: (x.shape[0], triton.cdiv(x.shape[1], meta["block_size"]))
+        kernel.ReLU.forward[grid](x, y, x.stride(0), x.shape[1], block_size=block_size)
 
         return y
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        x, = inputs
+        (x,) = inputs
 
         ctx.save_for_backward(x)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        x, = ctx.saved_tensors
+        (x,) = ctx.saved_tensors
 
         assert x.is_cuda and x.is_contiguous()
 
@@ -53,8 +52,7 @@ class ReLU(torch.autograd.Function):
 
         assert dx.is_cuda and dx.is_contiguous()
 
-        grid = lambda meta: (x.shape[0], triton.cdiv(x.shape[1], meta['block_size']))
-        kernel.ReLU.backward[grid](dx, x, x.stride(0), x.shape[1],
-                                   block_size=block_size)
+        grid = lambda meta: (x.shape[0], triton.cdiv(x.shape[1], meta["block_size"]))
+        kernel.ReLU.backward[grid](dx, x, x.stride(0), x.shape[1], block_size=block_size)
 
         return grad_outputs[0] * dx, None

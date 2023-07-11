@@ -60,8 +60,9 @@ class AdaptiveAvgPool2d(torch.nn.Module):
 
 
 class BatchNorm1d(torch.nn.Module):
-    def __init__(self, num_features, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True,
-                 device=None, dtype=None):
+    def __init__(
+        self, num_features, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True, device=None, dtype=None
+    ):
         """
         Applies Batch Normalization over a 2D or 3D inputs.
 
@@ -86,15 +87,15 @@ class BatchNorm1d(torch.nn.Module):
             self.weight = torch.nn.Parameter(torch.empty(num_features, device=device, dtype=dtype).fill_(1))
             self.bias = torch.nn.Parameter(torch.zeros(num_features, device=device, dtype=dtype))
         else:
-            self.register_parameter('weight', None)
-            self.register_parameter('bias', None)
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
 
         if self.track_running_stats:
             self.running_mean = torch.zeros(num_features, device=device, dtype=dtype)
             self.running_var = torch.ones(num_features, device=device, dtype=dtype)
         else:
-            self.register_parameter('running_mean', None)
-            self.register_parameter('running_var', None)
+            self.register_parameter("running_mean", None)
+            self.register_parameter("running_var", None)
 
     def forward(self, input):
         """
@@ -130,8 +131,8 @@ class Conv2d(torch.nn.Module):
         super().__init__()
 
         self.in_channels = in_channels
-        self.weight = torch.empty(out_channels, in_channels, kernel_size, kernel_size, device='cuda', dtype=torch.float)
-        self.bias = torch.empty(out_channels, device='cuda', dtype=torch.float) if bias else None
+        self.weight = torch.empty(out_channels, in_channels, kernel_size, kernel_size, device="cuda", dtype=torch.float)
+        self.bias = torch.empty(out_channels, device="cuda", dtype=torch.float) if bias else None
 
     def forward(self, input):
         """
@@ -261,14 +262,14 @@ class LayerNorm(torch.nn.Module):
         self.device = device
         self.dtype = dtype
 
-        cfg = {'device': device, 'dtype': dtype}
+        cfg = {"device": device, "dtype": dtype}
 
         if elementwise_affine:
             self.weight = torch.nn.Parameter(torch.empty(normalized_shape, **cfg).fill_(1))
             self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, **cfg))
         else:
-            self.register_parameter('weight', None)
-            self.register_parameter('bias', None)
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
 
     def forward(self, input):
         """
@@ -320,8 +321,8 @@ class Linear(torch.nn.Module):
         """
         super().__init__()
 
-        self.weight = torch.nn.Parameter(torch.randn(out_features, in_features, device='cuda'))
-        self.bias = torch.nn.Parameter(torch.randn(out_features, device='cuda')) if bias else None
+        self.weight = torch.nn.Parameter(torch.randn(out_features, in_features, device="cuda"))
+        self.bias = torch.nn.Parameter(torch.randn(out_features, device="cuda")) if bias else None
 
     def forward(self, input):
         """
@@ -392,7 +393,7 @@ class PReLU(torch.nn.Module):
         """
         super().__init__()
 
-        self.weight = torch.nn.Parameter(torch.empty(num_parameters, device='cuda').fill_(init))
+        self.weight = torch.nn.Parameter(torch.empty(num_parameters, device="cuda").fill_(init))
 
     def forward(self, input):
         """

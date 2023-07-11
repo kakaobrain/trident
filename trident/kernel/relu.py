@@ -20,8 +20,7 @@ from trident import language
 class ReLU:
     @staticmethod
     @triton.jit
-    def forward(x_ptr, y_ptr, stride, size,
-                block_size: triton.language.constexpr):
+    def forward(x_ptr, y_ptr, stride, size, block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
         j = triton.language.program_id(1)
 
@@ -36,8 +35,7 @@ class ReLU:
 
     @staticmethod
     @triton.jit
-    def backward(dx_ptr, x_ptr, stride, size,
-                 block_size: triton.language.constexpr):
+    def backward(dx_ptr, x_ptr, stride, size, block_size: triton.language.constexpr):
         i = triton.language.program_id(0)
         j = triton.language.program_id(1)
 

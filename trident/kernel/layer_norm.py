@@ -14,14 +14,22 @@
 
 import triton
 
-from trident import language, kernel
+from trident import kernel, language
 
 
 class LayerNorm:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, vec_sz, wgt_ptr, bis_ptr, eps, out_ptr,
-                blk_sz: triton.language.constexpr, dtype: triton.language.constexpr):
+    def forward(
+        inp_ptr,
+        vec_sz,
+        wgt_ptr,
+        bis_ptr,
+        eps,
+        out_ptr,
+        blk_sz: triton.language.constexpr,
+        dtype: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         off = pid * vec_sz
 
@@ -49,8 +57,18 @@ class LayerNorm:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, inp_ptr, grad_inp_ptr, vec_sz, wgt_ptr, grad_wgt_ptr, grad_bis_ptr, eps,
-                 blk_sz: triton.language.constexpr, dtype: triton.language.constexpr):
+    def backward(
+        grad_out_ptr,
+        inp_ptr,
+        grad_inp_ptr,
+        vec_sz,
+        wgt_ptr,
+        grad_wgt_ptr,
+        grad_bis_ptr,
+        eps,
+        blk_sz: triton.language.constexpr,
+        dtype: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         blk_off = pid * vec_sz
 

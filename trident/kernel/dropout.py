@@ -18,8 +18,7 @@ import triton
 class Dropout:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, inp_sz, p, seed, out_ptr,
-                inp_bs: triton.language.constexpr):
+    def forward(inp_ptr, inp_sz, p, seed, out_ptr, inp_bs: triton.language.constexpr):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz
@@ -32,8 +31,7 @@ class Dropout:
 
     @staticmethod
     @triton.jit
-    def backward(grad_out_ptr, out_ptr, out_sz, grad_inp_ptr,
-                 out_bs: triton.language.constexpr):
+    def backward(grad_out_ptr, out_ptr, out_sz, grad_inp_ptr, out_bs: triton.language.constexpr):
         pid = triton.language.program_id(0)
         blk = triton.language.arange(0, out_bs) + pid * out_bs
         msk = blk < out_sz

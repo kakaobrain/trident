@@ -33,28 +33,53 @@ class Linear(torch.autograd.Function):
 
         m, k = x.shape
         n, _ = w.shape
-        grid = lambda meta: (triton.cdiv(m, meta['BLOCK_SIZE_M']), triton.cdiv(n, meta['BLOCK_SIZE_N']),)
-        y = torch.empty((m, n), device='cuda')
+        grid = lambda meta: (
+            triton.cdiv(m, meta["BLOCK_SIZE_M"]),
+            triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+        )
+        y = torch.empty((m, n), device="cuda")
 
         if b is None:
-            kernel.linear[grid](x, x.stride(0), x.stride(1),
-                                y, y.stride(0), y.stride(1),
-                                w, w.stride(0), w.stride(1),
-                                None, 0,
-                                m, k, n,
-                                ACTIVATION=activation,
-                                BLOCK_SIZE_K=16)
+            kernel.linear[grid](
+                x,
+                x.stride(0),
+                x.stride(1),
+                y,
+                y.stride(0),
+                y.stride(1),
+                w,
+                w.stride(0),
+                w.stride(1),
+                None,
+                0,
+                m,
+                k,
+                n,
+                ACTIVATION=activation,
+                BLOCK_SIZE_K=16,
+            )
         else:
             assert b.is_cuda and b.is_contiguous()
             assert w.shape[0] == b.shape[0] if b.dim() == 1 else b.shape[1]
 
-            kernel.linear[grid](x, x.stride(0), x.stride(1),
-                                y, y.stride(0), y.stride(1),
-                                w, w.stride(0), w.stride(1),
-                                b, b.stride(0) if b.dim() == 1 else b.stride(1),
-                                m, k, n,
-                                ACTIVATION=activation,
-                                BLOCK_SIZE_K=16)
+            kernel.linear[grid](
+                x,
+                x.stride(0),
+                x.stride(1),
+                y,
+                y.stride(0),
+                y.stride(1),
+                w,
+                w.stride(0),
+                w.stride(1),
+                b,
+                b.stride(0) if b.dim() == 1 else b.stride(1),
+                m,
+                k,
+                n,
+                ACTIVATION=activation,
+                BLOCK_SIZE_K=16,
+            )
 
         return y
 

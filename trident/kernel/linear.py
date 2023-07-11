@@ -23,23 +23,36 @@ def get_configs_linear_io_bound():
     for block_size_n in [64, 128]:
         for num_stages in [2, 3]:
             for num_warps in [2, 4]:
-                configs.append(triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': block_size_n},
-                                             num_stages=num_stages, num_warps=num_warps))
+                configs.append(
+                    triton.Config(
+                        {"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": block_size_n}, num_stages=num_stages, num_warps=num_warps
+                    )
+                )
     return configs
 
 
-@triton.autotune(
-    configs=get_configs_linear_io_bound(),
-    key=['size_m', 'size_n']
-)
+@triton.autotune(configs=get_configs_linear_io_bound(), key=["size_m", "size_n"])
 @triton.jit
-def linear(x_ptr, stride_x_m, stride_x_k,
-           y_ptr, stride_y_m, stride_y_n,
-           w_ptr, stride_w_n, stride_w_k,
-           b_ptr, stride_b_n,
-           size_m, size_k, size_n,
-           ACTIVATION: tl.constexpr,
-           BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_K: tl.constexpr, BLOCK_SIZE_N: tl.constexpr):
+def linear(
+    x_ptr,
+    stride_x_m,
+    stride_x_k,
+    y_ptr,
+    stride_y_m,
+    stride_y_n,
+    w_ptr,
+    stride_w_n,
+    stride_w_k,
+    b_ptr,
+    stride_b_n,
+    size_m,
+    size_k,
+    size_n,
+    ACTIVATION: tl.constexpr,
+    BLOCK_SIZE_M: tl.constexpr,
+    BLOCK_SIZE_K: tl.constexpr,
+    BLOCK_SIZE_N: tl.constexpr,
+):
     i = tl.program_id(0)
     j = tl.program_id(1)
 
@@ -69,9 +82,9 @@ def linear(x_ptr, stride_x_m, stride_x_k,
         b = tl.load(b_ptr, mask_n, 0.0)
         total += b[None, :]
 
-    if ACTIVATION == 'relu':
+    if ACTIVATION == "relu":
         total = language.relu(total)
-    elif ACTIVATION == 'leaky_relu':
+    elif ACTIVATION == "leaky_relu":
         total = language.leaky_relu(total, 1e-2)
 
     y_ptr += range_m[:, None] * stride_y_m + range_n[None, :] * stride_y_n

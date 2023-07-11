@@ -36,7 +36,7 @@ class GELU(torch.autograd.Function):
         inp_sz = inp.numel()
 
         def grid(meta):
-            return [triton.cdiv(inp_sz, meta['blk_sz'])]
+            return [triton.cdiv(inp_sz, meta["blk_sz"])]
 
         out = torch.empty_like(inp)
         blk_sz = util.get_block_size(inp_sz, inp.element_size())
@@ -50,7 +50,7 @@ class GELU(torch.autograd.Function):
         inp_sz = inp.numel()
 
         def grid(meta):
-            return [triton.cdiv(inp_sz, meta['blk_sz'])]
+            return [triton.cdiv(inp_sz, meta["blk_sz"])]
 
         grad_inp = torch.empty_like(inp)
         blk_sz = util.get_block_size(inp_sz, inp.element_size())

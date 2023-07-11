@@ -20,11 +20,33 @@ from trident import language
 class Conv2d:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, inp_ch, inp_h, inp_w, inp_bt_st, inp_ch_st, inp_h_st,
-                wgt_ptr, wgt_ch, wgt_h, wgt_w, wgt_bt_st, wgt_ch_st, bis_ptr,
-                out_ptr, out_ch, out_h, out_w, out_bt_st, out_ch_st, out_h_st,
-                wgt_c_bs: triton.language.constexpr, wgt_h_bs: triton.language.constexpr,
-                wgt_w_bs: triton.language.constexpr, grp_sz: triton.language.constexpr):
+    def forward(
+        inp_ptr,
+        inp_ch,
+        inp_h,
+        inp_w,
+        inp_bt_st,
+        inp_ch_st,
+        inp_h_st,
+        wgt_ptr,
+        wgt_ch,
+        wgt_h,
+        wgt_w,
+        wgt_bt_st,
+        wgt_ch_st,
+        bis_ptr,
+        out_ptr,
+        out_ch,
+        out_h,
+        out_w,
+        out_bt_st,
+        out_ch_st,
+        out_h_st,
+        wgt_c_bs: triton.language.constexpr,
+        wgt_h_bs: triton.language.constexpr,
+        wgt_w_bs: triton.language.constexpr,
+        grp_sz: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
         num_grp = language.cdiv(out_w, grp_sz)
         bt = language.batch(pid, out_ch, num_grp, out_w)

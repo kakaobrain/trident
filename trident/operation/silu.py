@@ -25,7 +25,7 @@ class SiLU(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        inp, = inputs
+        (inp,) = inputs
         ctx.save_for_backward(inp)
 
     @staticmethod
@@ -38,14 +38,12 @@ class SiLU(torch.autograd.Function):
         inp_sz = inp.numel()
 
         def grid(meta):
-            return (triton.cdiv(inp_sz, meta['inp_bs']),)
-
+            return (triton.cdiv(inp_sz, meta["inp_bs"]),)
 
         inp_bs = min(triton.next_power_of_2(inp_sz), 1024)
         dtype = inp.dtype
 
-        kernel.SiLU.forward[grid](inp, inp_sz, out,
-                                  inp_bs=inp_bs, dtype=dtype)
+        kernel.SiLU.forward[grid](inp, inp_sz, out, inp_bs=inp_bs, dtype=dtype)
 
         return out
 
@@ -55,12 +53,11 @@ class SiLU(torch.autograd.Function):
         inp_sz = inp.numel()
 
         def grid(meta):
-            return (triton.cdiv(inp_sz, meta['inp_bs']),)
+            return (triton.cdiv(inp_sz, meta["inp_bs"]),)
 
         inp_bs = min(triton.next_power_of_2(inp_sz), 1024)
         dtype = inp.dtype
 
-        kernel.SiLU.backward[grid](grad_out, inp, inp_sz, grad_inp,
-                                   inp_bs=inp_bs, dtype=dtype)
+        kernel.SiLU.backward[grid](grad_out, inp, inp_sz, grad_inp, inp_bs=inp_bs, dtype=dtype)
 
         return grad_inp, None

@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize('tgt_sz', [2, 4, 8])
+@pytest.mark.parametrize("tgt_sz", [2, 4, 8])
 def test_function(tgt_sz, dtype, device):
     inp = torch.randn(4, 4, 128, 128, dtype=dtype, device=device)
 
@@ -28,7 +28,7 @@ def test_function(tgt_sz, dtype, device):
     )
 
 
-@pytest.mark.parametrize('tgt_sz', [2, 4, 8])
+@pytest.mark.parametrize("tgt_sz", [2, 4, 8])
 def test_forward(tgt_sz, dtype, device):
     inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
 

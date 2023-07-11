@@ -17,8 +17,15 @@ import triton
 
 def make_benchmark(title, x_name, x_vals, args):
     return triton.testing.Benchmark(
-            [x_name], x_vals, 'ctx', ['torch', 'trident'], ['torch', 'trident'], title, args,
-            ylabel='milliseconds', x_log=True
+        [x_name],
+        x_vals,
+        "ctx",
+        ["torch", "trident"],
+        ["torch", "trident"],
+        title,
+        args,
+        ylabel="milliseconds",
+        x_log=True,
     )
 
 

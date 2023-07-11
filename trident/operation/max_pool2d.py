@@ -35,16 +35,30 @@ class MaxPool2d(torch.autograd.Function):
         out_h = MaxPool2d.__get_out_size(inp_h, knl_sz)
         out_w = MaxPool2d.__get_out_size(inp_w, knl_sz)
 
-        out = torch.empty(inp_bt, inp_ch, out_h, out_w, dtype=inp.dtype, device='cuda')
+        out = torch.empty(inp_bt, inp_ch, out_h, out_w, dtype=inp.dtype, device="cuda")
 
         assert out.is_contiguous()
 
-        grid = lambda meta: (inp_bt * inp_ch * out_h * triton.cdiv(out_w, meta['grp_sz']),)
+        grid = lambda meta: (inp_bt * inp_ch * out_h * triton.cdiv(out_w, meta["grp_sz"]),)
         grp_sz = math.clamp(128 // triton.next_power_of_2(knl_sz), 1, triton.next_power_of_2(out_w))
 
-        kernel.MaxPool2d.forward[grid](inp, inp_ch, inp_w, inp.stride(0), inp.stride(1), inp.stride(2),
-                                       out, out_h, out_w, out.stride(0), out.stride(1), out.stride(2),
-                                       knl_sz, triton.next_power_of_2(knl_sz), grp_sz)
+        kernel.MaxPool2d.forward[grid](
+            inp,
+            inp_ch,
+            inp_w,
+            inp.stride(0),
+            inp.stride(1),
+            inp.stride(2),
+            out,
+            out_h,
+            out_w,
+            out.stride(0),
+            out.stride(1),
+            out.stride(2),
+            knl_sz,
+            triton.next_power_of_2(knl_sz),
+            grp_sz,
+        )
 
         return out
 

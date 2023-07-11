@@ -29,9 +29,9 @@ def train(inp, tgt, mod, crit=torch.nn.MSELoss()):
 
 
 def activate(inp, act):
-    if act == 'relu':
+    if act == "relu":
         return torch.relu(inp)
-    elif act == 'leaky_relu':
+    elif act == "leaky_relu":
         return torch.nn.functional.leaky_relu(inp)
     else:
-        raise ValueError(f'{act} is not supported.')
+        raise ValueError(f"{act} is not supported.")

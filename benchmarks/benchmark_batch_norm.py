@@ -14,29 +14,29 @@
 
 import torch
 import triton
-
-import trident
 import util
 
+import trident
 
-@util.report('forward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 20})
+
+@util.report("forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 20})
 def bench_batch_norm_forward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device='cuda')
+    inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == 'torch':
+    if ctx == "torch":
         return triton.testing.do_bench(lambda: torch.nn.functional.batch_norm(inp, None, None, training=True))
     else:
         return triton.testing.do_bench(lambda: trident.function.batch_norm(inp, training=True))
 
 
-@util.report('backward', 'vec_sz', [256 * i for i in range(1, 21)], {'num_vec': 20})
+@util.report("backward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 20})
 def bench_batch_norm_backward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device='cuda', requires_grad=True)
+    inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
 
-    if ctx == 'torch':
-        lyr = torch.nn.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device='cuda')
+    if ctx == "torch":
+        lyr = torch.nn.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")
     else:
-        lyr = trident.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device='cuda')
+        lyr = trident.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")
 
     out = lyr.forward(inp)
     grad_out = torch.ones_like(inp)
@@ -45,9 +45,9 @@ def bench_batch_norm_backward(num_vec, vec_sz, ctx):
 
 
 def run_benchmarks(mode, show_plots):
-    if mode == 'forward':
+    if mode == "forward":
         bench_batch_norm_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == 'backward':
+    elif mode == "backward":
         bench_batch_norm_backward.run(print_data=True, show_plots=show_plots)
     else:
         bench_batch_norm_forward.run(print_data=True, show_plots=show_plots)
