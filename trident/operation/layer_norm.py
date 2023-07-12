@@ -48,9 +48,9 @@ class LayerNorm(torch.autograd.Function):
             return [num_vec]
 
         cfg = {
-            "blk_sz": util.get_block_size(vec_sz, inp.element_size()),
+            "blk_sz": util.block_size(vec_sz, inp.element_size()),
             "dtype": util.map_dtype(inp.dtype),
-            "num_warps": util.get_num_warps(vec_sz, inp.element_size()),
+            "num_warps": util.num_warps(vec_sz, inp.element_size()),
         }
 
         kernel.LayerNorm.forward[grid](inp, vec_sz, wgt, bis, eps, out, **cfg)
@@ -73,9 +73,9 @@ class LayerNorm(torch.autograd.Function):
         wgt = torch.zeros(vec_sz, device="cuda").fill_(1) if wgt is None else wgt
 
         cfg = {
-            "blk_sz": util.get_block_size(vec_sz, inp.element_size()),
+            "blk_sz": util.block_size(vec_sz, inp.element_size()),
             "dtype": util.map_dtype(inp.dtype),
-            "num_warps": util.get_num_warps(vec_sz, inp.element_size()),
+            "num_warps": util.num_warps(vec_sz, inp.element_size()),
         }
 
         kernel.LayerNorm.backward[grid](

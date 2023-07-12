@@ -224,7 +224,16 @@ class GELU(torch.nn.Module):
 
 
 class InstanceNorm2d(torch.nn.Module):
-    def __init__(self, num_features, eps=1e-05, dtype=None, device=None):
+    def __init__(
+        self,
+        num_features,
+        eps=1e-5,
+        momentum=0.1,
+        affine=False,
+        track_running_stats=False,
+        dtype=None,
+        device=None,
+    ):
         """
         Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
         Ingredient for Fast Stylization.
@@ -235,10 +244,26 @@ class InstanceNorm2d(torch.nn.Module):
         """
         super().__init__()
 
+        kwargs = {"device": device, "dtype": dtype}
         self.num_features = num_features
         self.eps = eps
-        self.dtype = dtype
-        self.device = device
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
+
+        if self.affine:
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **kwargs))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, **kwargs))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+        if self.track_running_stats:
+            self.register_buffer("running_mean", torch.zeros(num_features, **kwargs))
+            self.register_buffer("running_var", torch.ones(num_features, **kwargs))
+        else:
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
 
     def forward(self, input):
         """
@@ -250,24 +275,28 @@ class InstanceNorm2d(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        assert input.dim() == 3 or input.dim() == 4
+        inp = input.view(input.shape[0], input.shape[1], -1)
+        out = function.instance_norm(
+            inp,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            self.track_running_stats,
+            self.momentum,
+            self.eps,
+        )
 
-        inp = InstanceNorm2d.__view(input)
-        out = operation.InstanceNorm.apply(inp, self.eps, self.dtype)
+        # if self.track_running_stats:
+        #     self.running_mean = None
+        #     self.running_mean = input.mean(
+        #         axis=0
+        #     ) * self.momentum + self.running_mean * (1 - self.momentum)
+        #     self.running_var = input.var(axis=0) * self.momentum + self.running_var * (
+        #         1 - self.momentum
+        #     )
 
         return out.view(input.shape)
-
-    @staticmethod
-    def __shape(x):
-        if x.dim() == 3:
-            return 1, x.shape[0], x.shape[1], x.shape[2]
-        else:
-            return x.shape
-
-    @staticmethod
-    def __view(x):
-        num_batches, num_channels, height, width = InstanceNorm2d.__shape(x)
-        return x.view(num_batches, num_channels, height * width)
 
 
 class LayerNorm(torch.nn.Module):
