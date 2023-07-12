@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "instance norm forward",
-    "vec_sz",
+    ["vec_sz"],
     [256 * i for i in range(1, 21)],
     {"num_bt": 32, "num_ch": 64},
 )

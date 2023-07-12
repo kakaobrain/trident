@@ -21,72 +21,59 @@ from trident import kernel
 class Linear(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        x, w, b, activation = args
+        return Linear.__forward(*args, **kwargs)
 
-        assert x.is_cuda and x.is_contiguous()
-        assert w.is_cuda and w.is_contiguous()
-        assert x.shape[1] == w.shape[1]
+    @staticmethod
+    def setup_context(ctx, inputs, output):
+        inp, wgt, bis, act = inputs
+        ctx.save_for_backward(inp, wgt, output)
+        ctx.act = act
 
-        if b is not None:
-            assert b.is_cuda and b.is_contiguous()
-            assert w.shape[0] == b.shape[0] if b.dim() == 1 else b.shape[1]
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        return Linear.__backward(*grad_outputs, *ctx.saved_tensors, ctx.act)
 
-        m, k = x.shape
-        n, _ = w.shape
+    @staticmethod
+    def __forward(inp, wgt, bis, act):
+        assert inp.is_cuda and inp.is_contiguous()
+        assert wgt.is_cuda and wgt.is_contiguous()
+        assert inp.shape[1] == wgt.shape[1]
+
+        if bis is not None:
+            assert bis.is_cuda and bis.is_contiguous()
+            assert wgt.shape[0] == bis.shape[0] if bis.dim() == 1 else bis.shape[1]
+            bis_st = bis.stride(0) if bis.dim() == 1 else bis.stride(1)
+        else:
+            bis_st = 0
+
+        m, k = inp.shape
+        n, _ = wgt.shape
         grid = lambda meta: (
-            triton.cdiv(m, meta["BLOCK_SIZE_M"]),
-            triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+            triton.cdiv(m, meta["blk_sz_m"]),
+            triton.cdiv(n, meta["blk_sz_n"]),
         )
         y = torch.empty((m, n), device="cuda")
 
-        if b is None:
-            kernel.linear[grid](
-                x,
-                x.stride(0),
-                x.stride(1),
-                y,
-                y.stride(0),
-                y.stride(1),
-                w,
-                w.stride(0),
-                w.stride(1),
-                None,
-                0,
-                m,
-                k,
-                n,
-                ACTIVATION=activation,
-                BLOCK_SIZE_K=16,
-            )
-        else:
-            assert b.is_cuda and b.is_contiguous()
-            assert w.shape[0] == b.shape[0] if b.dim() == 1 else b.shape[1]
-
-            kernel.linear[grid](
-                x,
-                x.stride(0),
-                x.stride(1),
-                y,
-                y.stride(0),
-                y.stride(1),
-                w,
-                w.stride(0),
-                w.stride(1),
-                b,
-                b.stride(0) if b.dim() == 1 else b.stride(1),
-                m,
-                k,
-                n,
-                ACTIVATION=activation,
-                BLOCK_SIZE_K=16,
-            )
+        kernel.Linear.forward[grid](
+            inp,
+            inp.stride(0),
+            inp.stride(1),
+            y,
+            y.stride(0),
+            y.stride(1),
+            wgt,
+            wgt.stride(0),
+            wgt.stride(1),
+            bis,
+            bis_st,
+            m,
+            k,
+            n,
+            act=act,
+        )
 
         return y
 
     @staticmethod
-    def setup_context(ctx, inputs, output):
-        pass
-
-    @staticmethod
-    def backward(ctx, *grad_outputs):
-        raise NotImplementedError("The backward of Linear isn't implemented.")
+    def __backward(grad_out, inp, wgt, out, act):
+        return kernel.Linear.backward(grad_out, inp, wgt, out, act)

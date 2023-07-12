@@ -19,7 +19,9 @@ import util
 import trident
 
 
-@util.report("relu forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 32})
+@util.report(
+    "relu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 32}
+)
 def bench_relu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 

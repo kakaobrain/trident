@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("linear forward", "k", [256 * i for i in range(1, 21)], {"m": 32, "n": 32})
+@util.report("linear forward", ["m", "k", "n"], [256 * i for i in range(1, 15)])
 def bench_linear_forward(m, n, k, ctx):
     inp = torch.randn(m, k, device="cuda")
     wgt = torch.randn(n, k, device="cuda")
@@ -33,10 +33,27 @@ def bench_linear_forward(m, n, k, ctx):
         return triton.testing.do_bench(lambda: trident.function.linear(inp, wgt, bis))
 
 
+@util.report("linear backward", ["m", "k", "n"], [256 * i for i in range(1, 15)])
+def bench_linear_backward(m, n, k, ctx):
+    inp = torch.randn(m, k, device="cuda")
+    wgt = torch.randn(n, k, device="cuda")
+    bis = torch.randn(n, device="cuda")
+
+    if ctx == "torch":
+        lyr = torch.nn.Linear(k, n, True, device="cuda")
+    else:
+        lyr = trident.Linear(k, n, True)
+
+    out = lyr.forward(inp)
+    grad_out = torch.ones_like(out)
+
+    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+
+
 def run_benchmarks(mode, show_plots):
     if mode == "forward":
         bench_linear_forward.run(print_data=True, show_plots=show_plots)
     elif mode == "backward":
-        pass
+        bench_linear_backward.run(print_data=True, show_plots=show_plots)
     else:
         bench_linear_forward.run(print_data=True, show_plots=show_plots)
