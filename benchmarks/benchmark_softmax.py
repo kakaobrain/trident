@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "softmax forward",
-    "vec_sz",
+    ["vec_sz"],
     [256 * i for i in range(1, 21)],
     {"num_bt": 32},
 )
@@ -36,7 +36,7 @@ def bench_softmax_forward(num_bt, vec_sz, ctx):
 
 @util.report(
     "softmax backward",
-    "vec_sz",
+    ["vec_sz"],
     [256 * i for i in range(1, 21)],
     {"num_bt": 32},
 )

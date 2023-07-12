@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "leaky relu forward",
-    "vec_sz",
+    ["vec_sz"],
     [256 * i for i in range(1, 21)],
     {"num_vec": 64},
 )

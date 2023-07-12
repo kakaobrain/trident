@@ -15,9 +15,9 @@
 import triton
 
 
-def make_benchmark(title, x_name, x_vals, args):
+def make_benchmark(title, x_names, x_vals, args):
     return triton.testing.Benchmark(
-        [x_name],
+        x_names,
         x_vals,
         "ctx",
         ["torch", "trident"],
@@ -29,5 +29,7 @@ def make_benchmark(title, x_name, x_vals, args):
     )
 
 
-def report(title, x_name, x_vals, args):
-    return triton.testing.perf_report(make_benchmark(title, x_name, x_vals, args))
+def report(title, x_names, x_vals, args=None):
+    if args is None:
+        args = {}
+    return triton.testing.perf_report(make_benchmark(title, x_names, x_vals, args))
