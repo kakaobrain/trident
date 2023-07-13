@@ -17,7 +17,7 @@ import logging
 import torch
 import triton
 
-from trident import kernel, util
+from trident import kernel, language, util
 
 
 class InstanceNorm(torch.autograd.Function):
@@ -27,15 +27,25 @@ class InstanceNorm(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        pass
+        (
+            inp,
+            running_mean,
+            running_var,
+            wgt,
+            bis,
+            eps,
+            dtype,
+        ) = inputs
+        ctx.save_for_backward(inp, wgt, bis)
+        ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        raise NotImplementedError("The backward of Instance Norm isn't implemented.")
+        return InstanceNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
 
     @staticmethod
-    def __forward(inp, eps, dtype):
-        assert inp.dim() == 3 and inp.is_cuda and inp.is_contiguous()
+    def __forward(inp, running_mean, running_var, wgt, bis, eps, dtype):
+        assert inp.is_contiguous()
 
         num_batches, num_ch, vec_sz = inp.shape
 
@@ -43,13 +53,17 @@ class InstanceNorm(torch.autograd.Function):
             return [num_batches * num_ch]
 
         out = torch.empty_like(inp)
-        vec_blk_sz = util.get_block_size(vec_sz, inp.element_size())
-        num_warps = util.get_num_warps(vec_sz, inp.element_size(), 4)
+        vec_blk_sz = util.block_size(vec_sz, inp.element_size())
+        num_warps = util.num_warps(vec_sz, inp.element_size(), 4)
 
         kernel.InstanceNorm.forward[grid](
             inp,
             num_ch,
             vec_sz,
+            running_mean,
+            running_var,
+            wgt,
+            bis,
             eps,
             out,
             vec_blk_sz,
@@ -58,3 +72,43 @@ class InstanceNorm(torch.autograd.Function):
         )
 
         return out
+
+    @staticmethod
+    def __backward(grad_out, inp, wgt, bis, eps):
+        num_bt, num_ch, vec_sz = inp.shape
+
+        def grid(meta):
+            return [num_bt * num_ch]
+
+        grad_inp = torch.empty_like(inp)
+        grad_wgt = torch.empty_like(wgt) if wgt is not None else None
+        grad_bis = torch.empty_like(bis) if bis is not None else None
+
+        bt_blk_sz = triton.next_power_of_2(num_bt)
+
+        kernel.InstanceNorm.backward[grid](
+            grad_out,
+            inp,
+            grad_inp,
+            num_ch,
+            vec_sz,
+            num_bt,
+            None,
+            None,
+            wgt,
+            grad_wgt,
+            grad_bis,
+            eps,
+            blk_sz=bt_blk_sz,
+            dtype=util.map_dtype(inp.dtype),
+        )
+
+        # if self.track_running_stats:
+        #     self.running_mean = input.mean(
+        #         axis=0
+        #     ) * self.momentum + self.running_mean * (1 - self.momentum)
+        #     self.running_var = input.var(axis=0) * self.momentum + self.running_var * (
+        #         1 - self.momentum
+        #     )
+
+        return grad_inp, None, None, grad_wgt, grad_bis, None, None

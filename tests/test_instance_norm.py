@@ -19,17 +19,9 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_ch, w, h", [(1, 64, 64), (5, 20, 20)])
-def test_function(num_ch, w, h, dtype, device):
-    inp = torch.randn(num_ch, w, h, dtype=dtype, device=device)
-
-    assert util.equal(
-        torch.nn.functional.instance_norm(inp),
-        trident.function.instance_norm(inp),
-    )
-
-
-@pytest.mark.parametrize("num_bt, num_ch, w, h", [(1, 3, 256, 256), (4, 4, 150, 150)])
+@pytest.mark.parametrize(
+    "num_bt, num_ch, w, h", [(5, 20, 256, 256), (1, 1, 2000, 2000)]
+)
 def test_forward(num_bt, num_ch, w, h, dtype, device):
     inp = torch.randn(num_bt, num_ch, w, h, dtype=dtype, device=device)
 
@@ -37,3 +29,23 @@ def test_forward(num_bt, num_ch, w, h, dtype, device):
         torch.nn.InstanceNorm2d(num_ch, dtype=dtype, device=device).forward(inp),
         trident.InstanceNorm2d(num_ch, dtype=dtype, device=device).forward(inp),
     )
+
+
+@pytest.mark.parametrize(
+    "num_bt, num_ch, w, h", [(5, 20, 256, 256), (1, 1, 2000, 2000)]
+)
+def test_backward(num_bt, num_ch, w, h, dtype, device):
+    inp = torch.randn(num_bt, num_ch, w, h, dtype=dtype, device=device)
+    tgt = torch.randn(num_bt, num_ch, w, h, dtype=dtype, device=device)
+
+    x = inp.clone()
+    a = inp.clone()
+    x.requires_grad = a.requires_grad = True
+
+    lyr0 = torch.nn.InstanceNorm2d(num_ch, dtype=dtype, device=device)
+    lyr1 = trident.InstanceNorm2d(num_ch, dtype=dtype, device=device)
+
+    util.train(x, tgt, lyr0)
+    util.train(a, tgt, lyr1)
+
+    assert util.equal(x.grad, a.grad)
