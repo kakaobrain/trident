@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("forward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 3})
+@util.report("forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
 def bench_layer_norm_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
     norm_sh = (inp.shape[-1],)
@@ -34,7 +34,7 @@ def bench_layer_norm_forward(num_vec, vec_sz, ctx):
         )
 
 
-@util.report("backward", "vec_sz", [256 * i for i in range(1, 21)], {"num_vec": 3})
+@util.report("backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
 def bench_layer_norm_backward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
     norm_sh = [inp.shape[-1]]

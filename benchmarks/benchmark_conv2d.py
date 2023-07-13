@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "conv2d forward",
-    "wgt_sz",
+    ["wgt_sz"],
     [3 * i for i in range(1, 21)],
     {"num_bt": 2, "inp_ch": 3, "inp_sz": 256, "out_ch": 8},
 )
