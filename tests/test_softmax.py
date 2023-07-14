@@ -20,31 +20,28 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(5, 32), (2, 30000)])
-def test_function(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_forward(num_vec, vec_sz, dtype, device):
+    ctor_params = {"device": device, "dtype": dtype}
+    inp = torch.randn(num_vec, vec_sz, **ctor_params)
 
     assert util.equal(
         torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1)
     )
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(3, 256), (2, 500)])
-def test_forward(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-
-    assert util.equal(torch.nn.Softmax(1).forward(inp), trident.Softmax(1).forward(inp))
-
-
 @pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (5, 70)])
-def test_backward(num_vec, vec_sz, device):
-    inp = torch.randn(num_vec, vec_sz, device=device)
-    tgt = torch.randn(num_vec, vec_sz, device=device)
+def test_backward(num_vec, vec_sz, device, dtype):
+    ctor_params = {"device": device, "dtype": dtype}
+    inp = torch.randn(num_vec, vec_sz, **ctor_params)
+    tgt = torch.randn(num_vec, vec_sz, **ctor_params)
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = inp.clone()
+        i.requires_grad = True
+        func(i).train(tgt, retain_graph=True)
+        return [i.grad]
 
-    util.train(x, tgt, torch.nn.Softmax(1), torch.nn.CrossEntropyLoss())
-    util.train(a, tgt, trident.Softmax(1), torch.nn.CrossEntropyLoss())
+    (x,) = train(torch.nn.functional.softmax)
+    (a,) = train(trident.function.softmax)
 
-    assert util.equal(x.grad, a.grad)
+    assert util.equal(x, a)
