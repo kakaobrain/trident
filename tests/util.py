@@ -19,10 +19,12 @@ def equal(a, b):
     return torch.allclose(a, b, atol=1e-2, rtol=0)
 
 
-def train(inp, tgt, mod, crit=torch.nn.MSELoss()):
+def train(inp, tgt, mod, act=None, crit=torch.nn.MSELoss()):
     out = mod(inp)
-    out.retain_grad()
+    if act is not None:
+        out = activate(out, act)
 
+    out.retain_grad()
     crit(out, tgt).backward()
 
     return out

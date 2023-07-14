@@ -349,7 +349,7 @@ class LeakyReLU(torch.nn.Module):
 
 
 class Linear(torch.nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, activation=None):
         """
         Applies Linear Transformation to an input.
 
@@ -357,17 +357,20 @@ class Linear(torch.nn.Module):
             in_features: size of each input sample
             out_features: size of each output sample
             bias: If set to False, the layer will not learn an additive bias
+            activation: activation function
         """
         super().__init__()
 
         self.weight = torch.nn.Parameter(
-            torch.randn(out_features, in_features, device="cuda")
+            torch.empty(out_features, in_features, device="cuda")
         )
-        self.bias = (
-            torch.nn.Parameter(torch.randn(out_features, device="cuda"))
-            if bias
-            else None
-        )
+
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty(out_features, device="cuda"))
+        else:
+            self.register_parameter("bias", None)
+
+        self.activation = activation
 
     def forward(self, input):
         """
@@ -379,7 +382,7 @@ class Linear(torch.nn.Module):
         Returns:
             an output (*, out_features)
         """
-        return operation.Linear.apply(input, self.weight, self.bias)
+        return function.linear(input, self.weight, self.bias, self.activation)
 
 
 class MaxPool2d(torch.nn.Module):

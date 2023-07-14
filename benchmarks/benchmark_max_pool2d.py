@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "max pool2d forward",
-    "knl_sz",
+    ["knl_sz"],
     [3 * i for i in range(1, 21)],
     {"num_bt": 2, "num_ch": 3, "h": 512, "w": 512},
 )

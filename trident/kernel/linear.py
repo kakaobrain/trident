@@ -12,84 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import torch
 import triton
-import triton.language as tl
 
 from trident import language
 
 
 def get_configs_linear_io_bound():
     configs = []
-    for block_size_n in [64, 128]:
-        for num_stages in [2, 3]:
-            for num_warps in [2, 4]:
-                configs.append(
-                    triton.Config(
-                        {"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": block_size_n},
-                        num_stages=num_stages,
-                        num_warps=num_warps,
+    for blk_sz_k in [16, 32, 64]:
+        for blk_sz_n in [64, 128]:
+            for num_stages in [2, 3]:
+                for num_warps in [2, 4]:
+                    configs.append(
+                        triton.Config(
+                            {
+                                "blk_sz_m": 64,
+                                "blk_sz_k": blk_sz_k,
+                                "blk_sz_n": blk_sz_n,
+                            },
+                            num_stages=num_stages,
+                            num_warps=num_warps,
+                        )
                     )
-                )
     return configs
 
 
-@triton.autotune(configs=get_configs_linear_io_bound(), key=["size_m", "size_n"])
-@triton.jit
-def linear(
-    x_ptr,
-    stride_x_m,
-    stride_x_k,
-    y_ptr,
-    stride_y_m,
-    stride_y_n,
-    w_ptr,
-    stride_w_n,
-    stride_w_k,
-    b_ptr,
-    stride_b_n,
-    size_m,
-    size_k,
-    size_n,
-    ACTIVATION: tl.constexpr,
-    BLOCK_SIZE_M: tl.constexpr,
-    BLOCK_SIZE_K: tl.constexpr,
-    BLOCK_SIZE_N: tl.constexpr,
-):
-    i = tl.program_id(0)
-    j = tl.program_id(1)
+class Linear:
+    @staticmethod
+    @triton.autotune(
+        configs=get_configs_linear_io_bound(), key=["sz_m", "sz_k", "sz_n"]
+    )
+    @triton.jit
+    def forward(
+        x_ptr,
+        st_x_m,
+        st_x_k,
+        y_ptr,
+        st_y_m,
+        st_y_n,
+        w_ptr,
+        st_w_n,
+        st_w_k,
+        b_ptr,
+        st_n,
+        sz_m,
+        sz_k,
+        sz_n,
+        act: triton.language.constexpr,
+        blk_sz_m: triton.language.constexpr,
+        blk_sz_k: triton.language.constexpr,
+        blk_sz_n: triton.language.constexpr,
+    ):
+        i = triton.language.program_id(0)
+        j = triton.language.program_id(1)
 
-    range_m = tl.arange(0, BLOCK_SIZE_M) + i * BLOCK_SIZE_M
-    range_k = tl.arange(0, BLOCK_SIZE_K)
-    range_n = tl.arange(0, BLOCK_SIZE_N) + j * BLOCK_SIZE_N
+        x_blk_ptr = triton.language.make_block_ptr(
+            base=x_ptr,
+            shape=(sz_m, sz_k),
+            strides=(st_x_m, st_x_k),
+            offsets=(i * blk_sz_m, 0),
+            block_shape=(blk_sz_m, blk_sz_k),
+            order=(1, 0),
+        )
 
-    total = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+        w_blk_ptr = triton.language.make_block_ptr(
+            base=w_ptr,
+            shape=(sz_k, sz_n),
+            strides=(st_w_k, st_w_n),
+            offsets=(0, j * blk_sz_n),
+            block_shape=(blk_sz_k, blk_sz_n),
+            order=(1, 0),
+        )
 
-    x_ptr += range_m[:, None] * stride_x_m + range_k[None, :] * stride_x_k
-    w_ptr += range_n[None, :] * stride_w_n + range_k[:, None] * stride_w_k
+        acc = triton.language.zeros((blk_sz_m, blk_sz_n), dtype=triton.language.float32)
 
-    for k in range(0, size_k, BLOCK_SIZE_K):
-        mask_m = range_m[:, None] < size_m
-        mask_n = range_n[None, :] < size_n
+        for k in range(0, sz_k, blk_sz_k):
+            x = triton.language.load(x_blk_ptr, boundary_check=(0, 1))
+            w = triton.language.load(w_blk_ptr, boundary_check=(0, 1))
+            acc += triton.language.dot(x, w, False)
 
-        x = tl.load(x_ptr, mask_m & (range_k[None, :] + k < size_k), 0.0)
-        w = tl.load(w_ptr, mask_n & (range_k[:, None] + k < size_k), 0.0)
-        total += tl.dot(x, w, False)
+            x_blk_ptr = triton.language.advance(x_blk_ptr, (0, blk_sz_k))
+            w_blk_ptr = triton.language.advance(w_blk_ptr, (blk_sz_k, 0))
 
-        x_ptr += BLOCK_SIZE_K * stride_x_k
-        w_ptr += BLOCK_SIZE_K * stride_w_k
+        if b_ptr is not None:
+            range_n, msk_n = language.make_block(sz_n, blk_sz_n, j * blk_sz_n)
+            b_ptr += range_n * st_n
+            b = triton.language.load(b_ptr, msk_n, 0.0)
+            acc += b[None, :]
 
-    if b_ptr is not None:
-        b_ptr += range_n * stride_b_n
-        mask_n = range_n < size_n
-        b = tl.load(b_ptr, mask_n, 0.0)
-        total += b[None, :]
+        if act == "relu":
+            acc = language.relu(acc)
+        elif act == "leaky_relu":
+            acc = language.leaky_relu(acc, 1e-2)
 
-    if ACTIVATION == "relu":
-        total = language.relu(total)
-    elif ACTIVATION == "leaky_relu":
-        total = language.leaky_relu(total, 1e-2)
+        y_blk_ptr = triton.language.make_block_ptr(
+            base=y_ptr,
+            shape=(sz_m, sz_n),
+            strides=(st_y_m, st_y_n),
+            offsets=(i * blk_sz_m, j * blk_sz_n),
+            block_shape=(blk_sz_m, blk_sz_n),
+            order=(1, 0),
+        )
 
-    y_ptr += range_m[:, None] * stride_y_m + range_n[None, :] * stride_y_n
-    mask_m = range_m[:, None] < size_m
-    mask_n = range_n[None, :] < size_n
-    tl.store(y_ptr, total, mask_m & mask_n)
+        triton.language.store(y_blk_ptr, acc, mask=None, boundary_check=(0, 1))
+
+    @staticmethod
+    def backward(grad_out, inp, wgt, out, act):
+        grad_act = grad_out
+        if act is not None:
+            grad_act *= torch.where(out > 0, 1, 0 if act == "relu" else 1e-2)
+
+        grad_inp = grad_act.mm(wgt)
+        grad_wgt = grad_act.t().mm(inp)
+        grad_bis = grad_act.sum(0)
+
+        return grad_inp, grad_wgt, grad_bis, None

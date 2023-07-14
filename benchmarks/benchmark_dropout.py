@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("dropout forward", "inp_sz", [512 * i for i in range(1, 21)], {"p": 0.5})
+@util.report("dropout forward", ["inp_sz"], [512 * i for i in range(1, 21)], {"p": 0.5})
 def bench_dropout_forward(p, inp_sz, ctx):
     inp = torch.randn(inp_sz, device="cuda")
 

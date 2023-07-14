@@ -21,7 +21,7 @@ import trident
 
 @util.report(
     "adaptive avg pool2d forward",
-    "out_sz",
+    ["out_sz"],
     [2**i for i in range(1, 11)],
     {"h": 512, "w": 512},
 )
