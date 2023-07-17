@@ -65,13 +65,31 @@ def gelu(input, approximate="none"):
     return operation.GELU.apply(input)
 
 
-def instance_norm(input, eps=1e-05):
+def instance_norm(
+    input,
+    running_mean=None,
+    running_var=None,
+    weight=None,
+    bias=None,
+    use_input_stats=True,
+    momentum=0.1,
+    eps=1e-05,
+):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.
 
     See InstanceNorm2d for details.
     """
-    return operation.InstanceNorm.apply(input, eps, input.dtype)
+    return operation.InstanceNorm.apply(
+        input,
+        running_mean,
+        running_var,
+        weight,
+        bias,
+        use_input_stats,
+        momentum,
+        eps,
+    )
 
 
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):

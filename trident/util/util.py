@@ -18,6 +18,11 @@ import triton
 from trident import math
 
 
+def fill(x, v):
+    with torch.no_grad():
+        return x.fill_(v)
+
+
 def map_dtype(dtype):
     if dtype == torch.float32:
         return triton.language.float32
@@ -27,19 +32,25 @@ def map_dtype(dtype):
         raise NotImplementedError(dtype)
 
 
-def get_shared_memory_size_per_block():
+def shared_memory_size_per_block():
     return 64 * 1024
 
 
-def get_block_size(num_elem, elem_sz):
+def block_size(num_elem, elem_sz):
     return min(
         triton.next_power_of_2(num_elem),
-        get_shared_memory_size_per_block() // elem_sz,
+        shared_memory_size_per_block() // elem_sz,
     )
 
 
-def get_num_warps(num_elem, elem_sz, corr=1):
-    num_warps = get_shared_memory_size_per_block() // (
-        get_block_size(num_elem, elem_sz) * elem_sz
-    )
-    return math.clamp(math.prev_pow2(num_warps) * corr, 4, 32)
+def num_warps(num_elem, elem_sz, corr=1):
+    shm_sz = shared_memory_size_per_block()
+    blk_sz = block_size(num_elem, elem_sz)
+    blk_byte_sz = blk_sz * elem_sz
+
+    return math.clamp(math.prev_pow2(shm_sz // blk_byte_sz) * corr, 4, 32)
+
+
+def zero(x):
+    with torch.no_grad():
+        return x.zero_()

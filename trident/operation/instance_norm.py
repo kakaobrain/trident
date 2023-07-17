@@ -17,44 +17,140 @@ import logging
 import torch
 import triton
 
-from trident import kernel, util
+from trident import kernel, language, util
 
 
 class InstanceNorm(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return InstanceNorm.__forward(*args, **kwargs)
+        (
+            inp,
+            run_mean,
+            run_var,
+            wgt,
+            bis,
+            use_input_stats,
+            momentum,
+            eps,
+        ) = args
+
+        if use_input_stats:
+            InstanceNorm.__optimize(inp, run_mean, run_var, momentum)
+            run_mean = run_var = None
+
+        return InstanceNorm.__forward(
+            inp,
+            run_mean,
+            run_var,
+            wgt,
+            bis,
+            eps,
+        )
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        pass
+        (
+            inp,
+            run_mean,
+            run_var,
+            wgt,
+            bis,
+            use_input_stats,
+            momentum,
+            eps,
+        ) = inputs
+
+        ctx.save_for_backward(inp, wgt, bis)
+        ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        raise NotImplementedError("The backward of Instance Norm isn't implemented.")
+        return InstanceNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
 
     @staticmethod
-    def __forward(inp, eps, dtype):
-        assert inp.dim() == 3 and inp.is_cuda and inp.is_contiguous()
+    def __forward(inp, run_mean, run_var, wgt, bis, eps):
+        assert inp.is_contiguous()
 
-        num_batches, num_ch, vec_sz = inp.shape
+        num_bt, num_ch, vec_sz = inp.shape
+        out = torch.empty_like(inp)
 
         def grid(meta):
-            return [num_batches * num_ch]
-
-        out = torch.empty_like(inp)
-        vec_blk_sz = util.get_block_size(vec_sz, inp.element_size())
-        num_warps = util.get_num_warps(vec_sz, inp.element_size(), 4)
+            return [num_bt * num_ch]
 
         kernel.InstanceNorm.forward[grid](
             inp,
             num_ch,
             vec_sz,
+            run_mean,
+            run_var,
+            wgt,
+            bis,
             eps,
             out,
-            vec_blk_sz,
-            util.map_dtype(dtype),
-            num_warps=num_warps,
+            util.block_size(vec_sz, inp.element_size()),
+            util.map_dtype(inp.dtype),
+            num_warps=util.num_warps(vec_sz, inp.element_size(), 4),
         )
 
         return out
+
+    @staticmethod
+    def __backward(grad_out, inp, wgt, bis, eps):
+        num_bt, num_ch, vec_sz = inp.shape
+        grad_inp = torch.empty_like(inp)
+        grad_wgt = torch.zeros_like(wgt) if wgt is not None else None
+        grad_bis = torch.zeros_like(bis) if bis is not None else None
+
+        def grid(meta):
+            return [num_bt * num_ch]
+
+        kernel.InstanceNorm.backward[grid](
+            grad_out,
+            inp,
+            grad_inp,
+            num_ch,
+            vec_sz,
+            wgt,
+            grad_wgt,
+            grad_bis,
+            eps,
+            blk_sz=triton.next_power_of_2(vec_sz),
+        )
+
+        return grad_inp, None, None, grad_wgt, grad_bis, None, None, None, None
+
+    @staticmethod
+    def __optimize(inp, run_mean, run_var, momentum):
+        if run_mean is None or run_var is None:
+            return
+
+        num_bt, num_ch, vec_sz = inp.shape
+        mean = torch.zeros_like(run_mean)
+        var = torch.zeros_like(run_var)
+
+        def grid(meta):
+            return [num_bt * num_ch]
+
+        kernel.InstanceNorm.mean_var[grid](
+            inp,
+            num_bt,
+            num_ch,
+            vec_sz,
+            mean,
+            var,
+            util.block_size(vec_sz, inp.element_size()),
+            util.map_dtype(inp.dtype),
+        )
+
+        def grid(meta):
+            return [1]
+
+        kernel.InstanceNorm.optimize[grid](
+            mean,
+            run_mean,
+            var,
+            run_var,
+            num_ch,
+            momentum,
+            triton.next_power_of_2(num_ch),
+        )

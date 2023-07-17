@@ -14,7 +14,7 @@
 
 import torch
 
-from trident import function, operation
+from trident import function, operation, util
 
 
 class AdaptiveAvgPool2d(torch.nn.Module):
@@ -224,7 +224,16 @@ class GELU(torch.nn.Module):
 
 
 class InstanceNorm2d(torch.nn.Module):
-    def __init__(self, num_features, eps=1e-05, dtype=None, device=None):
+    def __init__(
+        self,
+        num_features,
+        eps=1e-5,
+        momentum=0.1,
+        affine=False,
+        track_running_stats=False,
+        dtype=None,
+        device=None,
+    ):
         """
         Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
         Ingredient for Fast Stylization.
@@ -235,10 +244,28 @@ class InstanceNorm2d(torch.nn.Module):
         """
         super().__init__()
 
+        ctor_args = {"device": device, "dtype": dtype}
         self.num_features = num_features
         self.eps = eps
-        self.dtype = dtype
-        self.device = device
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
+
+        if self.affine:
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **ctor_args))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, **ctor_args))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+        if self.track_running_stats:
+            self.register_buffer("running_mean", torch.empty(num_features, **ctor_args))
+            self.register_buffer("running_var", torch.empty(num_features, **ctor_args))
+        else:
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
+
+        self.reset_parameters()
 
     def forward(self, input):
         """
@@ -250,24 +277,32 @@ class InstanceNorm2d(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        assert input.dim() == 3 or input.dim() == 4
+        if input.dim() == 4:
+            inp = input.view(input.shape[0], input.shape[1], -1)
+        else:
+            inp = input
 
-        inp = InstanceNorm2d.__view(input)
-        out = operation.InstanceNorm.apply(inp, self.eps, self.dtype)
+        out = function.instance_norm(
+            inp,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            not self.track_running_stats,
+            self.momentum,
+            self.eps,
+        )
 
         return out.view(input.shape)
 
-    @staticmethod
-    def __shape(x):
-        if x.dim() == 3:
-            return 1, x.shape[0], x.shape[1], x.shape[2]
-        else:
-            return x.shape
+    def reset_parameters(self):
+        if self.affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
 
-    @staticmethod
-    def __view(x):
-        num_batches, num_channels, height, width = InstanceNorm2d.__shape(x)
-        return x.view(num_batches, num_channels, height * width)
+        if self.track_running_stats:
+            self.running_mean.zero_()
+            self.running_var.fill_(1)
 
 
 class LayerNorm(torch.nn.Module):
@@ -292,18 +327,17 @@ class LayerNorm(torch.nn.Module):
         """
         super().__init__()
 
+        ctor_args = {"device": device, "dtype": dtype}
         self.normalized_shape = normalized_shape
         self.eps = eps
         self.device = device
         self.dtype = dtype
 
-        cfg = {"device": device, "dtype": dtype}
-
         if elementwise_affine:
             self.weight = torch.nn.Parameter(
-                torch.empty(normalized_shape, **cfg).fill_(1)
+                torch.empty(normalized_shape, **ctor_args).fill_(1)
             )
-            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, **cfg))
+            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, **ctor_args))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)

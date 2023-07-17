@@ -61,6 +61,16 @@ def gemv(a, x):
 
 
 @triton.jit
+def load(ptr, msk=None, other=None):
+    data = triton.language.load(ptr, msk, other)
+
+    if data.type is triton.language.float32 or data.type is triton.language.float64:
+        return data
+
+    return data.to(triton.language.float32)
+
+
+@triton.jit
 def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
     blk = (
         triton.language.arange(0, w_bs)[:, None]
@@ -96,6 +106,11 @@ def make_group_msk(blk, grp_sz, off, h):
 @triton.jit
 def max(x):
     return triton.language.max(triton.language.ravel(x), 0)
+
+
+@triton.jit
+def mean(x, sz):
+    return triton.language.sum(x, 0) / sz
 
 
 @triton.jit
