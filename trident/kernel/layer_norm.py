@@ -37,7 +37,7 @@ class LayerNorm:
         out_ptr += off
 
         mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
-        var = kernel.variance(inp_ptr, vec_sz, mean, blk_sz, dtype)
+        var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)
         std = language.std(var, eps)
 
         for blk_off in range(0, vec_sz, blk_sz):
@@ -77,7 +77,7 @@ class LayerNorm:
         grad_inp_ptr += blk_off
 
         mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
-        var = kernel.variance(inp_ptr, vec_sz, mean, blk_sz, dtype)
+        var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)
         std = language.std(var, eps)
 
         for blk_off in range(0, vec_sz, blk_sz):

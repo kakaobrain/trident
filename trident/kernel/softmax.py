@@ -25,7 +25,7 @@ class Softmax:
         off = pid * vec_sz
         inp_ptr += off
         out_ptr += off
-        max = kernel.maximum(inp_ptr, vec_sz, blk_sz)
+        max = kernel.max(inp_ptr, vec_sz, blk_sz)
         acc = 0.0
 
         for blk_off in range(0, vec_sz, blk_sz):

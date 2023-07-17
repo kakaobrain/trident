@@ -37,7 +37,22 @@ def mean(
 
 
 @triton.jit
-def variance(
+def max(inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
+    blk, msk = language.make_block(inp_sz, blk_sz, 0)
+    inp = triton.language.load(inp_ptr + blk, msk, 0)
+    res = triton.language.max(inp, 0)
+
+    for blk_off in range(blk_sz, inp_sz, blk_sz):
+        blk, msk = language.make_block(inp_sz, blk_sz, blk_off)
+        inp = triton.language.load(inp_ptr + blk, msk, 0)
+        num = triton.language.max(inp, 0)
+        res = num if num > res else res
+
+    return res
+
+
+@triton.jit
+def var(
     x_ptr,
     x_sz,
     mean,
@@ -53,18 +68,3 @@ def variance(
         res += language.pow2(num)
 
     return (triton.language.sum(res, axis=0) / x_sz).to(dtype)
-
-
-@triton.jit
-def maximum(inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
-    blk, msk = language.make_block(inp_sz, blk_sz, 0)
-    inp = triton.language.load(inp_ptr + blk, msk, 0)
-    res = triton.language.max(inp, 0)
-
-    for blk_off in range(blk_sz, inp_sz, blk_sz):
-        blk, msk = language.make_block(inp_sz, blk_sz, blk_off)
-        inp = triton.language.load(inp_ptr + blk, msk, 0)
-        num = triton.language.max(inp, 0)
-        res = num if num > res else res
-
-    return res
