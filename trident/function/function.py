@@ -65,6 +65,15 @@ def gelu(input, approximate="none"):
     return operation.GELU.apply(input)
 
 
+def group_norm(input, num_groups, weight=None, bias=None, eps=1e-05):
+    """
+    Applies Group Normalization for last certain number of dimensions.
+
+    See GroupNorm for details.
+    """
+    return operation.GroupNorm.apply(input, num_groups, weight, bias, eps)
+
+
 def instance_norm(
     input,
     running_mean=None,

@@ -18,7 +18,7 @@ from .conv2d import *
 from .dropout import *
 from .gelu import *
 from .instance_norm import *
-from .layer_norm import *
+from .layer_group_norm import *
 from .leaky_relu import *
 from .linear import *
 from .math import *

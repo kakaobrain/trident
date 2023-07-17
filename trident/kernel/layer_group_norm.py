@@ -17,7 +17,7 @@ import triton
 from trident import kernel, language
 
 
-class LayerNorm:
+class LayerGroupNorm:
     @staticmethod
     @triton.jit
     def forward(
@@ -27,14 +27,23 @@ class LayerNorm:
         bis_ptr,
         eps,
         out_ptr,
+        num_grp,
         blk_sz: triton.language.constexpr,
         dtype: triton.language.constexpr,
     ):
         pid = triton.language.program_id(0)
-        off = pid * vec_sz
+        ptr_off = pid * vec_sz
+        grp = pid % num_grp
+        grp_off = grp * vec_sz
 
-        inp_ptr += off
-        out_ptr += off
+        inp_ptr += ptr_off
+        out_ptr += ptr_off
+
+        if wgt_ptr:
+            wgt_ptr += grp_off
+
+        if bis_ptr:
+            bis_ptr += grp_off
 
         mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
         var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)
@@ -66,15 +75,24 @@ class LayerNorm:
         grad_wgt_ptr,
         grad_bis_ptr,
         eps,
+        num_grp,
         blk_sz: triton.language.constexpr,
         dtype: triton.language.constexpr,
     ):
         pid = triton.language.program_id(0)
         blk_off = pid * vec_sz
+        grp = pid % num_grp
+        grp_off = grp * vec_sz
 
         grad_out_ptr += blk_off
         inp_ptr += blk_off
         grad_inp_ptr += blk_off
+
+        if grad_wgt_ptr:
+            grad_wgt_ptr += grp_off
+
+        if grad_bis_ptr:
+            grad_bis_ptr += grp_off
 
         mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
         var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)

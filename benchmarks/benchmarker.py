@@ -19,6 +19,7 @@ import benchmark_batch_norm
 import benchmark_conv2d
 import benchmark_dropout
 import benchmark_gelu
+import benchmark_group_norm
 import benchmark_instance_norm
 import benchmark_layer_norm
 import benchmark_leaky_relu
@@ -40,6 +41,7 @@ def print_scenarios():
                 "conv2d",
                 "dropout",
                 "gelu",
+                "group-norm",
                 "instance-norm",
                 "layer-norm",
                 "leaky-relu",
@@ -65,6 +67,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_dropout.run_benchmark(mode, show_plots)
     elif scenario == "gelu":
         benchmark_gelu.run_benchmark(mode, show_plots)
+    elif scenario == "group-norm":
+        benchmark_group_norm.run_benchmark(mode, show_plots)
     elif scenario == "instance-norm":
         benchmark_instance_norm.run_benchmark(mode, show_plots)
     elif scenario == "layer-norm":
@@ -89,6 +93,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_conv2d.run_benchmark(mode, show_plots)
         benchmark_dropout.run_benchmark(mode, show_plots)
         benchmark_gelu.run_benchmark(mode, show_plots)
+        benchmark_group_norm.run_benchmark(mode, show_plots)
         benchmark_instance_norm.run_benchmark(mode, show_plots)
         benchmark_layer_norm.run_benchmark(mode, show_plots)
         benchmark_leaky_relu.run_benchmark(mode, show_plots)
