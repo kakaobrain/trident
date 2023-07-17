@@ -17,6 +17,7 @@ from .batch_norm import *
 from .conv2d import *
 from .dropout import *
 from .gelu import *
+from .group_norm import *
 from .instance_norm import *
 from .layer_norm import *
 from .leaky_relu import *

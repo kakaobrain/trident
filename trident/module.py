@@ -223,6 +223,62 @@ class GELU(torch.nn.Module):
         return operation.GELU.apply(input)
 
 
+class GroupNorm(torch.nn.Module):
+    def __init__(
+        self,
+        num_groups,
+        num_channels,
+        eps=1e-05,
+        affine=True,
+        device=None,
+        dtype=None,
+    ):
+        """
+        Applies Group Normalization over a mini-batch of inputs as described in the paper Group Normalization.
+
+        Args:
+            num_groups: number of groups to separate the channels into
+            num_channels: number of channels expected in input
+            eps: a value added to the denominator for numerical stability
+            affine: a boolean value that when set to True, this module has learnable per-channel affine
+                    parameters initialized to ones (for weights) and zeros (for biases)
+        """
+        super().__init__()
+
+        if num_channels % num_groups != 0:
+            raise ValueError("num_channels must be divisible by num_groups")
+
+        ctor_args = {"device": device, "dtype": dtype}
+        self.num_groups = num_groups
+        self.num_channels = num_channels
+        self.eps = eps
+        self.device = device
+        self.dtype = dtype
+
+        if affine:
+            self.weight = torch.nn.Parameter(
+                torch.empty(num_channels, **ctor_args).fill_(1)
+            )
+            self.bias = torch.nn.Parameter(torch.zeros(num_channels, **ctor_args))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+    def forward(self, input):
+        """
+        Applies Group Normalization to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return function.group_norm(
+            input, self.num_groups, self.weight, self.bias, self.eps
+        )
+
+
 class InstanceNorm2d(torch.nn.Module):
     def __init__(
         self,
