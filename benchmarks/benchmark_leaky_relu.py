@@ -34,10 +34,8 @@ def bench_leaky_relu_forward(num_vec, vec_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.leaky_relu(inp))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

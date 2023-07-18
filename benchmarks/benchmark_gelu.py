@@ -19,9 +19,7 @@ import util
 import trident
 
 
-@util.report(
-    "gelu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 1}
-)
+@util.report("gelu forward", ["vec_sz"], [32 * i for i in range(1, 21)], {"num_vec": 1})
 def bench_gelu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
@@ -31,10 +29,8 @@ def bench_gelu_forward(num_vec, vec_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.gelu(inp))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_gelu_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_gelu_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

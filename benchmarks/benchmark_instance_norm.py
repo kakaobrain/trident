@@ -34,10 +34,8 @@ def bench_instance_norm_forward(num_bt, num_ch, vec_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.instance_norm(inp))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

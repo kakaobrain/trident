@@ -38,10 +38,8 @@ def bench_adaptive_avg_pool2d_forward(out_sz, h, w, ctx):
         )
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_adaptive_avg_pool2d_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_adaptive_avg_pool2d_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

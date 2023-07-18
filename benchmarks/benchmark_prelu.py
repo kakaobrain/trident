@@ -32,10 +32,8 @@ def bench_prelu_forward(num_vec, vec_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.prelu(inp, wgt))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_prelu_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_prelu_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

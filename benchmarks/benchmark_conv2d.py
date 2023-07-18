@@ -35,10 +35,8 @@ def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.conv2d(inp, wgt))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_conv2d_forward.run(print_data=True, show_plots=show_plots)
     elif mode == "backward":
-        pass
-    else:
-        bench_conv2d_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

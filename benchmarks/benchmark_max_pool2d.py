@@ -36,10 +36,8 @@ def bench_max_pool2d_forward(num_bt, num_ch, h, w, knl_sz, ctx):
         return triton.testing.do_bench(lambda: trident.function.max_pool2d(inp, knl_sz))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_max_pool2d_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        pass
     else:
-        bench_max_pool2d_forward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")

@@ -54,11 +54,8 @@ def bench_softmax_backward(num_bt, vec_sz, ctx):
     return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
 
 
-def run_benchmarks(mode, show_plots):
+def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_softmax_forward.run(print_data=True, show_plots=show_plots)
-    elif mode == "backward":
-        bench_softmax_backward.run(print_data=True, show_plots=show_plots)
     else:
-        bench_softmax_forward.run(print_data=True, show_plots=show_plots)
-        bench_softmax_backward.run(print_data=True, show_plots=show_plots)
+        raise NotImplementedError("The backward isn't implemented.")
