@@ -75,8 +75,8 @@ class InstanceNorm:
         num_ch,
         vec_sz,
         wgt_ptr,
-        p_grad_wgt,
-        p_grad_bis,
+        p_stg_grad_wgt,
+        p_stg_grad_bis,
         eps,
         blk_sz: triton.language.constexpr,
     ):
@@ -108,13 +108,15 @@ class InstanceNorm:
         grad_inp = grad_mean_ctr + grad_mean
         triton.language.store(p_grad_inp + blk, grad_inp, msk)
 
-        if wgt_ptr is not None:
+        if p_stg_grad_wgt is not None:
             grad_wgt = triton.language.sum(norm * grad_out, 0)
-            triton.language.atomic_add(p_grad_wgt + ch, grad_wgt)
+            ptr_off = bt * num_ch + ch
+            triton.language.store(p_stg_grad_wgt + ptr_off, grad_wgt)
 
-        if p_grad_bis is not None:
+        if p_stg_grad_bis is not None:
             grad_bis = triton.language.sum(grad_out, 0)
-            triton.language.atomic_add(p_grad_bis + ch, grad_bis)
+            ptr_off = bt * num_ch + ch
+            triton.language.store(p_stg_grad_bis + ptr_off, grad_bis)
 
     @staticmethod
     @triton.jit

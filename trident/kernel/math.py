@@ -52,6 +52,38 @@ def max(inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
 
 
 @triton.jit
+def sum(
+    p_out,
+    p_inp,
+    num_vec,
+    vec_sz,
+    axis: triton.language.constexpr,
+    blk_sz: triton.language.constexpr,
+):
+    triton.language.device_assert(axis == 0 or axis == 1)
+
+    pid = triton.language.program_id(0)
+
+    if axis == 0:
+        num_vec, vec_sz = vec_sz, num_vec
+        elem_st = num_vec
+        p_inp += pid
+    else:
+        elem_st = 1
+        p_inp += pid * vec_sz
+
+    p_out += pid
+    acc = 0.0
+
+    for blk_off in range(0, vec_sz, blk_sz):
+        blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
+        inp = triton.language.load(p_inp + blk * elem_st, msk, 0)
+        acc += triton.language.sum(inp, 0)
+
+    triton.language.store(p_out, acc)
+
+
+@triton.jit
 def var(
     x_ptr,
     x_sz,
