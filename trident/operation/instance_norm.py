@@ -98,8 +98,18 @@ class InstanceNorm(torch.autograd.Function):
     def __backward(grad_out, inp, wgt, bis, eps):
         num_bt, num_ch, vec_sz = inp.shape
         grad_inp = torch.empty_like(inp)
-        grad_wgt = torch.zeros_like(wgt) if wgt is not None else None
-        grad_bis = torch.zeros_like(bis) if bis is not None else None
+
+        if wgt is not None:
+            ctor_args = {"device": inp.device, "dtype": inp.dtype}
+            stg_grad_wgt = torch.zeros(num_bt, num_ch, **ctor_args)
+        else:
+            stg_grad_wgt = None
+
+        if bis is not None:
+            ctor_args = {"device": inp.device, "dtype": inp.dtype}
+            stg_grad_bis = torch.zeros(num_bt, num_ch, **ctor_args)
+        else:
+            stg_grad_bis = None
 
         def grid(meta):
             return [num_bt * num_ch]
@@ -111,11 +121,45 @@ class InstanceNorm(torch.autograd.Function):
             num_ch,
             vec_sz,
             wgt,
-            grad_wgt,
-            grad_bis,
+            stg_grad_wgt,
+            stg_grad_bis,
             eps,
             blk_sz=triton.next_power_of_2(vec_sz),
         )
+
+        if wgt is None:
+            grad_wgt = None
+        else:
+            grad_wgt = torch.zeros_like(wgt)
+
+            def grid(meta):
+                return [num_ch]
+
+            kernel.sum[grid](
+                grad_wgt,
+                stg_grad_wgt,
+                num_bt,
+                num_ch,
+                0,
+                util.block_size(num_bt, wgt.element_size()),
+            )
+
+        if bis is None:
+            grad_bis = None
+        else:
+            grad_bis = torch.zeros_like(bis)
+
+            def grid(meta):
+                return [num_ch]
+
+            kernel.sum[grid](
+                grad_bis,
+                stg_grad_bis,
+                num_bt,
+                num_ch,
+                0,
+                util.block_size(num_bt, grad_wgt.element_size()),
+            )
 
         return grad_inp, None, None, grad_wgt, grad_bis, None, None, None, None
 

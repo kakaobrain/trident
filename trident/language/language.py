@@ -88,9 +88,9 @@ def make_conv2d_msk(ch, h, w, ch_bs, h_bs, w_bs):
 
 
 @triton.jit
-def make_block(max_sz, blk_sz, blk_off=0):
+def make_block(inp_sz, blk_sz, blk_off=0):
     blk = triton.language.arange(0, blk_sz) + blk_off
-    return blk, blk < max_sz
+    return blk, blk < inp_sz
 
 
 @triton.jit
