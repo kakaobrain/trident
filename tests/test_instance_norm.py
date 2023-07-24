@@ -102,11 +102,34 @@ def test_backward(num_bt, num_ch, vec_sz, device):
     assert util.equal(z, c)
 
 
+@pytest.mark.parametrize("num_ch, vec_sz", [(1, 64)])
+def test_instance_norm1d(num_ch, vec_sz, dtype, device):
+    ctor_args = {"device": device, "dtype": dtype}
+    inp = torch.randn(num_ch, vec_sz, **ctor_args)
+
+    inst_norm1d = trident.InstanceNorm1d(num_ch, **ctor_args)
+
+    assert inst_norm1d.forward(inp) is not None
+
+    inst_norm1d = trident.InstanceNorm1d(num_ch, affine=True, **ctor_args)
+
+    assert inst_norm1d.forward(inp) is not None
+
+    inst_norm1d = trident.InstanceNorm1d(num_ch, track_running_stats=True, **ctor_args)
+
+    assert inst_norm1d.forward(inp) is not None
+
+    inst_norm1d = trident.InstanceNorm1d(
+        num_ch, affine=False, track_running_stats=True, **ctor_args
+    )
+
+    assert inst_norm1d.forward(inp) is not None
+
+
 @pytest.mark.parametrize("num_bt, num_ch, w, h", [(1, 1, 64, 64)])
-def test_module(num_bt, num_ch, w, h, dtype, device):
+def test_instance_norm2d(num_bt, num_ch, w, h, dtype, device):
     ctor_args = {"device": device, "dtype": dtype}
     inp = torch.randn(num_bt, num_ch, w, h, **ctor_args)
-
     inst_norm2d = trident.InstanceNorm2d(num_ch, **ctor_args)
 
     assert inst_norm2d.forward(inp) is not None

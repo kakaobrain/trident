@@ -279,23 +279,23 @@ class GroupNorm(torch.nn.Module):
         )
 
 
-class InstanceNorm2d(torch.nn.Module):
+class InstanceNorm1d(torch.nn.Module):
     def __init__(
         self,
         num_features,
-        eps=1e-5,
+        eps=1e-05,
         momentum=0.1,
         affine=False,
         track_running_stats=False,
-        dtype=None,
         device=None,
+        dtype=None,
     ):
         """
         Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
         Ingredient for Fast Stylization.
 
         Args:
-            num_features: C from an expected input of size (N,C,H,W) or (C,H,W)
+            num_features: C from an expected input of size (N, C, L) or (C, L)
             eps: a value added to the denominator for numerical stability
         """
         super().__init__()
@@ -328,7 +328,89 @@ class InstanceNorm2d(torch.nn.Module):
         Applies Instance Normalization to an input.
 
         Args:
-            input: an input (N,C,H,W) or (C,H,W)
+            input: an input (N, C, L) or (C, L)
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        if input.dim() == 2:
+            inp = input.view(1, input.shape[0], input.shape[1])
+        else:
+            inp = input
+
+        out = function.instance_norm(
+            inp,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            not self.track_running_stats,
+            self.momentum,
+            self.eps,
+        )
+
+        return out.view(input.shape)
+
+    def reset_parameters(self):
+        if self.affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
+
+        if self.track_running_stats:
+            self.running_mean.zero_()
+            self.running_var.fill_(1)
+
+
+class InstanceNorm2d(torch.nn.Module):
+    def __init__(
+        self,
+        num_features,
+        eps=1e-5,
+        momentum=0.1,
+        affine=False,
+        track_running_stats=False,
+        device=None,
+        dtype=None,
+    ):
+        """
+        Applies Instance Normalization to an input as described in the paper Instance Normalization: The Missing
+        Ingredient for Fast Stylization.
+
+        Args:
+            num_features: C from an expected input of size (N, C, H, W) or (C, H, W)
+            eps: a value added to the denominator for numerical stability
+        """
+        super().__init__()
+
+        ctor_args = {"device": device, "dtype": dtype}
+        self.num_features = num_features
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
+
+        if self.affine:
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **ctor_args))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, **ctor_args))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+        if self.track_running_stats:
+            self.register_buffer("running_mean", torch.empty(num_features, **ctor_args))
+            self.register_buffer("running_var", torch.empty(num_features, **ctor_args))
+        else:
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
+
+        self.reset_parameters()
+
+    def forward(self, input):
+        """
+        Applies Instance Normalization to an input.
+
+        Args:
+            input: an input (N, C, H, W) or (C, H, W)
 
         Returns:
             an output with the same dimension and shape as an input
