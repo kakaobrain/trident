@@ -22,10 +22,11 @@ from tests import util
 @pytest.mark.parametrize(
     "num_vec, vec_sz, num_grp, afn", [(3, 16, 2, False), (7, 60000, 2, True)]
 )
-def test_forward(num_vec, vec_sz, num_grp, afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    wgt = torch.randn(vec_sz, dtype=dtype, device=device)
-    bis = torch.randn(vec_sz, dtype=dtype, device=device)
+def test_forward(num_vec, vec_sz, num_grp, afn, device):
+    ctor_args = {"device": device}
+    inp = torch.randn(num_vec, vec_sz, **ctor_args)
+    wgt = torch.randn(vec_sz, **ctor_args)
+    bis = torch.randn(vec_sz, **ctor_args)
 
     assert util.equal(
         torch.nn.functional.group_norm(inp, num_grp),
@@ -40,16 +41,17 @@ def test_forward(num_vec, vec_sz, num_grp, afn, dtype, device):
 @pytest.mark.parametrize(
     "num_vec, vec_sz, num_grp, afn", [(2, 4, 2, True), (3, 60000, 3, True)]
 )
-def test_backward(num_vec, vec_sz, num_grp, afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_backward(num_vec, vec_sz, num_grp, afn, device):
+    ctor_args = {"device": device}
+    inp = torch.randn(num_vec, vec_sz, **ctor_args)
+    tgt = torch.randn(num_vec, vec_sz, **ctor_args)
 
     a = inp.clone()
     b = inp.clone()
     a.requires_grad = b.requires_grad = True
 
-    lyr0 = torch.nn.GroupNorm(num_grp, vec_sz, affine=afn, dtype=dtype, device=device)
-    lyr1 = trident.GroupNorm(num_grp, vec_sz, affine=afn, dtype=dtype, device=device)
+    lyr0 = torch.nn.GroupNorm(num_grp, vec_sz, affine=afn, **ctor_args)
+    lyr1 = trident.GroupNorm(num_grp, vec_sz, affine=afn, **ctor_args)
     util.train(a, tgt, lyr0)
     util.train(b, tgt, lyr1)
     assert util.equal(a.grad, b.grad)
