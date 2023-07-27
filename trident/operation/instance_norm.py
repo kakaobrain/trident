@@ -88,7 +88,7 @@ class InstanceNorm(torch.autograd.Function):
             eps,
             out,
             util.block_size(vec_sz, inp.element_size()),
-            util.map_dtype(inp.dtype),
+            util.dtype(inp.dtype),
             num_warps=util.num_warps(vec_sz, inp.element_size(), 4),
         )
 
@@ -183,7 +183,7 @@ class InstanceNorm(torch.autograd.Function):
             mean,
             var,
             util.block_size(vec_sz, inp.element_size()),
-            util.map_dtype(inp.dtype),
+            util.dtype(inp.dtype),
         )
 
         def grid(meta):

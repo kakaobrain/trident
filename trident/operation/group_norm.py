@@ -54,7 +54,7 @@ class GroupNorm(torch.autograd.Function):
             out,
             num_groups,
             blk_sz=util.block_size(vec_sz // num_groups, new_inp.element_size()),
-            dtype=util.map_dtype(new_inp.dtype),
+            dtype=util.dtype(new_inp.dtype),
             num_warps=util.num_warps(vec_sz // num_groups, new_inp.element_size()),
         )
 
@@ -86,7 +86,7 @@ class GroupNorm(torch.autograd.Function):
             eps,
             num_groups,
             blk_sz=util.block_size(vec_sz // num_groups, inp.element_size()),
-            dtype=util.map_dtype(inp.dtype),
+            dtype=util.dtype(inp.dtype),
             num_warps=util.num_warps(vec_sz // num_groups, inp.element_size()),
         )
 
