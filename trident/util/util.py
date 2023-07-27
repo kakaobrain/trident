@@ -15,21 +15,21 @@
 import torch
 import triton
 
-from trident import math
+from trident import math, module
 
 
-def fill(x, v):
+def fill(inp, val):
     with torch.no_grad():
-        return x.fill_(v)
+        return inp.fill_(val)
 
 
-def map_dtype(dtype):
-    if dtype == torch.float32:
+def dtype(inp):
+    if inp == torch.float32:
         return triton.language.float32
-    if dtype == torch.float16:
+    if inp == torch.float16:
         return triton.language.float16
     else:
-        raise NotImplementedError(dtype)
+        raise NotImplementedError(inp)
 
 
 def shared_memory_size_per_block():
@@ -43,6 +43,44 @@ def block_size(num_elem, elem_sz):
     )
 
 
+def optimize_module(mod):
+    opt_mod = None
+
+    if isinstance(mod, torch.nn.Dropout):
+        opt_mod = module.Dropout(mod.p)
+    elif isinstance(mod, torch.nn.GroupNorm):
+        opt_mod = module.GroupNorm(
+            mod.num_groups, mod.num_channels, mod.eps, mod.affine
+        )
+    elif isinstance(mod, torch.nn.InstanceNorm1d):
+        opt_mod = module.InstanceNorm1d(
+            mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats
+        )
+    elif isinstance(mod, torch.nn.InstanceNorm2d):
+        opt_mod = module.InstanceNorm1d(
+            mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats
+        )
+    elif isinstance(mod, torch.nn.LayerNorm):
+        opt_mod = module.LayerNorm(
+            mod.normalized_shape, mod.eps, mod.elementwise_affine
+        )
+    elif isinstance(mod, torch.nn.Softmax):
+        opt_mod = module.Softmax(mod.dim)
+
+    if opt_mod is not None:
+        opt_mod.load_state_dict(mod.state_dict())
+
+    return opt_mod
+
+
+def optimize_model(model):
+    for name, child in model.named_children():
+        if other := optimize_module(child):
+            setattr(model, name, other)
+
+        optimize_model(child)
+
+
 def num_warps(num_elem, elem_sz, corr=1):
     shm_sz = shared_memory_size_per_block()
     blk_sz = block_size(num_elem, elem_sz)
@@ -51,6 +89,6 @@ def num_warps(num_elem, elem_sz, corr=1):
     return math.clamp(math.prev_pow2(shm_sz // blk_byte_sz) * corr, 4, 32)
 
 
-def zero(x):
+def zero(inp):
     with torch.no_grad():
-        return x.zero_()
+        return inp.zero_()

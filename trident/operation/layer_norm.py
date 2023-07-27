@@ -56,7 +56,7 @@ class LayerNorm(torch.autograd.Function):
             out,
             1,
             blk_sz=util.block_size(vec_sz, inp.element_size()),
-            dtype=util.map_dtype(inp.dtype),
+            dtype=util.dtype(inp.dtype),
             num_warps=util.num_warps(vec_sz, inp.element_size()),
         )
 
@@ -88,7 +88,7 @@ class LayerNorm(torch.autograd.Function):
             eps,
             1,
             blk_sz=util.block_size(vec_sz, inp.element_size()),
-            dtype=util.map_dtype(inp.dtype),
+            dtype=util.dtype(inp.dtype),
             num_warps=util.num_warps(vec_sz, inp.element_size()),
         )
 
