@@ -603,7 +603,7 @@ class ReLU(torch.nn.Module):
 
 
 class PReLU(torch.nn.Module):
-    def __init__(self, num_parameters=1, init=0.25):
+    def __init__(self, num_parameters=1, init=0.25, device=None, dtype=None):
         """
         Applies PReLU to an input.
 
@@ -612,9 +612,9 @@ class PReLU(torch.nn.Module):
             init: the initial value of weight
         """
         super().__init__()
-
+        factory_kwargs = {"device": device, "dtype": dtype}
         self.weight = torch.nn.Parameter(
-            torch.empty(num_parameters, device="cuda").fill_(init)
+            torch.empty(num_parameters, **factory_kwargs).fill_(init)
         )
 
     def forward(self, input):
