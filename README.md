@@ -1,6 +1,6 @@
-![trident](https://user-images.githubusercontent.com/7459074/233241558-ee076751-63e9-47d8-9941-17ac3eca5ebb.png)
+![Trident](https://github.com/kakaobrain/trident/assets/7459074/aee6bb37-45a4-4b8e-bf14-0ea63dc574a0)
 
-![welcome](https://capsule-render.vercel.app/api?type=rect&color=001eff&text=👋%20Hello%20and%20Welcome&fontColor=ffffff)
+![Welcome](https://capsule-render.vercel.app/api?type=rect&color=001eff&text=👋%20Hello%20and%20Welcome&fontColor=ffffff)
 
 ## 🔱 Overview
 
