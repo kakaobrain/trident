@@ -141,7 +141,8 @@ class InstanceNorm(torch.autograd.Function):
                 num_bt,
                 num_ch,
                 0,
-                util.block_size(num_bt, wgt.element_size()),
+                util.block_size(num_bt, grad_wgt.element_size()),
+                util.dtype(grad_wgt.dtype),
             )
 
         if bis is None:
@@ -159,6 +160,7 @@ class InstanceNorm(torch.autograd.Function):
                 num_ch,
                 0,
                 util.block_size(num_bt, grad_wgt.element_size()),
+                util.dtype(grad_wgt.dtype),
             )
 
         return grad_inp, None, None, grad_wgt, grad_bis, None, None, None, None
