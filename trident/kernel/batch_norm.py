@@ -43,7 +43,7 @@ class BatchNorm:
             mean = triton.language.load(running_mean_ptr + pid)
             var = triton.language.load(running_var_ptr + pid)
         else:
-            mean = language.sum(inp) / bt_sz
+            mean = language.mean(inp, bt_sz)
             var = language.var(msk, inp, bt_sz, mean, corr=0)
 
         std = language.std(var, eps)
@@ -82,7 +82,7 @@ class BatchNorm:
         inp = triton.language.load(inp_ptr + inp_blk, msk, 0)
         wgt = triton.language.load(wgt_ptr + pid) if wgt_ptr is not None else 1
 
-        mean = language.sum(inp) / bt_sz
+        mean = language.mean(inp, bt_sz)
         var = language.var(msk, inp, bt_sz, mean, corr=0)
         std = language.std(var, eps)
 

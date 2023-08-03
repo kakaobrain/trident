@@ -673,3 +673,28 @@ class Softmax(torch.nn.Module):
             an output with the same dimension and shape as an input with values in the range [0, 1]
         """
         return operation.Softmax.apply(input, self.dim)
+
+
+class Sum(torch.nn.Module):
+    def __init__(self, dim=None):
+        """
+        Calculate the sum of all elements in an input.
+
+        Args:
+            dim: the dimension or dimensions to reduce.
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, input):
+        """
+        Calculate the sum of all elements in an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            the sum of all elements in an input.
+        """
+        return operation.Sum.apply(input, self.dim)

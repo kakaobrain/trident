@@ -17,7 +17,7 @@ import logging
 import torch
 import triton
 
-from trident import kernel, language, util
+from trident import function, kernel, util
 
 
 class InstanceNorm(torch.autograd.Function):
@@ -130,38 +130,12 @@ class InstanceNorm(torch.autograd.Function):
         if wgt is None:
             grad_wgt = None
         else:
-            grad_wgt = torch.zeros_like(wgt)
-
-            def grid(meta):
-                return [num_ch]
-
-            kernel.sum[grid](
-                grad_wgt,
-                stg_grad_wgt,
-                num_bt,
-                num_ch,
-                0,
-                util.block_size(num_bt, grad_wgt.element_size()),
-                util.dtype(grad_wgt.dtype),
-            )
+            grad_wgt = function.sum(stg_grad_wgt, 0)
 
         if bis is None:
             grad_bis = None
         else:
-            grad_bis = torch.zeros_like(bis)
-
-            def grid(meta):
-                return [num_ch]
-
-            kernel.sum[grid](
-                grad_bis,
-                stg_grad_bis,
-                num_bt,
-                num_ch,
-                0,
-                util.block_size(num_bt, grad_wgt.element_size()),
-                util.dtype(grad_wgt.dtype),
-            )
+            grad_bis = function.sum(stg_grad_bis, 0)
 
         return grad_inp, None, None, grad_wgt, grad_bis, None, None, None, None
 

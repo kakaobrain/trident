@@ -20,34 +20,30 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("height, width, axis", [(20000, 20000, 0), (20000, 20000, 1)])
-def test_sum(height, width, axis, device, dtype):
+@pytest.mark.parametrize("y_size, x_size, axis", [(20000, 20000, 0), (20000, 20000, 1)])
+def test_forward(y_size, x_size, axis, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    if axis == 0:
-        output_size = width
-        size_along_axis = height
-    else:
-        output_size = height
-        size_along_axis = width
+    assert util.equal(torch.sum(input, axis), trident.function.sum(input, axis))
 
-    input = torch.randn(height, width, **factory_kwargs)
-    output = torch.empty(output_size, **factory_kwargs)
 
-    def grid(meta):
-        return [output_size]
+@pytest.mark.parametrize("y_size, x_size, axis", [(20000, 20000, 0), (20000, 20000, 1)])
+def test_backward(y_size, x_size, axis, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    target = torch.randn(x_size if axis == 0 else y_size, **factory_kwargs)
 
-    trident.kernel.sum[grid](
-        output,
-        input,
-        height,
-        width,
-        axis,
-        trident.util.block_size(size_along_axis, input.element_size()),
-        trident.util.dtype(dtype),
-    )
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i, axis).backward(target, retain_graph=True)
+        return [i.grad]
 
-    assert util.equal(torch.sum(input, dim=axis), output)
+    (x,) = train(torch.sum)
+    (a,) = train(trident.function.sum)
+
+    assert util.equal(x, a)
 
 
 @pytest.mark.parametrize("axis", [0, 1])
@@ -120,28 +116,5 @@ def test_sum_issue1(axis, device):
         ],
         **factory_kwargs,
     )
-    height, width = input.shape
 
-    if axis == 0:
-        output_size = width
-        size_along_axis = height
-    else:
-        output_size = height
-        size_along_axis = width
-
-    output = torch.empty(output_size, **factory_kwargs)
-
-    def grid(meta):
-        return [output_size]
-
-    trident.kernel.sum[grid](
-        output,
-        input,
-        height,
-        width,
-        axis,
-        trident.util.block_size(size_along_axis, input.element_size()),
-        trident.util.dtype(dtype),
-    )
-
-    assert util.equal(torch.sum(input, dim=axis), output)
+    assert util.equal(torch.sum(input, axis), trident.function.sum(input, axis))

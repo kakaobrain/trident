@@ -189,7 +189,7 @@ class Linear:
             )
 
             if p_grad_bis is not None:
-                acc_grad_bis += language.sum(grad_act)
+                acc_grad_bis += triton.language.sum(triton.language.ravel(grad_act), 0)
 
             ptrs_grad_out = triton.language.advance(ptrs_grad_out, (blk_sz, 0))
             ptrs_out = triton.language.advance(ptrs_out, (blk_sz, 0))

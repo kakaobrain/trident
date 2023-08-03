@@ -171,3 +171,12 @@ def softmax(input, dim=None):
     See Softmax for more details.
     """
     return operation.Softmax.apply(input, dim)
+
+
+def sum(input, dim):
+    """
+    Returns the sum of all elements in an input.
+
+    See Sum for more details.
+    """
+    return operation.Sum.apply(input, dim)
