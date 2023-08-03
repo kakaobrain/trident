@@ -132,8 +132,50 @@ def sigmoid(x, dtype):
 
 
 @triton.jit
-def sum(x):
-    return triton.language.sum(triton.language.ravel(x), 0)
+def sum(
+    input_ptr,
+    y_size,
+    x_size,
+    offset,
+    axis: triton.language.constexpr,
+    block_size: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
+    if axis == 0:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(0, offset),
+            block_shape=(block_size, 1),
+            order=(0, 1),
+        )
+        size_along_axis = y_size
+        accumulation = triton.language.zeros((block_size, 1), triton.language.float32)
+    else:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(1, 0),
+        )
+        size_along_axis = x_size
+        accumulation = triton.language.zeros((1, block_size), triton.language.float32)
+
+    for _ in range(0, size_along_axis, block_size):
+        input = triton.language.load(
+            input_block_ptr, boundary_check=(axis,), padding_option="zero"
+        ).to(triton.language.float32)
+        accumulation += input
+        input_block_ptr = triton.language.advance(
+            input_block_ptr, (block_size, 0) if axis == 0 else (0, block_size)
+        )
+
+    output = triton.language.sum(accumulation, axis)
+
+    return output.to(dtype)
 
 
 @triton.jit

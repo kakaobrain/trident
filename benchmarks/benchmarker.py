@@ -29,6 +29,7 @@ import benchmark_prelu
 import benchmark_relu
 import benchmark_silu
 import benchmark_softmax
+import benchmark_sum
 
 
 def print_scenarios():
@@ -51,6 +52,7 @@ def print_scenarios():
                 "relu",
                 "silu",
                 "softmax",
+                "sum",
             ]
         )
     )
@@ -87,6 +89,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_silu.run_benchmark(mode, show_plots)
     elif scenario == "softmax":
         benchmark_softmax.run_benchmark(mode, show_plots)
+    elif scenario == "sum":
+        benchmark_sum.run_benchmark(mode, show_plots)
     elif not scenario:
         benchmark_adaptive_avg_pool2d.run_benchmark(mode, show_plots)
         benchmark_batch_norm.run_benchmark(mode, show_plots)
@@ -103,6 +107,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_relu.run_benchmark(mode, show_plots)
         benchmark_silu.run_benchmark(mode, show_plots)
         benchmark_softmax.run_benchmark(mode, show_plots)
+        benchmark_sum.run_benchmark(mode, show_plots)
     else:
         print_scenarios()
 
