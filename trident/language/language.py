@@ -99,8 +99,20 @@ def max(x):
 
 
 @triton.jit
-def mean(x, sz):
-    return triton.language.sum(x, 0) / sz
+def mean(
+    input_ptr,
+    y_size,
+    x_size,
+    offset,
+    axis: triton.language.constexpr,
+    block_size: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
+    accumulation = sum(input_ptr, y_size, x_size, offset, axis, block_size, dtype)
+    size_along_axis = y_size if axis == 0 else x_size
+    output = accumulation / size_along_axis
+
+    return output.to(dtype)
 
 
 @triton.jit

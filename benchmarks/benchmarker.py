@@ -25,6 +25,7 @@ import benchmark_layer_norm
 import benchmark_leaky_relu
 import benchmark_linear
 import benchmark_max_pool2d
+import benchmark_mean
 import benchmark_prelu
 import benchmark_relu
 import benchmark_silu
@@ -48,6 +49,7 @@ def print_scenarios():
                 "leaky-relu",
                 "linear",
                 "max-pool2d",
+                "mean",
                 "prelu",
                 "relu",
                 "silu",
@@ -81,6 +83,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_linear.run_benchmark(mode, show_plots)
     elif scenario == "max-pool2d":
         benchmark_max_pool2d.run_benchmark(mode, show_plots)
+    elif scenario == "mean":
+        benchmark_mean.run_benchmark(mode, show_plots)
     elif scenario == "prelu":
         benchmark_prelu.run_benchmark(mode, show_plots)
     elif scenario == "relu":
@@ -103,6 +107,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_leaky_relu.run_benchmark(mode, show_plots)
         benchmark_linear.run_benchmark(mode, show_plots)
         benchmark_max_pool2d.run_benchmark(mode, show_plots)
+        benchmark_mean.run_benchmark(mode, show_plots)
         benchmark_prelu.run_benchmark(mode, show_plots)
         benchmark_relu.run_benchmark(mode, show_plots)
         benchmark_silu.run_benchmark(mode, show_plots)

@@ -582,6 +582,31 @@ class MaxPool2d(torch.nn.Module):
         return operation.MaxPool2d.apply(input, self.kernel_size)
 
 
+class Mean(torch.nn.Module):
+    def __init__(self, dim=None):
+        """
+        Calculate the mean of all elements in an input.
+
+        Args:
+            dim: the dimension or dimensions to reduce.
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, input):
+        """
+        Calculate the mean of all elements in an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            the mean of all elements in an input.
+        """
+        return operation.Mean.apply(input, self.dim)
+
+
 class ReLU(torch.nn.Module):
     def __init__(self):
         """

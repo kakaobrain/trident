@@ -18,7 +18,7 @@ from trident import language
 
 
 @triton.jit
-def mean(
+def mean_legacy(
     x_ptr,
     x_sz,
     blk_sz: triton.language.constexpr,

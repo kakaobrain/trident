@@ -42,7 +42,7 @@ class InstanceNorm:
         p_out += ptr_off
 
         if p_run_mean is None:
-            mean = kernel.mean(p_inp, vec_sz, blk_sz, dtype)
+            mean = kernel.mean_legacy(p_inp, vec_sz, blk_sz, dtype)
         else:
             mean = triton.language.load(p_run_mean + ch)
 
@@ -92,7 +92,7 @@ class InstanceNorm:
         blk, msk = language.make_block(vec_sz, blk_sz)
         inp = triton.language.load(p_inp + blk, msk, 0)
         wgt = triton.language.load(wgt_ptr + ch) if wgt_ptr is not None else 1
-        mean = language.mean(inp, vec_sz)
+        mean = triton.language.sum(inp, 0) / vec_sz
         var = language.var(msk, inp, vec_sz, mean, corr=0)
         std = language.std(var, eps)
         mean_ctr = triton.language.where(msk, inp - mean, 0)
@@ -101,10 +101,10 @@ class InstanceNorm:
         grad_out = triton.language.load(p_grad_out + blk, msk, 0)
         grad_norm = wgt * grad_out
         grad_std = ((grad_norm * mean_ctr) / -language.pow2(std)) / (2 * std)
-        grad_var = language.mean(grad_std, vec_sz)
+        grad_var = triton.language.sum(grad_std, 0) / vec_sz
         grad_dist = 2 * mean_ctr * grad_var
         grad_mean_ctr = triton.language.where(msk, (grad_norm / std) + grad_dist, 0)
-        grad_mean = -language.mean(grad_mean_ctr, vec_sz)
+        grad_mean = -triton.language.sum(grad_mean_ctr, 0) / vec_sz
         grad_inp = grad_mean_ctr + grad_mean
         triton.language.store(p_grad_inp + blk, grad_inp, msk)
 
@@ -137,7 +137,7 @@ class InstanceNorm:
         ptr_off = bt * num_ch * vec_sz + ch * vec_sz
         p_inp += ptr_off
 
-        mean = kernel.mean(p_inp, vec_sz, blk_sz, dtype)
+        mean = kernel.mean_legacy(p_inp, vec_sz, blk_sz, dtype)
         var = kernel.var(p_inp, vec_sz, mean, blk_sz, dtype)
 
         triton.language.atomic_add(p_mean + ch, mean / num_bt)

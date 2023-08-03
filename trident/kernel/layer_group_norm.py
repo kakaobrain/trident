@@ -45,7 +45,7 @@ class LayerGroupNorm:
         if bis_ptr:
             bis_ptr += grp_off
 
-        mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
+        mean = kernel.mean_legacy(inp_ptr, vec_sz, blk_sz, dtype)
         var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)
         std = language.std(var, eps)
 
@@ -94,7 +94,7 @@ class LayerGroupNorm:
         if grad_bis_ptr:
             grad_bis_ptr += grp_off
 
-        mean = kernel.mean(inp_ptr, vec_sz, blk_sz, dtype)
+        mean = kernel.mean_legacy(inp_ptr, vec_sz, blk_sz, dtype)
         var = kernel.var(inp_ptr, vec_sz, mean, blk_sz, dtype)
         std = language.std(var, eps)
 

@@ -23,6 +23,7 @@ from .leaky_relu import *
 from .linear import *
 from .math import *
 from .max_pool2d import *
+from .mean import *
 from .prelu import *
 from .relu import *
 from .silu import *

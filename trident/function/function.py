@@ -137,6 +137,15 @@ def max_pool2d(input, kernel_size):
     return operation.MaxPool2d.apply(input, kernel_size)
 
 
+def mean(input, dim):
+    """
+    Returns the mean of all elements in an input.
+
+    See Mean for more details.
+    """
+    return operation.Mean.apply(input, dim)
+
+
 def relu(input):
     """
     Applies ReLU to an input.
