@@ -189,3 +189,12 @@ def sum(input, dim):
     See Sum for more details.
     """
     return operation.Sum.apply(input, dim)
+
+
+def var(input, dim, correction=1):
+    """
+    Returns the variance along the specified dimension.
+
+    See Var for more details.
+    """
+    return operation.Var.apply(input, dim, correction)

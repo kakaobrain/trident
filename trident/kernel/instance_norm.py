@@ -47,7 +47,7 @@ class InstanceNorm:
             mean = triton.language.load(p_run_mean + ch)
 
         if p_run_var is None:
-            var = kernel.var(p_inp, vec_sz, mean, blk_sz, dtype)
+            var = kernel.var_legacy(p_inp, vec_sz, mean, blk_sz, dtype)
         else:
             var = triton.language.load(p_run_var + ch)
 
@@ -93,7 +93,12 @@ class InstanceNorm:
         inp = triton.language.load(p_inp + blk, msk, 0)
         wgt = triton.language.load(wgt_ptr + ch) if wgt_ptr is not None else 1
         mean = triton.language.sum(inp, 0) / vec_sz
-        var = language.var(msk, inp, vec_sz, mean, corr=0)
+        var = (
+            triton.language.sum(
+                language.pow2(triton.language.where(msk, inp - mean, 0.0)), 0
+            )
+            / vec_sz
+        )
         std = language.std(var, eps)
         mean_ctr = triton.language.where(msk, inp - mean, 0)
         norm = mean_ctr / std
@@ -138,7 +143,7 @@ class InstanceNorm:
         p_inp += ptr_off
 
         mean = kernel.mean_legacy(p_inp, vec_sz, blk_sz, dtype)
-        var = kernel.var(p_inp, vec_sz, mean, blk_sz, dtype)
+        var = kernel.var_legacy(p_inp, vec_sz, mean, blk_sz, dtype)
 
         triton.language.atomic_add(p_mean + ch, mean / num_bt)
         triton.language.atomic_add(p_var + ch, var / num_bt)

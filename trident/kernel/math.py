@@ -52,7 +52,7 @@ def max(inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
 
 
 @triton.jit
-def var(
+def var_legacy(
     x_ptr,
     x_sz,
     mean,
