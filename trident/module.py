@@ -585,10 +585,10 @@ class MaxPool2d(torch.nn.Module):
 class Mean(torch.nn.Module):
     def __init__(self, dim=None):
         """
-        Calculate the mean of all elements in an input.
+        Computes the mean along the specified dimension in an input.
 
         Args:
-            dim: the dimension or dimensions to reduce.
+            dim: the dimension or dimensions to reduce
         """
         super().__init__()
 
@@ -596,15 +596,15 @@ class Mean(torch.nn.Module):
 
     def forward(self, input):
         """
-        Calculate the mean of all elements in an input.
+        Computes the mean along the specified dimension in an input.
 
         Args:
             input: an input
 
         Returns:
-            the mean of all elements in an input.
+            the mean along the specified dimension in an input
         """
-        return operation.Mean.apply(input, self.dim)
+        return function.mean(input, self.dim)
 
 
 class ReLU(torch.nn.Module):
@@ -703,7 +703,7 @@ class Softmax(torch.nn.Module):
 class Sum(torch.nn.Module):
     def __init__(self, dim=None):
         """
-        Calculate the sum of all elements in an input.
+        Computes the sum along the specified dimension in an input.
 
         Args:
             dim: the dimension or dimensions to reduce.
@@ -714,12 +714,39 @@ class Sum(torch.nn.Module):
 
     def forward(self, input):
         """
-        Calculate the sum of all elements in an input.
+        Computes the sum along the specified dimension in an input.
 
         Args:
             input: an input
 
         Returns:
-            the sum of all elements in an input.
+            the sum of all elements in an input
         """
-        return operation.Sum.apply(input, self.dim)
+        return function.sum(input, self.dim)
+
+
+class Var(torch.nn.Module):
+    def __init__(self, dim=None, correction=1):
+        """
+        Computes the variance along the specified dimension in an input.
+
+        Args:
+            dim: the dimension or dimensions to reduce
+            correction: the difference between the sample size and sample degrees of freedom
+        """
+        super().__init__()
+
+        self.dim = dim
+        self.correction = correction
+
+    def forward(self, input):
+        """
+        Computes the variance along the specified dimension in an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            the variance along the specified dimension in an input
+        """
+        return function.var(input, self.dim, self.correction)

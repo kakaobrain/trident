@@ -29,3 +29,4 @@ from .relu import *
 from .silu import *
 from .softmax import *
 from .sum import *
+from .var import *
