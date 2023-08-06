@@ -32,9 +32,9 @@ class Softmax(torch.autograd.Function):
         return Softmax.__backward(*grad_outputs, *ctx.saved_tensors)
 
     @staticmethod
-    def __forward(inp, axis):
+    def __forward(inp, dim):
         assert inp.is_contiguous()
-        assert axis == 1
+        assert dim == 1
 
         num_vec, vec_sz = inp.shape
 

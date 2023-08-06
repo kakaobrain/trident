@@ -104,13 +104,13 @@ def mean(
     y_size,
     x_size,
     offset,
-    axis: triton.language.constexpr,
+    dim: triton.language.constexpr,
     block_size: triton.language.constexpr,
     dtype: triton.language.constexpr,
 ):
-    accumulation = sum(input_ptr, y_size, x_size, offset, axis, block_size, dtype)
-    size_along_axis = y_size if axis == 0 else x_size
-    output = accumulation / size_along_axis
+    accumulation = sum(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
+    size_along_dim = y_size if dim == 0 else x_size
+    output = accumulation / size_along_dim
 
     return output.to(dtype)
 
@@ -149,11 +149,11 @@ def sum(
     y_size,
     x_size,
     offset,
-    axis: triton.language.constexpr,
+    dim: triton.language.constexpr,
     block_size: triton.language.constexpr,
     dtype: triton.language.constexpr,
 ):
-    if axis == 0:
+    if dim == 0:
         input_block_ptr = triton.language.make_block_ptr(
             input_ptr,
             shape=(y_size, x_size),
@@ -162,7 +162,7 @@ def sum(
             block_shape=(block_size, 1),
             order=(0, 1),
         )
-        size_along_axis = y_size
+        size_along_dim = y_size
         accumulation = triton.language.zeros((block_size, 1), triton.language.float32)
     else:
         input_block_ptr = triton.language.make_block_ptr(
@@ -173,19 +173,19 @@ def sum(
             block_shape=(1, block_size),
             order=(1, 0),
         )
-        size_along_axis = x_size
+        size_along_dim = x_size
         accumulation = triton.language.zeros((1, block_size), triton.language.float32)
 
-    for _ in range(0, size_along_axis, block_size):
+    for _ in range(0, size_along_dim, block_size):
         input = triton.language.load(
-            input_block_ptr, boundary_check=(axis,), padding_option="zero"
+            input_block_ptr, boundary_check=(dim,), padding_option="zero"
         ).to(triton.language.float32)
         accumulation += input
         input_block_ptr = triton.language.advance(
-            input_block_ptr, (block_size, 0) if axis == 0 else (0, block_size)
+            input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size)
         )
 
-    output = triton.language.sum(accumulation, axis)
+    output = triton.language.sum(accumulation, dim)
 
     return output.to(dtype)
 

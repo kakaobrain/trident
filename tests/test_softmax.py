@@ -35,10 +35,10 @@ def test_backward(num_vec, vec_sz, device, dtype):
     inp = torch.randn(num_vec, vec_sz, **ctor_args)
     tgt = torch.randn(num_vec, vec_sz, **ctor_args)
 
-    def train(func, axis):
+    def train(func, dim):
         i = inp.clone()
         i.requires_grad = True
-        func(i, axis).backward(tgt, retain_graph=True)
+        func(i, dim).backward(tgt, retain_graph=True)
         return [i.grad]
 
     (x,) = train(torch.nn.functional.softmax, 1)

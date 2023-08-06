@@ -26,27 +26,27 @@ class Sum(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        input, axis = inputs
+        input, dim = inputs
         ctx.save_for_backward(input)
-        ctx.axis = axis
+        ctx.dim = dim
 
     @staticmethod
     def backward(ctx, *grad_outputs):
         (input,) = ctx.saved_tensors
         (grad_output,) = grad_outputs
-        return Sum.__backward(grad_output, input, ctx.axis)
+        return Sum.__backward(grad_output, input, ctx.dim)
 
     @staticmethod
-    def __forward(input, axis):
+    def __forward(input, dim):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         y_size, x_size = input.shape
 
-        if axis == 0:
+        if dim == 0:
             output_size = x_size
-            size_along_axis = y_size
+            size_along_dim = y_size
         else:
             output_size = y_size
-            size_along_axis = x_size
+            size_along_dim = x_size
 
         def grid(meta):
             return (output_size,)
@@ -58,23 +58,23 @@ class Sum(torch.autograd.Function):
             input,
             y_size,
             x_size,
-            axis,
-            util.block_size(size_along_axis, input.element_size()),
+            dim,
+            util.block_size(size_along_dim, input.element_size()),
             util.dtype(input.dtype),
         )
 
         return output
 
     @staticmethod
-    def __backward(grad_output, input, axis):
+    def __backward(grad_output, input, dim):
         y_size, x_size = input.shape
 
-        if axis == 0:
+        if dim == 0:
             output_size = y_size
-            size_along_axis = x_size
+            size_along_dim = x_size
         else:
             output_size = x_size
-            size_along_axis = y_size
+            size_along_dim = y_size
 
         def grid(meta):
             return (output_size,)
@@ -86,8 +86,8 @@ class Sum(torch.autograd.Function):
             grad_output,
             y_size,
             x_size,
-            axis,
-            util.block_size(size_along_axis, input.element_size()),
+            dim,
+            util.block_size(size_along_dim, input.element_size()),
         )
 
         return grad_input, None

@@ -45,10 +45,10 @@ class Var(torch.autograd.Function):
 
         if dim == 0:
             output_size = x_size
-            size_along_axis = y_size
+            size_along_dim = y_size
         else:
             output_size = y_size
-            size_along_axis = x_size
+            size_along_dim = x_size
 
         def grid(meta):
             return (output_size,)
@@ -63,7 +63,7 @@ class Var(torch.autograd.Function):
             None,
             dim,
             correction,
-            util.block_size(size_along_axis, input.element_size()),
+            util.block_size(size_along_dim, input.element_size()),
             util.dtype(input.dtype),
         )
 

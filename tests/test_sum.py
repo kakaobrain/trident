@@ -20,24 +20,24 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, axis", [(20000, 20000, 0), (20000, 20000, 1)])
-def test_forward(y_size, x_size, axis, device, dtype):
+@pytest.mark.parametrize("y_size, x_size, dim", [(20000, 20000, 0), (20000, 20000, 1)])
+def test_forward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    assert util.equal(torch.sum(input, axis), trident.function.sum(input, axis))
+    assert util.equal(torch.sum(input, dim), trident.function.sum(input, dim))
 
 
-@pytest.mark.parametrize("y_size, x_size, axis", [(20000, 20000, 0), (20000, 20000, 1)])
-def test_backward(y_size, x_size, axis, device, dtype):
+@pytest.mark.parametrize("y_size, x_size, dim", [(20000, 20000, 0), (20000, 20000, 1)])
+def test_backward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.randn(x_size if axis == 0 else y_size, **factory_kwargs)
+    target = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
 
     def train(func):
         i = input.clone()
         i.requires_grad = True
-        func(i, axis).backward(target, retain_graph=True)
+        func(i, dim).backward(target, retain_graph=True)
         return [i.grad]
 
     (x,) = train(torch.sum)
@@ -46,8 +46,8 @@ def test_backward(y_size, x_size, axis, device, dtype):
     assert util.equal(x, a)
 
 
-@pytest.mark.parametrize("axis", [0, 1])
-def test_sum_issue1(axis, device):
+@pytest.mark.parametrize("dim", [0, 1])
+def test_sum_issue1(dim, device):
     dtype = torch.float16
     factory_kwargs = {"device": device, "dtype": dtype}
 
@@ -117,4 +117,4 @@ def test_sum_issue1(axis, device):
         **factory_kwargs,
     )
 
-    assert util.equal(torch.sum(input, axis), trident.function.sum(input, axis))
+    assert util.equal(torch.sum(input, dim), trident.function.sum(input, dim))
