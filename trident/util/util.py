@@ -15,7 +15,11 @@
 import torch
 import triton
 
-from trident import math, module
+from trident import math, module, operation
+
+
+def argmax(input, dim):
+    return operation.Argmax.apply(input, dim)
 
 
 def fill(inp, val):
@@ -23,13 +27,15 @@ def fill(inp, val):
         return inp.fill_(val)
 
 
-def dtype(inp):
-    if inp == torch.float32:
+def dtype(input):
+    if input == torch.float32:
         return triton.language.float32
-    if inp == torch.float16:
+    elif input == torch.float16:
         return triton.language.float16
+    elif input == torch.int64:
+        return triton.language.int64
     else:
-        raise NotImplementedError(inp)
+        raise ValueError(f"Unable to convert the given input: '{input}'.")
 
 
 def shared_memory_size_per_block():
