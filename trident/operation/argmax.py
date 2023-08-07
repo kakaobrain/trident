@@ -53,7 +53,7 @@ class Argmax(torch.autograd.Function):
             x_size,
             dim,
             util.block_size(size_along_dim, input.element_size()),
-            util.dtype(output.dtype),
+            util.dtype(input.dtype),
         )
 
         return output

@@ -137,9 +137,18 @@ def max_pool2d(input, kernel_size):
     return operation.MaxPool2d.apply(input, kernel_size)
 
 
+def max(input, dim):
+    """
+    Returns the max along the specified dimension in an input.
+
+    See Max for more details.
+    """
+    return operation.Max.apply(input, dim)
+
+
 def mean(input, dim):
     """
-    Returns the mean of all elements in an input.
+    Returns the mean along the specified dimension in an input.
 
     See Mean for more details.
     """
@@ -184,7 +193,7 @@ def softmax(input, dim=None):
 
 def sum(input, dim):
     """
-    Returns the sum of all elements in an input.
+    Returns the sum along the specified dimension in an input.
 
     See Sum for more details.
     """
@@ -193,7 +202,7 @@ def sum(input, dim):
 
 def var(input, dim, correction=1):
     """
-    Returns the variance along the specified dimension.
+    Returns the variance along the specified dimension in an input.
 
     See Var for more details.
     """
