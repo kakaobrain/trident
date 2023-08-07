@@ -20,20 +20,43 @@ import trident
 
 
 @util.report(
-    "prelu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 16}
+    "prelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16}
 )
-def bench_prelu_forward(num_vec, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
-    wgt = torch.randn(1, device="cuda")
+def bench_prelu_forward(y_size, x_size, ctx):
+    factory_kwargs = {"device": "cuda"}
+
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    weight = torch.randn(x_size, **factory_kwargs)
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.prelu(inp, wgt))
+        return triton.testing.do_bench(lambda: torch.nn.functional.prelu(input, weight))
     else:
-        return triton.testing.do_bench(lambda: trident.function.prelu(inp, wgt))
+        return triton.testing.do_bench(lambda: trident.function.prelu(input, weight))
+
+
+@util.report(
+    "prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16}
+)
+def bench_prelu_backward(y_size, x_size, ctx):
+    factory_kwargs = {"device": "cuda"}
+
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    if ctx == "torch":
+        operation = torch.nn.PReLU(x_size, 0.3, **factory_kwargs)
+    else:
+        operation = trident.PReLU(x_size, 0.3, **factory_kwargs)
+
+    output = operation.forward(input)
+    grad_output = torch.ones_like(output)
+
+    return triton.testing.do_bench(
+        lambda: output.backward(grad_output, retain_graph=True)
+    )
 
 
 def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_prelu_forward.run(print_data=True, show_plots=show_plots)
     else:
-        raise NotImplementedError("The backward isn't implemented.")
+        bench_prelu_backward.run(print_data=True, show_plots=show_plots)

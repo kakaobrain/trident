@@ -19,34 +19,34 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize(
-    "num_bt, num_elem", [(512, 512), (200, 300), (100, 1), (1, 100)]
-)
-def test_function(num_bt, num_elem, dtype, device):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
-    wgt = torch.randn(num_elem, dtype=dtype, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_forward(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    weight = torch.randn(x_size, **factory_kwargs)
 
     assert util.equal(
-        torch.nn.functional.prelu(inp, wgt), trident.function.prelu(inp, wgt)
+        torch.nn.functional.prelu(input, weight), trident.function.prelu(input, weight)
     )
 
 
-@pytest.mark.parametrize(
-    "num_bt, num_elem", [(512, 512), (200, 300), (100, 1), (1, 100)]
-)
-def test_backward(num_bt, num_elem, device):
-    inp = torch.randn(num_bt, num_elem, device=device)
-    tgt = torch.randn(num_bt, num_elem, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
+def test_backward(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
 
-    x = inp.clone()
-    a = inp.clone()
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    target = torch.randn(y_size, x_size, **factory_kwargs)
+
+    x = input.clone()
+    a = input.clone()
     x.requires_grad = a.requires_grad = True
 
-    y = torch.nn.PReLU(num_elem, 0.3, device=device)
-    b = trident.PReLU(num_elem, 0.3)
+    y = torch.nn.PReLU(x_size, 0.3, **factory_kwargs)
+    b = trident.PReLU(x_size, 0.3, **factory_kwargs)
 
-    util.train(x, tgt, y)
-    util.train(a, tgt, b)
+    util.train(x, target, y)
+    util.train(a, target, b)
 
     assert util.equal(x.grad, a.grad)
     assert util.equal(y.weight.grad, b.weight.grad)

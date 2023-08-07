@@ -17,63 +17,158 @@ import triton
 from trident import language
 
 
+def all_configs():
+    configs = []
+
+    for y_block_size in [32, 64, 128]:
+        for x_block_size in [32, 64, 128]:
+            for num_stages in [4, 5]:
+                for num_warps in [4, 8, 16]:
+                    configs.append(
+                        triton.Config(
+                            {
+                                "y_block_size": y_block_size,
+                                "x_block_size": x_block_size,
+                            },
+                            num_stages=num_stages,
+                            num_warps=num_warps,
+                        )
+                    )
+
+    return configs
+
+
 class PReLU:
     @staticmethod
+    @triton.autotune(
+        configs=all_configs(),
+        key=["y_size", "x_size"],
+    )
     @triton.jit
     def forward(
-        x_ptr,
-        x_stride,
-        y_ptr,
-        y_stride,
-        w_ptr,
-        size_1,
-        block_size: triton.language.constexpr,
+        output_ptr,
+        input_ptr,
+        weight_ptr,
+        y_size,
+        x_size,
+        y_block_size: triton.language.constexpr,
+        x_block_size: triton.language.constexpr,
     ):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+        pid = triton.language.program_id(0)
+        num_x_blocks = language.cdiv(x_size, x_block_size)
+        i = pid // num_x_blocks
+        j = pid % num_x_blocks
 
-        block = triton.language.arange(0, block_size) + j * block_size
-        mask = block < size_1
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
 
-        x_ptr += i * x_stride + block
-        y_ptr += i * y_stride + block
-        w_ptr += triton.language.arange(0, block_size)
+        weight_block_ptr = triton.language.make_block_ptr(
+            weight_ptr,
+            shape=x_size,
+            strides=1,
+            offsets=j * x_block_size,
+            block_shape=x_block_size,
+            order=(0,),
+        )
 
-        x = triton.language.load(x_ptr, mask, 0.0)
-        w = triton.language.load(w_ptr, mask, 0.0)
-        y = language.leaky_relu(x, w)
+        input = triton.language.load(input_block_ptr, boundary_check=(0, 1))
+        weight = triton.language.load(weight_block_ptr, boundary_check=(0,))
+        output = language.leaky_relu(input, weight)
 
-        triton.language.store(y_ptr, y, mask)
+        output_block_ptr = triton.language.make_block_ptr(
+            output_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
+
+        triton.language.store(output_block_ptr, output, boundary_check=(0, 1))
 
     @staticmethod
+    @triton.autotune(
+        configs=all_configs(),
+        key=["y_size", "x_size"],
+    )
     @triton.jit
     def backward(
-        x_ptr,
-        x_stride,
-        dx_ptr,
-        dx_stride,
-        w_ptr,
-        dw_ptr,
-        size,
-        block_size: triton.language.constexpr,
+        grad_input_ptr,
+        grad_weight_ptr,
+        input_ptr,
+        weight_ptr,
+        grad_output_ptr,
+        y_size,
+        x_size,
+        y_block_size: triton.language.constexpr,
+        x_block_size: triton.language.constexpr,
     ):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+        pid = triton.language.program_id(0)
+        num_x_blocks = language.cdiv(x_size, x_block_size)
+        i = pid // num_x_blocks
+        j = pid % num_x_blocks
 
-        block = triton.language.arange(0, block_size) + j * block_size
-        mask = block < size
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
 
-        x_ptr += i * x_stride + block
-        dx_ptr += i * dx_stride + block
+        grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
 
-        w_ptr += triton.language.arange(0, block_size)
-        dw_ptr += i * x_stride + block
+        weight_block_ptr = triton.language.make_block_ptr(
+            weight_ptr,
+            shape=x_size,
+            strides=1,
+            offsets=j * x_block_size,
+            block_shape=x_block_size,
+            order=(0,),
+        )
 
-        x = triton.language.load(x_ptr, mask, 0.0)
-        w = triton.language.load(w_ptr, mask, 0.0)
+        grad_weight_block_ptr = triton.language.make_block_ptr(
+            grad_weight_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
 
-        dx = triton.language.where(x > 0, 1, w)
-        dw = triton.language.where(x > 0, 0, x)
+        grad_output_block_ptr = triton.language.make_block_ptr(
+            grad_output_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(i * y_block_size, j * x_block_size),
+            block_shape=(y_block_size, x_block_size),
+            order=(1, 0),
+        )
 
-        triton.language.store(dx_ptr, dx, mask)
-        triton.language.store(dw_ptr, dw, mask)
+        input = triton.language.load(input_block_ptr, boundary_check=(0, 1))
+        weight = triton.language.load(weight_block_ptr, boundary_check=(0,))
+        grad_output = triton.language.load(grad_output_block_ptr, boundary_check=(0, 1))
+
+        grad_input = triton.language.where(input > 0, 1, weight)
+        grad_weight = triton.language.where(input > 0, 0, input)
+
+        triton.language.store(
+            grad_input_block_ptr, grad_input * grad_output, boundary_check=(0, 1)
+        )
+        triton.language.store(
+            grad_weight_block_ptr, grad_weight * grad_output, boundary_check=(0, 1)
+        )
