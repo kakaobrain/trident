@@ -37,21 +37,6 @@ def mean_legacy(
 
 
 @triton.jit
-def max(inp_ptr, inp_sz, blk_sz: triton.language.constexpr):
-    blk, msk = language.make_block(inp_sz, blk_sz, 0)
-    inp = triton.language.load(inp_ptr + blk, msk, 0)
-    res = triton.language.max(inp, 0)
-
-    for blk_off in range(blk_sz, inp_sz, blk_sz):
-        blk, msk = language.make_block(inp_sz, blk_sz, blk_off)
-        inp = triton.language.load(inp_ptr + blk, msk, 0)
-        num = triton.language.max(inp, 0)
-        res = num if num > res else res
-
-    return res
-
-
-@triton.jit
 def var_legacy(
     x_ptr,
     x_sz,

@@ -16,61 +16,6 @@ import triton
 
 
 @triton.jit
-def argmax(
-    input_ptr,
-    y_size,
-    x_size,
-    offset,
-    dim: triton.language.constexpr,
-    block_size: triton.language.constexpr,
-    dtype: triton.language.constexpr,
-):
-    if dim == 0:
-        input_block_ptr = triton.language.make_block_ptr(
-            input_ptr,
-            shape=(x_size, y_size),
-            strides=(1, x_size),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = y_size
-    else:
-        input_block_ptr = triton.language.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = x_size
-
-    maximum = triton.language.full((1,), -float("inf"), triton.language.float32)
-    output = triton.language.zeros((1,), triton.language.int32)
-
-    for block_offset in range(0, size_along_dim, block_size):
-        input = triton.language.load(input_block_ptr, boundary_check=(1,))
-        condition = (
-            triton.language.arange(0, block_size) + block_offset < size_along_dim
-        )
-        input = triton.language.where(condition, input, -float("inf"))
-        index = triton.language.argmax(input, 1) + block_offset
-        input_offset = index * x_size + offset if dim == 0 else index + offset * x_size
-        peak = triton.language.load(input_ptr + input_offset).to(
-            triton.language.float32
-        )
-
-        if peak > maximum:
-            maximum = peak
-            output = index
-
-        input_block_ptr = triton.language.advance(input_block_ptr, (0, block_size))
-
-    return output.to(dtype)
-
-
-@triton.jit
 def batch(index, num_channels, num_rows, num_cols):
     return index // (num_channels * num_rows * num_cols)
 
@@ -149,8 +94,56 @@ def make_group_msk(blk, grp_sz, off, h):
 
 
 @triton.jit
-def max(x):
-    return triton.language.max(triton.language.ravel(x), 0)
+def max(
+    input_ptr,
+    y_size,
+    x_size,
+    offset,
+    dim: triton.language.constexpr,
+    block_size: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
+    if dim == 0:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(x_size, y_size),
+            strides=(1, x_size),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(1, 0),
+        )
+        size_along_dim = y_size
+    else:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(1, 0),
+        )
+        size_along_dim = x_size
+
+    output = triton.language.full((1,), -float("inf"), dtype)
+    index = triton.language.zeros((1,), triton.language.int32)
+
+    for block_offset in range(0, size_along_dim, block_size):
+        input = triton.language.load(input_block_ptr, boundary_check=(1,))
+        condition = (
+            triton.language.arange(0, block_size) + block_offset < size_along_dim
+        )
+        input = triton.language.where(condition, input, -float("inf"))
+        position = triton.language.argmax(input, 1) + block_offset
+        shift = position * x_size + offset if dim == 0 else position + offset * x_size
+        peak = triton.language.load(input_ptr + shift)
+
+        if peak > output:
+            output = peak
+            index = position
+
+        input_block_ptr = triton.language.advance(input_block_ptr, (0, block_size))
+
+    return output, index.to(triton.language.int64)
 
 
 @triton.jit

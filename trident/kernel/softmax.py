@@ -20,13 +20,28 @@ from trident import kernel, language
 class Softmax:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, vec_sz, out_ptr, blk_sz: triton.language.constexpr):
+    def forward(
+        inp_ptr,
+        y_size,
+        vec_sz,
+        out_ptr,
+        blk_sz: triton.language.constexpr,
+        dtype: triton.language.constexpr,
+    ):
         pid = triton.language.program_id(0)
+        max = language.max(
+            inp_ptr,
+            y_size,
+            vec_sz,
+            pid,
+            triton.language.constexpr(1),
+            blk_sz,
+            dtype,
+        )
+        acc = 0.0
         off = pid * vec_sz
         inp_ptr += off
         out_ptr += off
-        max = kernel.max(inp_ptr, vec_sz, blk_sz)
-        acc = 0.0
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)

@@ -45,7 +45,15 @@ class Softmax(torch.autograd.Function):
         blk_sz = util.block_size(vec_sz, inp.element_size())
         num_warps = util.num_warps(vec_sz, inp.element_size(), 4)
 
-        kernel.Softmax.forward[grid](inp, vec_sz, out, blk_sz, num_warps=num_warps)
+        kernel.Softmax.forward[grid](
+            inp,
+            num_vec,
+            vec_sz,
+            out,
+            blk_sz,
+            util.dtype(inp.dtype),
+            num_warps=num_warps,
+        )
 
         return out
 

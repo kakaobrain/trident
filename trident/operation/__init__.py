@@ -23,6 +23,7 @@ from .instance_norm import *
 from .layer_norm import *
 from .leaky_relu import *
 from .linear import *
+from .max import *
 from .max_pool2d import *
 from .mean import *
 from .prelu import *

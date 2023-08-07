@@ -557,6 +557,31 @@ class Linear(torch.nn.Module):
         return function.linear(input, self.weight, self.bias, self.activation)
 
 
+class Max(torch.nn.Module):
+    def __init__(self, dim):
+        """
+        Computes the max along the specified dimension in an input.
+
+        Args:
+            dim: the dimension or dimensions to reduce
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, input):
+        """
+        Computes the max along the specified dimension in an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            the max along the specified dimension in an input
+        """
+        return function.max(input, self.dim)
+
+
 class MaxPool2d(torch.nn.Module):
     def __init__(self, kernel_size):
         """
