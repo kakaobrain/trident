@@ -12,22 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .adaptive_avg_pool2d import *
-from .argmax import *
-from .batch_norm import *
-from .conv2d import *
-from .dropout import *
-from .gelu import *
-from .group_norm import *
-from .instance_norm import *
-from .layer_norm import *
-from .leaky_relu import *
-from .linear import *
-from .max_pool2d import *
-from .mean import *
-from .prelu import *
-from .relu import *
-from .silu import *
-from .softmax import *
-from .sum import *
-from .var import *
+import pytest
+import torch
+
+import trident
+from tests import util
+
+
+@pytest.mark.parametrize("y_size, x_size, dim", [(10000, 20000, 0), (20000, 10000, 1)])
+def test_argmax(y_size, x_size, dim, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    assert util.equal(torch.argmax(input, dim), trident.util.argmax(input, dim))
