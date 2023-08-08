@@ -14,6 +14,7 @@
 
 from .adaptive_avg_pool2d import *
 from .argmax import *
+from .attention import *
 from .batch_norm import *
 from .conv2d import *
 from .cosine_similarity import *

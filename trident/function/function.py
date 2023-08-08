@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import torch
 
 from trident import operation
@@ -198,6 +200,22 @@ def prelu(input, weight):
     See PReLU for more details.
     """
     return operation.PReLU.apply(input, weight)
+
+
+def scaled_dot_product_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    is_causal: bool = False,
+    use_accelerator: bool = False,
+):
+    """
+    Computes scaled dot product attention on query, key and value tensors,
+    and applying dropout if a probability greater than 0.0 is specified.
+    """
+    assert len(query.size()) == 4
+
+    return operation.Attention.apply(query, key, value, is_causal, 1.0 / math.sqrt(key.shape[-1]), use_accelerator)
 
 
 def softmax(input: torch.Tensor, dim: int = None):
