@@ -12,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .combine import *
-from .constant import *
-from .function import *
+import triton
+
+from trident import language
+
+
+@triton.jit
+def combine_welford(m2_a, mean_a, count_a, m2_b, mean_b, count_b):
+    return (
+        m2_a
+        + m2_b
+        + language.pow2(mean_b - mean_a) * count_a * count_b / (count_a + count_b),
+        (mean_a * count_a + mean_b * count_b) / (count_a + count_b),
+        count_a + count_b,
+    )

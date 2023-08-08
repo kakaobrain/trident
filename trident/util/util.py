@@ -42,10 +42,10 @@ def shared_memory_size_per_block():
     return 64 * 1024
 
 
-def block_size(num_elem, elem_sz):
+def block_size(num_element, element_size, correction=1):
     return min(
-        triton.next_power_of_2(num_elem),
-        shared_memory_size_per_block() // elem_sz,
+        triton.next_power_of_2(num_element),
+        shared_memory_size_per_block() // (element_size * correction),
     )
 
 

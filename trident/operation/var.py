@@ -14,7 +14,6 @@
 
 
 import torch
-import triton
 
 from trident import kernel, math, util
 
@@ -60,10 +59,9 @@ class Var(torch.autograd.Function):
             input,
             y_size,
             x_size,
-            None,
             dim,
             correction,
-            util.block_size(size_along_dim, input.element_size()),
+            util.block_size(size_along_dim, input.element_size(), 4),
             util.dtype(input.dtype),
         )
 
