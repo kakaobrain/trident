@@ -457,28 +457,29 @@ class LayerNorm(torch.nn.Module):
 
         Args:
             normalized_shape: input shape from an expected input of size
+            eps: a value added to the denominator for numerical stability
             elementwise_affine: a boolean value that when set to True, this module has learnable per-element affine
                                 parameters initialized to ones (for weights) and zeros (for biases)
-            eps: a value added to the denominator for numerical stability
-            device: the desired device of returned tensor
-            dtype: the desired data type of returned tensor
         """
         super().__init__()
 
-        ctor_args = {"device": device, "dtype": dtype}
+        factory_kwargs = {"device": device, "dtype": dtype}
         self.normalized_shape = normalized_shape
         self.eps = eps
-        self.device = device
-        self.dtype = dtype
+        self.elementwise_affine = elementwise_affine
 
         if elementwise_affine:
             self.weight = torch.nn.Parameter(
-                torch.empty(normalized_shape, **ctor_args).fill_(1)
+                torch.empty(normalized_shape, **factory_kwargs)
             )
-            self.bias = torch.nn.Parameter(torch.zeros(normalized_shape, **ctor_args))
+            self.bias = torch.nn.Parameter(
+                torch.empty(normalized_shape, **factory_kwargs)
+            )
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
+
+        self.reset_parameters()
 
     def forward(self, input):
         """
@@ -493,6 +494,11 @@ class LayerNorm(torch.nn.Module):
         return function.layer_norm(
             input, self.normalized_shape, self.weight, self.bias, self.eps
         )
+
+    def reset_parameters(self):
+        if self.elementwise_affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
 
 
 class LeakyReLU(torch.nn.Module):

@@ -12,24 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .adaptive_avg_pool2d import *
-from .argmax import *
-from .batch_norm import *
-from .conv2d import *
-from .dropout import *
-from .gelu import *
-from .instance_norm import *
-from .layer_group_norm import *
-from .layer_norm import *
-from .leaky_relu import *
-from .linear import *
-from .math import *
-from .max import *
-from .max_pool2d import *
-from .mean import *
-from .prelu import *
-from .relu import *
-from .silu import *
-from .softmax import *
-from .sum import *
-from .var import *
+import triton
+
+dim = [triton.language.constexpr(i) for i in range(3)]
+zero = triton.language.constexpr(0)
