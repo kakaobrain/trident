@@ -136,6 +136,7 @@ fabric.properties
 
 !.idea/codeStyles
 !.idea/runConfigurations
+!.idea/icon.svg
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
