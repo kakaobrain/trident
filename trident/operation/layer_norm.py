@@ -15,94 +15,93 @@
 import functools
 
 import torch
+import triton
 
-from trident import kernel, util
+from trident import function, kernel, util
 
 
 class LayerNorm(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return LayerNorm.__forward(*args, **kwargs)
+        input, normalized_shape, weight, bias, eps = args
+        return LayerNorm.__forward(input, normalized_shape, weight, bias, eps)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        inp, norm_sh, wgt, bis, eps = inputs
-        ctx.save_for_backward(inp, wgt, bis)
-        ctx.norm_sh = norm_sh
+        input, normalized_shape, weight, bias, eps = inputs
+        ctx.save_for_backward(input, weight, bias)
+        ctx.normalized_shape = normalized_shape
         ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
+        (grad_output,) = grad_outputs
+        input, weight, bias = ctx.saved_tensors
         return LayerNorm.__backward(
-            *grad_outputs, *ctx.saved_tensors, ctx.norm_sh, ctx.eps
+            grad_output, input, ctx.normalized_shape, weight, bias, ctx.eps
         )
 
     @staticmethod
-    def __forward(inp, norm_sh, wgt, bis, eps):
-        vec_sz = LayerNorm.__get_vec_sz(norm_sh)
-        num_vec = inp.numel() // vec_sz
-
-        out = torch.empty_like(inp)
+    def __forward(input, normalized_shape, weight, bias, eps):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        x_size = functools.reduce(lambda x, y: x * y, normalized_shape)
+        y_size = input.numel() // x_size
+        output = torch.empty((y_size, x_size), **factory_kwargs)
 
         def grid(meta):
-            return [num_vec]
+            return (y_size,)
 
-        kernel.LayerGroupNorm.forward[grid](
-            inp,
-            vec_sz,
-            wgt,
-            bis,
+        kernel.LayerNorm.forward[grid](
+            output,
+            input,
+            y_size,
+            x_size,
+            weight,
+            bias,
             eps,
-            out,
-            1,
-            blk_sz=util.block_size(vec_sz, inp.element_size()),
-            dtype=util.dtype(inp.dtype),
-            num_warps=util.num_warps(vec_sz, inp.element_size()),
+            block_size=util.block_size(x_size, input.element_size()),
+            dtype=util.dtype(input.dtype),
+            num_warps=util.num_warps(x_size, input.element_size()),
         )
 
-        return out
+        return output
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, norm_sh, eps):
-        vec_sz = LayerNorm.__get_vec_sz(norm_sh)
-        num_vec = inp.numel() // vec_sz
+    def __backward(grad_output, input, normalized_shape, weight, bias, eps):
+        factory_kwargs = {"device": grad_output.device, "dtype": grad_output.dtype}
+        x_size = functools.reduce(lambda x, y: x * y, normalized_shape)
+        y_size = grad_output.numel() // x_size
+        grad_input = torch.empty_like(input)
 
-        grad_inp = torch.empty_like(inp)
-        grad_wgt = None if wgt is None else torch.zeros_like(wgt)
-        grad_bis = None if bis is None else torch.zeros_like(bis)
+        if weight is not None:
+            grad_weight_staging = torch.empty((y_size, x_size), **factory_kwargs)
+        else:
+            grad_weight_staging = None
 
         def grid(meta):
-            return [num_vec]
+            return (y_size,)
 
-        # TODO: Create a tensor in a kernel after a bug of Triton is fixed.
-        wgt = torch.zeros(vec_sz, device="cuda").fill_(1) if wgt is None else wgt
-
-        kernel.LayerGroupNorm.backward[grid](
-            grad_out,
-            inp,
-            grad_inp,
-            vec_sz,
-            wgt,
-            grad_wgt,
-            grad_bis,
+        kernel.LayerNorm.backward[grid](
+            grad_input,
+            grad_weight_staging,
+            grad_output,
+            input,
+            y_size,
+            x_size,
+            weight,
             eps,
-            1,
-            blk_sz=util.block_size(vec_sz, inp.element_size()),
-            dtype=util.dtype(inp.dtype),
-            num_warps=util.num_warps(vec_sz, inp.element_size()),
+            block_size=triton.next_power_of_2(x_size),
+            dtype=util.dtype(grad_output.dtype),
         )
 
-        return (
-            grad_inp,
-            None,
-            grad_wgt,
-            grad_bis,
-            None,
-            None,
-            None,
-            None,
-        )
+        if weight is not None:
+            grad_weight = function.sum(grad_weight_staging, 0)
+        else:
+            grad_weight = None
 
-    @staticmethod
-    def __get_vec_sz(sh):
-        return functools.reduce(lambda x, y: x * y, sh)
+        if bias is not None:
+            grad_bias = function.sum(grad_output, 0)
+        else:
+            grad_bias = None
+
+        return grad_input, None, grad_weight, grad_bias, None, None, None, None

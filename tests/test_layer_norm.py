@@ -19,59 +19,95 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(3, 16), (1, 20000)])
-def test_forward(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    norm_sh = [
-        inp.shape[-1],
-    ]
+@pytest.mark.parametrize("y_size, x_size", [(3, 16), (1, 20000)])
+def test_forward(y_size, x_size, dtype, device):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    normalized_shape = (input.shape[-1],)
 
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh),
-        trident.function.layer_norm(inp, norm_sh),
+        torch.nn.functional.layer_norm(input, normalized_shape),
+        trident.function.layer_norm(input, normalized_shape),
     )
 
-    wgt = torch.randn(norm_sh, dtype=dtype, device=device)
+    weight = torch.randn(normalized_shape, **factory_kwargs)
 
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, wgt, None),
-        trident.function.layer_norm(inp, norm_sh, wgt, None),
+        torch.nn.functional.layer_norm(input, normalized_shape, weight),
+        trident.function.layer_norm(input, normalized_shape, weight),
     )
 
-    bis = torch.randn(norm_sh, dtype=dtype, device=device)
+    bias = torch.randn(normalized_shape, **factory_kwargs)
 
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, None, bis),
-        trident.function.layer_norm(inp, norm_sh, None, bis),
+        torch.nn.functional.layer_norm(input, normalized_shape, None, bias),
+        trident.function.layer_norm(input, normalized_shape, None, bias),
     )
     assert util.equal(
-        torch.nn.functional.layer_norm(inp, norm_sh, wgt, bis),
-        trident.function.layer_norm(inp, norm_sh, wgt, bis),
+        torch.nn.functional.layer_norm(input, normalized_shape, weight, bias),
+        trident.function.layer_norm(input, normalized_shape, weight, bias),
     )
 
 
-@pytest.mark.parametrize("num_vec, vec_sz, elem_afn", [(3, 10, False), (11, 40, True)])
-def test_backward(num_vec, vec_sz, elem_afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    norm_sh = [inp.shape[-1]]
+@pytest.mark.parametrize("y_size, x_size", [(3, 10), (10, 40)])
+def test_backward(y_size, x_size, dtype, device):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    target = torch.ones(y_size, x_size, **factory_kwargs)
+    normalized_shape = [input.shape[-1]]
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i, normalized_shape).backward(target, retain_graph=True)
+        return (i.grad,)
 
-    lyr0 = torch.nn.LayerNorm(
-        norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device
-    )
-    lyr1 = trident.LayerNorm(
-        norm_sh, elementwise_affine=elem_afn, dtype=dtype, device=device
-    )
+    (x,) = train(torch.layer_norm)
+    (a,) = train(trident.function.layer_norm)
 
-    util.train(x, tgt, lyr0)
-    util.train(a, tgt, lyr1)
+    assert util.equal(x, a)
 
-    assert util.equal(x.grad, a.grad)
+    weight = torch.randn(normalized_shape, **factory_kwargs)
 
-    if elem_afn:
-        assert util.equal(lyr0.weight.grad, lyr1.weight.grad)
-        assert util.equal(lyr0.bias.grad, lyr1.bias.grad)
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        i.requires_grad = j.requires_grad = True
+        func(i, normalized_shape, j).backward(target, retain_graph=True)
+        return i.grad, j.grad
+
+    (x, y) = train(torch.layer_norm)
+    (a, b) = train(trident.function.layer_norm)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+
+    bias = torch.randn(normalized_shape, **factory_kwargs)
+
+    def train(func):
+        i = input.clone()
+        j = bias.clone()
+        i.requires_grad = j.requires_grad = True
+        func(i, normalized_shape, None, j).backward(target, retain_graph=True)
+        return i.grad, j.grad
+
+    (x, y) = train(torch.layer_norm)
+    (a, b) = train(trident.function.layer_norm)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        k = bias.clone()
+        i.requires_grad = j.requires_grad = k.requires_grad = True
+        func(i, normalized_shape, j, k).backward(target, retain_graph=True)
+        return i.grad, j.grad, k.grad
+
+    (x, y, z) = train(torch.layer_norm)
+    (a, b, c) = train(trident.function.layer_norm)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+    assert util.equal(z, c)
