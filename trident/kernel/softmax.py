@@ -34,7 +34,7 @@ class Softmax:
             y_size,
             vec_sz,
             pid,
-            triton.language.constexpr(1),
+            language.dim[1],
             blk_sz,
             dtype,
         )

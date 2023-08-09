@@ -112,7 +112,7 @@ class Var:
             1,
             grad_output_size,
             0,
-            triton.language.constexpr(1),
+            language.dim[1],
             block_size,
             dtype,
         ) / (grad_output_size - correction)
