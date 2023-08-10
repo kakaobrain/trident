@@ -14,6 +14,8 @@
 
 import triton
 
+from trident import language
+
 
 @triton.jit
 def batch(index, num_channels, num_rows, num_cols):
@@ -249,20 +251,70 @@ def tanh(x):
 
 
 @triton.jit
-def var(
+def fast_var(
     input_ptr,
     y_size,
     x_size,
     offset,
-    average,
     dim: triton.language.constexpr,
     correction: triton.language.constexpr,
     block_size: triton.language.constexpr,
     dtype: triton.language.constexpr,
 ):
-    if average is None:
-        average = mean(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
+    if dim == 0:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(x_size, y_size),
+            strides=(1, x_size),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(1, 0),
+        )
+        size_along_dim = y_size
+    else:
+        input_block_ptr = triton.language.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(x_size, 1),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(1, 0),
+        )
+        size_along_dim = x_size
 
+    count = triton.language.zeros((1, block_size), triton.language.float32)
+    mean = triton.language.zeros((1, block_size), triton.language.float32)
+    m2 = triton.language.zeros((1, block_size), triton.language.float32)
+
+    for block_offset in range(0, size_along_dim, block_size):
+        input = triton.language.load(input_block_ptr, boundary_check=(1,))
+        mask = (triton.language.arange(0, block_size) + block_offset) < size_along_dim
+        input = triton.language.where(mask, input, 0.0)
+        count += 1
+        m2 += (input - mean) * (input - (mean + (input - mean) / count))
+        mean += (input - mean) / count
+        input_block_ptr = triton.language.advance(input_block_ptr, (0, block_size))
+
+    output, _, _ = triton.language.reduce(
+        (m2, mean, count), 1, language.combine_welford
+    )
+    output /= size_along_dim - correction
+
+    return output.to(dtype)
+
+
+@triton.jit
+def var(
+    input_ptr,
+    y_size,
+    x_size,
+    offset,
+    mean,
+    dim: triton.language.constexpr,
+    correction: triton.language.constexpr,
+    block_size: triton.language.constexpr,
+    dtype: triton.language.constexpr,
+):
     if dim == 0:
         input_block_ptr = triton.language.make_block_ptr(
             input_ptr,
@@ -289,7 +341,7 @@ def var(
     for block_offset in range(0, size_along_dim, block_size):
         input = triton.language.load(input_block_ptr, boundary_check=(1,))
         mask = (triton.language.arange(0, block_size) + block_offset) < size_along_dim
-        input = triton.language.where(mask, input - average, 0.0)
+        input = triton.language.where(mask, input - mean, 0.0)
         accumulation += pow2(input)
         input_block_ptr = triton.language.advance(input_block_ptr, (0, block_size))
 

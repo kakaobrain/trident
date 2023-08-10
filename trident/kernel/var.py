@@ -25,19 +25,17 @@ class Var:
         input_ptr,
         y_size,
         x_size,
-        average,
         dim: triton.language.constexpr,
         correction: triton.language.constexpr,
         block_size: triton.language.constexpr,
         dtype: triton.language.constexpr,
     ):
         offset = triton.language.program_id(0)
-        output = language.var(
+        output = language.fast_var(
             input_ptr,
             y_size,
             x_size,
             offset,
-            average,
             dim,
             correction,
             block_size,
