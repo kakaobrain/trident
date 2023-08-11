@@ -21,41 +21,41 @@ import trident
 
 @util.report(
     "group norm forward",
-    ["vec_sz"],
+    ["x_size"],
     [256 * i for i in range(1, 21)],
-    {"num_vec": 3, "num_grp": 8},
+    {"num_batches": 4, "y_size": 256, "num_groups": 128},
 )
-def bench_group_norm_forward(num_vec, num_grp, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
+def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, ctx):
+    input = torch.randn((num_batches, y_size, x_size), device="cuda")
 
     if ctx == "torch":
         return triton.testing.do_bench(
-            lambda: torch.nn.functional.group_norm(inp, num_grp)
+            lambda: torch.nn.functional.group_norm(input, num_groups)
         )
     else:
         return triton.testing.do_bench(
-            lambda: trident.function.group_norm(inp, num_grp)
+            lambda: trident.function.group_norm(input, num_groups)
         )
 
 
 @util.report(
     "group norm backward",
-    ["vec_sz"],
+    ["x_size"],
     [256 * i for i in range(1, 21)],
-    {"num_vec": 3, "num_grp": 8},
+    {"num_batches": 4, "y_size": 256, "num_groups": 128},
 )
-def bench_group_norm_backward(num_vec, num_grp, vec_sz, ctx):
-    inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
+def bench_group_norm_backward(num_batches, y_size, x_size, num_groups, ctx):
+    input = torch.randn(
+        (num_batches, y_size, x_size), device="cuda", requires_grad=True
+    )
+    target = torch.randn((num_batches, y_size, x_size), device="cuda")
 
     if ctx == "torch":
-        lyr = torch.nn.GroupNorm(num_grp, vec_sz, dtype=torch.float32, device="cuda")
+        output = torch.group_norm(input, num_groups)
     else:
-        lyr = trident.GroupNorm(num_grp, vec_sz, dtype=torch.float32, device="cuda")
+        output = trident.function.group_norm(input, num_groups)
 
-    out = lyr.forward(inp)
-    grad_out = torch.ones_like(inp)
-
-    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench(lambda: output.backward(target, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

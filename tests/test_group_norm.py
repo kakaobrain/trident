@@ -20,42 +20,97 @@ from tests import util
 
 
 @pytest.mark.parametrize(
-    "num_vec, vec_sz, num_grp, afn", [(3, 16, 2, False), (7, 60000, 2, True)]
+    "num_batches, y_size, x_size, num_groups",
+    [(2, 16, 10, 4), (16, 10000, 40, 1000)],
 )
-def test_forward(num_vec, vec_sz, num_grp, afn, device):
-    ctor_args = {"device": device}
-    inp = torch.randn(num_vec, vec_sz, **ctor_args)
-    wgt = torch.randn(vec_sz, **ctor_args)
-    bis = torch.randn(vec_sz, **ctor_args)
+def test_forward(num_batches, y_size, x_size, num_groups, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
 
     assert util.equal(
-        torch.nn.functional.group_norm(inp, num_grp),
-        trident.function.group_norm(inp, num_grp),
+        torch.nn.functional.group_norm(input, num_groups),
+        trident.function.group_norm(input, num_groups),
+    )
+
+    weight = torch.randn(y_size, **factory_kwargs)
+
+    assert util.equal(
+        torch.nn.functional.group_norm(input, num_groups, weight),
+        trident.function.group_norm(input, num_groups, weight),
+    )
+
+    bias = torch.randn(y_size, **factory_kwargs)
+
+    assert util.equal(
+        torch.nn.functional.group_norm(input, num_groups, None, bias),
+        trident.function.group_norm(input, num_groups, None, bias),
     )
     assert util.equal(
-        torch.nn.functional.group_norm(inp, num_grp, wgt, bis),
-        trident.function.group_norm(inp, num_grp, wgt, bis),
+        torch.nn.functional.group_norm(input, num_groups, weight, bias),
+        trident.function.group_norm(input, num_groups, weight, bias),
     )
 
 
 @pytest.mark.parametrize(
-    "num_vec, vec_sz, num_grp, afn", [(2, 4, 2, True), (3, 60000, 3, True)]
+    "num_batches, y_size, x_size, num_groups",
+    [(2, 16, 10, 4), (16, 10000, 40, 1000)],
 )
-def test_backward(num_vec, vec_sz, num_grp, afn, device):
-    ctor_args = {"device": device}
-    inp = torch.randn(num_vec, vec_sz, **ctor_args)
-    tgt = torch.randn(num_vec, vec_sz, **ctor_args)
+def test_backward(num_batches, y_size, x_size, num_groups, device):
+    factory_kwargs = {"device": device}
+    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+    target = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
 
-    a = inp.clone()
-    b = inp.clone()
-    a.requires_grad = b.requires_grad = True
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i, num_groups).backward(target, retain_graph=True)
+        return (i.grad,)
 
-    lyr0 = torch.nn.GroupNorm(num_grp, vec_sz, affine=afn, **ctor_args)
-    lyr1 = trident.GroupNorm(num_grp, vec_sz, affine=afn, **ctor_args)
-    util.train(a, tgt, lyr0)
-    util.train(b, tgt, lyr1)
-    assert util.equal(a.grad, b.grad)
+    (x,) = train(torch.group_norm)
+    (a,) = train(trident.function.group_norm)
 
-    if afn:
-        assert util.equal(lyr0.weight.grad, lyr1.weight.grad)
-        assert util.equal(lyr0.bias.grad, lyr1.bias.grad)
+    assert util.equal(x, a)
+
+    weight = torch.randn(y_size, **factory_kwargs)
+
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        i.requires_grad = j.requires_grad = True
+        func(i, num_groups, j).backward(target, retain_graph=True)
+        return i.grad, j.grad
+
+    (x, y) = train(torch.group_norm)
+    (a, b) = train(trident.function.group_norm)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+
+    bias = torch.randn(y_size, **factory_kwargs)
+
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        k = bias.clone()
+        i.requires_grad = j.requires_grad = k.requires_grad = True
+        func(i, num_groups, j, k).backward(target, retain_graph=True)
+        return i.grad, j.grad, k.grad
+
+    (x, y, z) = train(torch.group_norm)
+    (a, b, c) = train(trident.function.group_norm)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+    assert util.equal(z, c)
+
+
+@pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(1, 8, 1, 4)])
+def test_group_norm(num_batches, y_size, x_size, num_groups, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+
+    operation = trident.GroupNorm(num_groups, y_size, **factory_kwargs)
+    assert operation.forward(input) is not None
+
+    operation = trident.GroupNorm(num_groups, y_size, affine=True, **factory_kwargs)
+    assert operation.forward(input) is not None

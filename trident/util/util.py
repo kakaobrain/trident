@@ -14,6 +14,7 @@
 
 import torch
 import triton
+import triton.language as tl
 
 from trident import math, module, operation
 
@@ -29,11 +30,11 @@ def fill(inp, val):
 
 def dtype(input):
     if input == torch.float32:
-        return triton.language.float32
+        return tl.float32
     elif input == torch.float16:
-        return triton.language.float16
+        return tl.float16
     elif input == torch.int64:
-        return triton.language.int64
+        return tl.int64
     else:
         raise ValueError(f"Unable to convert the given input: '{input}'.")
 
