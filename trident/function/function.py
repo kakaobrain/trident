@@ -47,6 +47,15 @@ def conv2d(input, weight, bias=None):
     return operation.Conv2d.apply(input, weight, bias)
 
 
+def cosine_similarity(x1, x2, dim=1, eps=1e-08):
+    """
+    Applies cosine similarity to inputs.
+
+    See cosine similarity for detail.
+    """
+    return operation.CosineSimilarity.apply(x1, x2, dim, eps)
+
+
 def dropout(input, p=0.5, training=True):
     """
     Applies Dropout to an input.

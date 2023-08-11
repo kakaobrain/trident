@@ -46,6 +46,11 @@ def diagflat(x, sz):
 
 
 @triton.jit
+def distance(x, dim):
+    return tl.sqrt(tl.sum(x * x, dim))
+
+
+@triton.jit
 def exp(x):
     if x.dtype is tl.float32 or x.dtype is tl.float64:
         return tl.exp(x)
