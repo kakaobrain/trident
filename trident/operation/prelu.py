@@ -32,10 +32,7 @@ class PReLU(torch.autograd.Function):
         output = torch.empty_like(input)
 
         def grid(meta):
-            return (
-                triton.cdiv(y_size, meta["y_block_size"])
-                * triton.cdiv(x_size, meta["x_block_size"]),
-            )
+            return (triton.cdiv(y_size, meta["y_block_size"]) * triton.cdiv(x_size, meta["x_block_size"]),)
 
         kernel.PReLU.forward[grid](
             output,
@@ -66,13 +63,8 @@ class PReLU(torch.autograd.Function):
         grad_weight = torch.empty_like(input)
 
         def grid(meta):
-            return (
-                triton.cdiv(y_size, meta["y_block_size"])
-                * triton.cdiv(x_size, meta["x_block_size"]),
-            )
+            return (triton.cdiv(y_size, meta["y_block_size"]) * triton.cdiv(x_size, meta["x_block_size"]),)
 
-        kernel.PReLU.backward[grid](
-            grad_input, grad_weight, input, weight, grad_output, y_size, x_size
-        )
+        kernel.PReLU.backward[grid](grad_input, grad_weight, input, weight, grad_output, y_size, x_size)
 
         return grad_input, grad_weight, None

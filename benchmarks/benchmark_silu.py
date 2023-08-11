@@ -19,9 +19,7 @@ import util
 import trident
 
 
-@util.report(
-    "silu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 1}
-)
+@util.report("silu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 1})
 def bench_silu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 

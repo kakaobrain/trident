@@ -268,6 +268,4 @@ class GroupNorm:
                 block_shape=(group_block_size,),
                 order=(0,),
             )
-            tl.store(
-                grad_bias_staging_block_ptr, grad_bias.to(dtype), boundary_check=(0,)
-            )
+            tl.store(grad_bias_staging_block_ptr, grad_bias.to(dtype), boundary_check=(0,))

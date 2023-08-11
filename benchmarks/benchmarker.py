@@ -142,9 +142,7 @@ def main():
         help="specify a mode to run",
         type=str,
     )
-    parser.add_argument(
-        "--list", action="store_true", help="list all scenarios can be run"
-    )
+    parser.add_argument("--list", action="store_true", help="list all scenarios can be run")
     parser.add_argument("--show-plots", action="store_true", help="show plots")
     args = parser.parse_args()
 

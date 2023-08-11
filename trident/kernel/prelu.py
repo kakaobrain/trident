@@ -168,6 +168,4 @@ class PReLU:
         grad_weight = tl.where(input > 0, 0, input)
 
         tl.store(grad_input_block_ptr, grad_input * grad_output, boundary_check=(0, 1))
-        tl.store(
-            grad_weight_block_ptr, grad_weight * grad_output, boundary_check=(0, 1)
-        )
+        tl.store(grad_weight_block_ptr, grad_weight * grad_output, boundary_check=(0, 1))

@@ -32,13 +32,9 @@ def bench_cosine_similarity_forward(num_batches, y_size, x_size, ctx):
     other = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
 
     if ctx == "torch":
-        return triton.testing.do_bench(
-            lambda: torch.nn.functional.cosine_similarity(input, other, 2)
-        )
+        return triton.testing.do_bench(lambda: torch.nn.functional.cosine_similarity(input, other, 2))
     else:
-        return triton.testing.do_bench(
-            lambda: trident.function.cosine_similarity(input, other, 2)
-        )
+        return triton.testing.do_bench(lambda: trident.function.cosine_similarity(input, other, 2))
 
 
 @util.report(
@@ -63,9 +59,7 @@ def bench_cosine_similarity_backward(num_batches, y_size, x_size, ctx):
     output = operation.forward(input, other)
     grad_output = torch.ones_like(output)
 
-    return triton.testing.do_bench(
-        lambda: output.backward(grad_output, retain_graph=True)
-    )
+    return triton.testing.do_bench(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

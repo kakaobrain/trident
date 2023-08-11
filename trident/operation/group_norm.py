@@ -33,9 +33,7 @@ class GroupNorm(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return GroupNorm.__backward(
-            *grad_outputs, *ctx.saved_tensors, ctx.num_groups, ctx.eps
-        )
+        return GroupNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.num_groups, ctx.eps)
 
     @staticmethod
     def __forward(input, num_groups, weight, bias, eps):

@@ -226,13 +226,9 @@ def sum(
         accumulation = tl.zeros((1, block_size), tl.float32)
 
     for _ in range(0, size_along_dim, block_size):
-        input = tl.load(
-            input_block_ptr, boundary_check=(dim,), padding_option="zero"
-        ).to(tl.float32)
+        input = tl.load(input_block_ptr, boundary_check=(dim,), padding_option="zero").to(tl.float32)
         accumulation += input
-        input_block_ptr = tl.advance(
-            input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size)
-        )
+        input_block_ptr = tl.advance(input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size))
 
     output = tl.sum(accumulation, dim)
 

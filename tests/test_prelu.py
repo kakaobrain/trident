@@ -26,9 +26,7 @@ def test_forward(y_size, x_size, device, dtype):
     input = torch.randn(y_size, x_size, **factory_kwargs)
     weight = torch.randn(x_size, **factory_kwargs)
 
-    assert util.equal(
-        torch.nn.functional.prelu(input, weight), trident.function.prelu(input, weight)
-    )
+    assert util.equal(torch.nn.functional.prelu(input, weight), trident.function.prelu(input, weight))
 
 
 @pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])

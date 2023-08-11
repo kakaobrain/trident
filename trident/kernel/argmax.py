@@ -31,9 +31,7 @@ class Argmax:
         dtype: tl.constexpr,
     ):
         offset = tl.program_id(0)
-        maximum, output = language.max(
-            input_ptr, y_size, x_size, offset, dim, block_size, dtype
-        )
+        maximum, output = language.max(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size if dim == 0 else x_size,),

@@ -29,9 +29,7 @@ def bench_max_pool2d_forward(num_bt, num_ch, h, w, knl_sz, ctx):
     inp = torch.randn(num_bt, num_ch, h, w, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(
-            lambda: torch.nn.functional.max_pool2d(inp, knl_sz)
-        )
+        return triton.testing.do_bench(lambda: torch.nn.functional.max_pool2d(inp, knl_sz))
     else:
         return triton.testing.do_bench(lambda: trident.function.max_pool2d(inp, knl_sz))
 

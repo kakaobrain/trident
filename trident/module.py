@@ -91,12 +91,8 @@ class BatchNorm1d(torch.nn.Module):
         self.dtype = dtype
 
         if affine:
-            self.weight = torch.nn.Parameter(
-                torch.empty(num_features, device=device, dtype=dtype).fill_(1)
-            )
-            self.bias = torch.nn.Parameter(
-                torch.zeros(num_features, device=device, dtype=dtype)
-            )
+            self.weight = torch.nn.Parameter(torch.empty(num_features, device=device, dtype=dtype).fill_(1))
+            self.bias = torch.nn.Parameter(torch.zeros(num_features, device=device, dtype=dtype))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
@@ -122,12 +118,8 @@ class BatchNorm1d(torch.nn.Module):
         assert input.shape[0] > 1
 
         if self.track_running_stats:
-            self.running_mean = input.mean(
-                axis=0
-            ) * self.momentum + self.running_mean * (1 - self.momentum)
-            self.running_var = input.var(axis=0) * self.momentum + self.running_var * (
-                1 - self.momentum
-            )
+            self.running_mean = input.mean(axis=0) * self.momentum + self.running_mean * (1 - self.momentum)
+            self.running_var = input.var(axis=0) * self.momentum + self.running_var * (1 - self.momentum)
 
         return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps)
 
@@ -154,11 +146,7 @@ class Conv2d(torch.nn.Module):
             device="cuda",
             dtype=torch.float,
         )
-        self.bias = (
-            torch.empty(out_channels, device="cuda", dtype=torch.float)
-            if bias
-            else None
-        )
+        self.bias = torch.empty(out_channels, device="cuda", dtype=torch.float) if bias else None
 
     def forward(self, input):
         """
@@ -226,9 +214,7 @@ class Dropout(torch.nn.Module):
         Returns:
             an output is of the same shape as input
         """
-        return (
-            operation.Dropout.apply(input, self.p) if self.training else input.clone()
-        )
+        return operation.Dropout.apply(input, self.p) if self.training else input.clone()
 
 
 class GELU(torch.nn.Module):
@@ -283,9 +269,7 @@ class GroupNorm(torch.nn.Module):
         self.affine = affine
 
         if affine:
-            self.weight = torch.nn.Parameter(
-                torch.empty(num_channels, **factory_kwargs)
-            )
+            self.weight = torch.nn.Parameter(torch.empty(num_channels, **factory_kwargs))
             self.bias = torch.nn.Parameter(torch.empty(num_channels, **factory_kwargs))
         else:
             self.register_parameter("weight", None)
@@ -303,9 +287,7 @@ class GroupNorm(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        return function.group_norm(
-            input, self.num_groups, self.weight, self.bias, self.eps
-        )
+        return function.group_norm(input, self.num_groups, self.weight, self.bias, self.eps)
 
     def reset_parameters(self):
         if self.affine:
@@ -503,12 +485,8 @@ class LayerNorm(torch.nn.Module):
         self.elementwise_affine = elementwise_affine
 
         if elementwise_affine:
-            self.weight = torch.nn.Parameter(
-                torch.empty(normalized_shape, **factory_kwargs)
-            )
-            self.bias = torch.nn.Parameter(
-                torch.empty(normalized_shape, **factory_kwargs)
-            )
+            self.weight = torch.nn.Parameter(torch.empty(normalized_shape, **factory_kwargs))
+            self.bias = torch.nn.Parameter(torch.empty(normalized_shape, **factory_kwargs))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
@@ -525,9 +503,7 @@ class LayerNorm(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        return function.layer_norm(
-            input, self.normalized_shape, self.weight, self.bias, self.eps
-        )
+        return function.layer_norm(input, self.normalized_shape, self.weight, self.bias, self.eps)
 
     def reset_parameters(self):
         if self.elementwise_affine:
@@ -573,9 +549,7 @@ class Linear(torch.nn.Module):
         """
         super().__init__()
 
-        self.weight = torch.nn.Parameter(
-            torch.empty(out_features, in_features, device="cuda")
-        )
+        self.weight = torch.nn.Parameter(torch.empty(out_features, in_features, device="cuda"))
 
         if bias:
             self.bias = torch.nn.Parameter(torch.empty(out_features, device="cuda"))
@@ -703,9 +677,7 @@ class PReLU(torch.nn.Module):
         """
         super().__init__()
         factory_kwargs = {"device": device, "dtype": dtype}
-        self.weight = torch.nn.Parameter(
-            torch.empty(num_parameters, **factory_kwargs).fill_(init)
-        )
+        self.weight = torch.nn.Parameter(torch.empty(num_parameters, **factory_kwargs).fill_(init))
 
     def forward(self, input):
         """

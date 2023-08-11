@@ -60,9 +60,7 @@ def get_configs_linear_io_bound_backward():
 
 class Linear:
     @staticmethod
-    @triton.autotune(
-        configs=get_configs_linear_io_bound_forward(), key=["sz_m", "sz_k", "sz_n"]
-    )
+    @triton.autotune(configs=get_configs_linear_io_bound_forward(), key=["sz_m", "sz_k", "sz_n"])
     @triton.jit
     def forward(
         x_ptr,
@@ -195,9 +193,7 @@ class Linear:
             tl.store(p_grad_bis + n, acc_grad_bis)
 
     @staticmethod
-    @triton.autotune(
-        configs=get_configs_linear_io_bound_backward(), key=["sz_m", "sz_k", "sz_n"]
-    )
+    @triton.autotune(configs=get_configs_linear_io_bound_backward(), key=["sz_m", "sz_k", "sz_n"])
     @triton.jit
     def backward(
         p_grad_out,

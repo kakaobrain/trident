@@ -115,20 +115,12 @@ class Var:
             block_size,
             dtype,
         ) / (grad_output_size - correction)
-        average = language.mean(
-            input_ptr, y_size, x_size, offset, dim, block_size, dtype
-        )
+        average = language.mean(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
 
         for block_offset in range(0, size_along_dim, block_size):
-            input = tl.load(
-                input_block_ptr, boundary_check=(dim,), padding_option="zero"
-            )
+            input = tl.load(input_block_ptr, boundary_check=(dim,), padding_option="zero")
             mask = (tl.arange(0, block_size) + block_offset) < size_along_dim
-            centered_mean = tl.where(
-                mask[:, None] if dim == 0 else mask[None, :], input - average, 0.0
-            )
+            centered_mean = tl.where(mask[:, None] if dim == 0 else mask[None, :], input - average, 0.0)
             grad_input = grad_output * 2 * centered_mean / size_along_dim
             tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(dim,))
-            input_block_ptr = tl.advance(
-                input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size)
-            )
+            input_block_ptr = tl.advance(input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size))

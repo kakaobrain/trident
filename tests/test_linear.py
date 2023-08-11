@@ -28,9 +28,7 @@ def test_forward(num_bt, inp_feat, out_feat, act, device):
     wgt = torch.randn(out_feat, inp_feat, device=device)
     bis = torch.randn(out_feat, device=device)
 
-    assert util.equal(
-        torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt)
-    )
+    assert util.equal(torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt))
 
     assert util.equal(
         torch.nn.functional.linear(inp, wgt, bis),
