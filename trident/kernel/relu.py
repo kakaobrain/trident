@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -20,30 +21,30 @@ from trident import language
 class ReLU:
     @staticmethod
     @triton.jit
-    def forward(x_ptr, y_ptr, stride, size, block_size: triton.language.constexpr):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+    def forward(x_ptr, y_ptr, stride, size, block_size: tl.constexpr):
+        i = tl.program_id(0)
+        j = tl.program_id(1)
 
-        block = triton.language.arange(0, block_size) + j * block_size
+        block = tl.arange(0, block_size) + j * block_size
         mask = block < size
         span = i * stride + block
 
-        x = triton.language.load(x_ptr + span, mask, 0.0)
+        x = tl.load(x_ptr + span, mask, 0.0)
         y = language.relu(x)
 
-        triton.language.store(y_ptr + span, y, mask)
+        tl.store(y_ptr + span, y, mask)
 
     @staticmethod
     @triton.jit
-    def backward(dx_ptr, x_ptr, stride, size, block_size: triton.language.constexpr):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+    def backward(dx_ptr, x_ptr, stride, size, block_size: tl.constexpr):
+        i = tl.program_id(0)
+        j = tl.program_id(1)
 
-        block = triton.language.arange(0, block_size) + j * block_size
+        block = tl.arange(0, block_size) + j * block_size
         mask = block < size
         span = i * stride + block
 
-        x = triton.language.load(x_ptr + span, mask, 0.0)
-        grad_x = triton.language.where(x > 0, 1, 0)
+        x = tl.load(x_ptr + span, mask, 0.0)
+        grad_x = tl.where(x > 0, 1, 0)
 
-        triton.language.store(dx_ptr + span, grad_x, mask)
+        tl.store(dx_ptr + span, grad_x, mask)

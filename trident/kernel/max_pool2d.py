@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -34,10 +35,10 @@ class MaxPool2d:
         out_ch_st,
         out_h_st,
         knl_sz,
-        knl_bs: triton.language.constexpr,
-        grp_sz: triton.language.constexpr,
+        knl_bs: tl.constexpr,
+        grp_sz: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         num_grp = language.cdiv(out_w, grp_sz)
         bt = language.batch(pid, inp_ch, out_h, num_grp)
         ch = language.channel(pid, inp_ch, out_h, num_grp)
@@ -51,15 +52,15 @@ class MaxPool2d:
         out_ptr += bt * out_bt_st + ch * out_ch_st + h * out_h_st + w
 
         inp_blk = language.make_conv2d_blk(1, inp_h_st, 1, knl_bs, knl_bs)
-        inp_blk = triton.language.ravel(inp_blk)
+        inp_blk = tl.ravel(inp_blk)
         inp_blk = language.make_group_blk(inp_blk, grp_sz, knl_sz)
         inp_msk = language.make_conv2d_msk(1, knl_sz, knl_sz, 1, knl_bs, knl_bs)
-        inp_msk = triton.language.ravel(inp_msk)
+        inp_msk = tl.ravel(inp_msk)
         inp_msk = language.make_group_msk(inp_msk, grp_sz, w, out_h)
-        out_blk = triton.language.arange(0, grp_sz)
-        out_msk = triton.language.arange(0, grp_sz) + w < out_w
+        out_blk = tl.arange(0, grp_sz)
+        out_msk = tl.arange(0, grp_sz) + w < out_w
 
-        inp = triton.language.load(inp_ptr + inp_blk, inp_msk, -float("inf"))
-        out = triton.language.max(inp, axis=0)
+        inp = tl.load(inp_ptr + inp_blk, inp_msk, -float("inf"))
+        out = tl.max(inp, axis=0)
 
-        triton.language.store(out_ptr + out_blk, out, out_msk)
+        tl.store(out_ptr + out_blk, out, out_msk)

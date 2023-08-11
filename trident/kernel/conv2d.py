@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -42,12 +43,12 @@ class Conv2d:
         out_bt_st,
         out_ch_st,
         out_h_st,
-        wgt_c_bs: triton.language.constexpr,
-        wgt_h_bs: triton.language.constexpr,
-        wgt_w_bs: triton.language.constexpr,
-        grp_sz: triton.language.constexpr,
+        wgt_c_bs: tl.constexpr,
+        wgt_h_bs: tl.constexpr,
+        wgt_w_bs: tl.constexpr,
+        grp_sz: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         num_grp = language.cdiv(out_w, grp_sz)
         bt = language.batch(pid, out_ch, num_grp, out_w)
         ch = language.channel(pid, out_ch, num_grp, out_w)
@@ -62,29 +63,29 @@ class Conv2d:
         inp_blk = language.make_conv2d_blk(
             inp_ch_st, inp_w, wgt_c_bs, wgt_h_bs, wgt_w_bs
         )
-        inp_blk = triton.language.ravel(inp_blk)
+        inp_blk = tl.ravel(inp_blk)
         inp_blk = language.make_group_blk(inp_blk, grp_sz, inp_w)
         inp_msk = language.make_conv2d_msk(
             inp_ch, inp_h, inp_w, wgt_c_bs, wgt_h_bs, wgt_w_bs
         )
-        inp_msk = triton.language.ravel(inp_msk)
+        inp_msk = tl.ravel(inp_msk)
         inp_msk = language.make_group_msk(inp_msk, grp_sz, h, out_h)
         wgt_blk = language.make_conv2d_blk(
             wgt_ch_st, wgt_w, wgt_c_bs, wgt_h_bs, wgt_w_bs
         )
-        wgt_blk = triton.language.ravel(wgt_blk)
+        wgt_blk = tl.ravel(wgt_blk)
         wgt_msk = language.make_conv2d_msk(
             wgt_ch, wgt_h, wgt_w, wgt_c_bs, wgt_h_bs, wgt_w_bs
         )
-        wgt_msk = triton.language.ravel(wgt_msk)
-        out_blk = triton.language.arange(0, grp_sz) * out_w
-        out_msk = triton.language.arange(0, grp_sz) + h < out_h
+        wgt_msk = tl.ravel(wgt_msk)
+        out_blk = tl.arange(0, grp_sz) * out_w
+        out_msk = tl.arange(0, grp_sz) + h < out_h
 
-        inp = triton.language.load(inp_ptr + inp_blk, inp_msk, 0.0)
-        wgt = triton.language.load(wgt_ptr + wgt_blk, wgt_msk, 0.0)
-        out = triton.language.sum(inp * wgt[:, None], 0)
+        inp = tl.load(inp_ptr + inp_blk, inp_msk, 0.0)
+        wgt = tl.load(wgt_ptr + wgt_blk, wgt_msk, 0.0)
+        out = tl.sum(inp * wgt[:, None], 0)
 
         if bis_ptr:
-            out += triton.language.load(bis_ptr + ch)
+            out += tl.load(bis_ptr + ch)
 
-        triton.language.store(out_ptr + out_blk, out, out_msk)
+        tl.store(out_ptr + out_blk, out, out_msk)

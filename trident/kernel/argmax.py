@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -25,15 +26,15 @@ class Argmax:
         input_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
         maximum, output = language.max(
             input_ptr, y_size, x_size, offset, dim, block_size, dtype
         )
-        output_block_ptr = triton.language.make_block_ptr(
+        output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size if dim == 0 else x_size,),
             strides=(1,),
@@ -41,4 +42,4 @@ class Argmax:
             block_shape=(1,),
             order=(0,),
         )
-        triton.language.store(output_block_ptr, output)
+        tl.store(output_block_ptr, output)

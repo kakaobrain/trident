@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -20,15 +21,15 @@ from trident import language
 class GELU:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, inp_sz, out_ptr, blk_sz: triton.language.constexpr):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, blk_sz) + pid * blk_sz
+    def forward(inp_ptr, inp_sz, out_ptr, blk_sz: tl.constexpr):
+        pid = tl.program_id(0)
+        blk = tl.arange(0, blk_sz) + pid * blk_sz
         msk = blk < inp_sz
 
-        inp = triton.language.load(inp_ptr + blk, msk, 0)
+        inp = tl.load(inp_ptr + blk, msk, 0)
         out = language.gelu(inp)
 
-        triton.language.store(out_ptr + blk, out, msk)
+        tl.store(out_ptr + blk, out, msk)
 
     @staticmethod
     @triton.jit
@@ -37,18 +38,18 @@ class GELU:
         inp_ptr,
         grad_inp_ptr,
         inp_sz,
-        blk_sz: triton.language.constexpr,
+        blk_sz: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, blk_sz) + pid * blk_sz
+        pid = tl.program_id(0)
+        blk = tl.arange(0, blk_sz) + pid * blk_sz
         msk = blk < inp_sz
 
-        inp = triton.language.load(inp_ptr + blk, msk, 0)
+        inp = tl.load(inp_ptr + blk, msk, 0)
         a = 0.797884560802865
         b = language.tanh(a * (inp + 0.044715 * language.pow3(inp)))
         c = 1.0 + b
         d = inp * (1.0 - language.pow2(b)) * a * (1 + 0.134145 * language.pow2(inp))
-        grad_out = triton.language.load(grad_out_ptr + blk, msk, 0)
+        grad_out = tl.load(grad_out_ptr + blk, msk, 0)
         grad_inp = 0.5 * (c + d)
 
-        triton.language.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)

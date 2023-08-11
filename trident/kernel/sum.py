@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -25,13 +26,13 @@ class Sum:
         input_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
         output = language.sum(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
-        output_block_ptr = triton.language.make_block_ptr(
+        output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size if dim == 0 else x_size,),
             strides=(1,),
@@ -39,7 +40,7 @@ class Sum:
             block_shape=(1,),
             order=(0,),
         )
-        triton.language.store(output_block_ptr, output)
+        tl.store(output_block_ptr, output)
 
     @staticmethod
     @triton.jit
@@ -48,13 +49,13 @@ class Sum:
         grad_output_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        block_size: triton.language.constexpr,
+        dim: tl.constexpr,
+        block_size: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
 
         if dim == 0:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -64,7 +65,7 @@ class Sum:
             )
             dim = x_size
         else:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(x_size, y_size),
                 strides=(1, x_size),
@@ -74,7 +75,7 @@ class Sum:
             )
             dim = y_size
 
-        grad_output_block_ptr = triton.language.make_block_ptr(
+        grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
             shape=(1, dim),
             strides=(dim, 1),
@@ -84,13 +85,7 @@ class Sum:
         )
 
         for _ in range(0, dim, block_size):
-            grad_output = triton.language.load(grad_output_block_ptr)
-            triton.language.store(
-                grad_input_block_ptr, grad_output, boundary_check=(1,)
-            )
-            grad_input_block_ptr = triton.language.advance(
-                grad_input_block_ptr, (0, block_size)
-            )
-            grad_output_block_ptr = triton.language.advance(
-                grad_output_block_ptr, (0, block_size)
-            )
+            grad_output = tl.load(grad_output_block_ptr)
+            tl.store(grad_input_block_ptr, grad_output, boundary_check=(1,))
+            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, block_size))
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))

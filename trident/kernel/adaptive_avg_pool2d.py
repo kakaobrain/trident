@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -33,10 +34,10 @@ class AdaptiveAvgPool2d:
         num_rows,
         num_cols,
         output_size,
-        kernel_size: triton.language.constexpr,
-        block_size: triton.language.constexpr,
+        kernel_size: tl.constexpr,
+        block_size: tl.constexpr,
     ):
-        program_id = triton.language.program_id(0)
+        program_id = tl.program_id(0)
 
         num_blocks = output_size // block_size
 
@@ -46,25 +47,23 @@ class AdaptiveAvgPool2d:
         block = language.col(program_id, num_blocks)
         col = block * block_size
 
-        row_offset = (row * (num_rows / output_size)).to(triton.language.int32)
-        col_offsets = (triton.language.arange(0, block_size) + col) * (
-            num_cols / output_size
-        )
-        col_offsets = col_offsets.to(triton.language.int32)
+        row_offset = (row * (num_rows / output_size)).to(tl.int32)
+        col_offsets = (tl.arange(0, block_size) + col) * (num_cols / output_size)
+        col_offsets = col_offsets.to(tl.int32)
 
         x_ptr += batch * x_batch_stride + channel * x_channel_stride
         x_ptr += row_offset * x_row_stride
         y_ptr += batch * y_batch_stride + channel * y_channel_stride
         y_ptr += row * y_row_stride + col
 
-        kernel_block = triton.language.arange(0, kernel_size)
-        kernel_block = triton.language.ravel(
+        kernel_block = tl.arange(0, kernel_size)
+        kernel_block = tl.ravel(
             kernel_block[:, None] * x_row_stride + kernel_block[None, :]
         )
         x_block = kernel_block[:, None] + col_offsets[None, :]
 
-        x = triton.language.load(x_ptr + x_block)
-        y = triton.language.sum(x, axis=0) / (kernel_size * kernel_size)
-        y_block = triton.language.arange(0, block_size)
+        x = tl.load(x_ptr + x_block)
+        y = tl.sum(x, axis=0) / (kernel_size * kernel_size)
+        y_block = tl.arange(0, block_size)
 
-        triton.language.store(y_ptr + y_block, y)
+        tl.store(y_ptr + y_block, y)

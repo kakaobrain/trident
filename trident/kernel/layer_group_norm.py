@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import kernel, language
 
@@ -28,10 +29,10 @@ class LayerGroupNorm:
         eps,
         out_ptr,
         num_grp,
-        blk_sz: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        blk_sz: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         ptr_off = pid * vec_sz
         grp = pid % num_grp
         grp_off = grp * vec_sz
@@ -51,18 +52,18 @@ class LayerGroupNorm:
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
-            inp = triton.language.load(inp_ptr + blk, msk, 0)
+            inp = tl.load(inp_ptr + blk, msk, 0)
             out = language.norm(inp, mean, std)
 
             if wgt_ptr:
-                wgt = triton.language.load(wgt_ptr + blk, msk, 0)
+                wgt = tl.load(wgt_ptr + blk, msk, 0)
                 out *= wgt
 
             if bis_ptr:
-                bis = triton.language.load(bis_ptr + blk, msk, 0)
+                bis = tl.load(bis_ptr + blk, msk, 0)
                 out += bis
 
-            triton.language.store(out_ptr + blk, out, msk)
+            tl.store(out_ptr + blk, out, msk)
 
     @staticmethod
     @triton.jit
@@ -76,10 +77,10 @@ class LayerGroupNorm:
         grad_bis_ptr,
         eps,
         num_grp,
-        blk_sz: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        blk_sz: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         blk_off = pid * vec_sz
         grp = pid % num_grp
         grp_off = grp * vec_sz
@@ -100,21 +101,21 @@ class LayerGroupNorm:
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
-            grad_out = triton.language.load(grad_out_ptr + blk, msk, 0)
-            inp = triton.language.load(inp_ptr + blk, msk, 0)
-            wgt = triton.language.load(wgt_ptr + blk, msk, 0)
+            grad_out = tl.load(grad_out_ptr + blk, msk, 0)
+            inp = tl.load(inp_ptr + blk, msk, 0)
+            wgt = tl.load(wgt_ptr + blk, msk, 0)
 
             a = grad_out * wgt
             b = (inp - mean) / std
-            b = triton.language.where(msk, b, 0)
+            b = tl.where(msk, b, 0)
             c = language.gemv(b, a) / vec_sz
             d = language.gemv(grad_out, wgt) / vec_sz
             grad_inp = (a - c * b - d) / std
 
-            triton.language.store(grad_inp_ptr + blk, grad_inp, msk)
+            tl.store(grad_inp_ptr + blk, grad_inp, msk)
 
             if grad_wgt_ptr:
-                triton.language.atomic_add(grad_wgt_ptr + blk, grad_out * b, msk)
+                tl.atomic_add(grad_wgt_ptr + blk, grad_out * b, msk)
 
             if grad_bis_ptr:
-                triton.language.atomic_add(grad_bis_ptr + blk, grad_out, msk)
+                tl.atomic_add(grad_bis_ptr + blk, grad_out, msk)

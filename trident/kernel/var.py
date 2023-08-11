@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -25,12 +26,12 @@ class Var:
         input_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        correction: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        correction: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
         output = language.fast_var(
             input_ptr,
             y_size,
@@ -41,7 +42,7 @@ class Var:
             block_size,
             dtype,
         )
-        output_block_ptr = triton.language.make_block_ptr(
+        output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size if dim == 0 else x_size,),
             strides=(1,),
@@ -49,7 +50,7 @@ class Var:
             block_shape=(1,),
             order=(0,),
         )
-        triton.language.store(output_block_ptr, output)
+        tl.store(output_block_ptr, output)
 
     @staticmethod
     @triton.jit
@@ -59,15 +60,15 @@ class Var:
         input_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        correction: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        correction: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
 
         if dim == 0:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -75,7 +76,7 @@ class Var:
                 block_shape=(block_size, 1),
                 order=(0, 1),
             )
-            input_block_ptr = triton.language.make_block_ptr(
+            input_block_ptr = tl.make_block_ptr(
                 input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -86,7 +87,7 @@ class Var:
             grad_output_size = x_size
             size_along_dim = y_size
         else:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -94,7 +95,7 @@ class Var:
                 block_shape=(1, block_size),
                 order=(1, 0),
             )
-            input_block_ptr = triton.language.make_block_ptr(
+            input_block_ptr = tl.make_block_ptr(
                 input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -119,19 +120,15 @@ class Var:
         )
 
         for block_offset in range(0, size_along_dim, block_size):
-            input = triton.language.load(
+            input = tl.load(
                 input_block_ptr, boundary_check=(dim,), padding_option="zero"
             )
-            mask = (
-                triton.language.arange(0, block_size) + block_offset
-            ) < size_along_dim
-            centered_mean = triton.language.where(
+            mask = (tl.arange(0, block_size) + block_offset) < size_along_dim
+            centered_mean = tl.where(
                 mask[:, None] if dim == 0 else mask[None, :], input - average, 0.0
             )
             grad_input = grad_output * 2 * centered_mean / size_along_dim
-            triton.language.store(
-                grad_input_block_ptr, grad_input.to(dtype), boundary_check=(dim,)
-            )
-            input_block_ptr = triton.language.advance(
+            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(dim,))
+            input_block_ptr = tl.advance(
                 input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size)
             )

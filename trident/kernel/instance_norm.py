@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import kernel, language
 
@@ -30,10 +31,10 @@ class InstanceNorm:
         p_bis,
         eps,
         p_out,
-        blk_sz: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        blk_sz: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         bt = pid // num_ch
         ch = language.col(pid, num_ch)
 
@@ -44,27 +45,27 @@ class InstanceNorm:
         if p_run_mean is None:
             mean = kernel.mean_legacy(p_inp, vec_sz, blk_sz, dtype)
         else:
-            mean = triton.language.load(p_run_mean + ch)
+            mean = tl.load(p_run_mean + ch)
 
         if p_run_var is None:
             var = kernel.var_legacy(p_inp, vec_sz, mean, blk_sz, dtype)
         else:
-            var = triton.language.load(p_run_var + ch)
+            var = tl.load(p_run_var + ch)
 
         std = language.std(var, eps)
 
         for blk_off in range(0, vec_sz, blk_sz):
             blk, msk = language.make_block(vec_sz, blk_sz, blk_off)
-            inp = triton.language.load(p_inp + blk, msk, 0)
+            inp = tl.load(p_inp + blk, msk, 0)
             out = language.norm(inp, mean, std)
 
             if p_wgt is not None:
-                out *= triton.language.load(p_wgt + ch)
+                out *= tl.load(p_wgt + ch)
 
             if p_bis is not None:
-                out += triton.language.load(p_bis + ch)
+                out += tl.load(p_bis + ch)
 
-            triton.language.store(p_out + blk, out, msk)
+            tl.store(p_out + blk, out, msk)
 
     @staticmethod
     @triton.jit
@@ -78,9 +79,9 @@ class InstanceNorm:
         p_stg_grad_wgt,
         p_stg_grad_bis,
         eps,
-        blk_sz: triton.language.constexpr,
+        blk_sz: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         bt = pid // num_ch
         ch = language.col(pid, num_ch)
 
@@ -90,38 +91,33 @@ class InstanceNorm:
         p_grad_inp += ptr_off
 
         blk, msk = language.make_block(vec_sz, blk_sz)
-        inp = triton.language.load(p_inp + blk, msk, 0)
-        wgt = triton.language.load(wgt_ptr + ch) if wgt_ptr is not None else 1
-        mean = triton.language.sum(inp, 0) / vec_sz
-        var = (
-            triton.language.sum(
-                language.pow2(triton.language.where(msk, inp - mean, 0.0)), 0
-            )
-            / vec_sz
-        )
+        inp = tl.load(p_inp + blk, msk, 0)
+        wgt = tl.load(wgt_ptr + ch) if wgt_ptr is not None else 1
+        mean = tl.sum(inp, 0) / vec_sz
+        var = tl.sum(language.pow2(tl.where(msk, inp - mean, 0.0)), 0) / vec_sz
         std = language.std(var, eps)
-        mean_ctr = triton.language.where(msk, inp - mean, 0)
+        mean_ctr = tl.where(msk, inp - mean, 0)
         norm = mean_ctr / std
 
-        grad_out = triton.language.load(p_grad_out + blk, msk, 0)
+        grad_out = tl.load(p_grad_out + blk, msk, 0)
         grad_norm = wgt * grad_out
         grad_std = ((grad_norm * mean_ctr) / -language.pow2(std)) / (2 * std)
-        grad_var = triton.language.sum(grad_std, 0) / vec_sz
+        grad_var = tl.sum(grad_std, 0) / vec_sz
         grad_dist = 2 * mean_ctr * grad_var
-        grad_mean_ctr = triton.language.where(msk, (grad_norm / std) + grad_dist, 0)
-        grad_mean = -triton.language.sum(grad_mean_ctr, 0) / vec_sz
+        grad_mean_ctr = tl.where(msk, (grad_norm / std) + grad_dist, 0)
+        grad_mean = -tl.sum(grad_mean_ctr, 0) / vec_sz
         grad_inp = grad_mean_ctr + grad_mean
-        triton.language.store(p_grad_inp + blk, grad_inp, msk)
+        tl.store(p_grad_inp + blk, grad_inp, msk)
 
         if p_stg_grad_wgt is not None:
-            grad_wgt = triton.language.sum(norm * grad_out, 0)
+            grad_wgt = tl.sum(norm * grad_out, 0)
             ptr_off = bt * num_ch + ch
-            triton.language.store(p_stg_grad_wgt + ptr_off, grad_wgt)
+            tl.store(p_stg_grad_wgt + ptr_off, grad_wgt)
 
         if p_stg_grad_bis is not None:
-            grad_bis = triton.language.sum(grad_out, 0)
+            grad_bis = tl.sum(grad_out, 0)
             ptr_off = bt * num_ch + ch
-            triton.language.store(p_stg_grad_bis + ptr_off, grad_bis)
+            tl.store(p_stg_grad_bis + ptr_off, grad_bis)
 
     @staticmethod
     @triton.jit
@@ -132,10 +128,10 @@ class InstanceNorm:
         vec_sz,
         p_mean,
         p_var,
-        blk_sz: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        blk_sz: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         bt = pid // num_ch
         ch = language.col(pid, num_ch)
 
@@ -145,8 +141,8 @@ class InstanceNorm:
         mean = kernel.mean_legacy(p_inp, vec_sz, blk_sz, dtype)
         var = kernel.var_legacy(p_inp, vec_sz, mean, blk_sz, dtype)
 
-        triton.language.atomic_add(p_mean + ch, mean / num_bt)
-        triton.language.atomic_add(p_var + ch, var / num_bt)
+        tl.atomic_add(p_mean + ch, mean / num_bt)
+        tl.atomic_add(p_var + ch, var / num_bt)
 
     @staticmethod
     @triton.jit
@@ -157,16 +153,16 @@ class InstanceNorm:
         p_run_var,
         num_ch,
         momentum,
-        blk_size: triton.language.constexpr,
+        blk_size: tl.constexpr,
     ):
         blk, msk = language.make_block(num_ch, blk_size)
 
-        mean = triton.language.load(p_mean + blk, msk, 0)
-        var = triton.language.load(p_var + blk, msk, 0)
-        run_mean = triton.language.load(p_run_mean + blk, msk, 0)
-        run_var = triton.language.load(p_run_var + blk, msk, 0)
+        mean = tl.load(p_mean + blk, msk, 0)
+        var = tl.load(p_var + blk, msk, 0)
+        run_mean = tl.load(p_run_mean + blk, msk, 0)
+        run_var = tl.load(p_run_var + blk, msk, 0)
         run_mean = mean * momentum + run_mean * (1 - momentum)
         run_var = var * momentum + run_var * (1 - momentum)
 
-        triton.language.store(p_run_mean + blk, run_mean, msk)
-        triton.language.store(p_run_var + blk, run_var, msk)
+        tl.store(p_run_mean + blk, run_mean, msk)
+        tl.store(p_run_var + blk, run_var, msk)
