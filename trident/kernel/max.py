@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -26,11 +27,11 @@ class Max:
         input_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
         output, index = language.max(
             input_ptr,
             y_size,
@@ -40,7 +41,7 @@ class Max:
             block_size,
             dtype,
         )
-        output_block_ptr = triton.language.make_block_ptr(
+        output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size if dim == 0 else x_size,),
             strides=(1,),
@@ -48,7 +49,7 @@ class Max:
             block_shape=(1,),
             order=(0,),
         )
-        indices_block_ptr = triton.language.make_block_ptr(
+        indices_block_ptr = tl.make_block_ptr(
             indices_ptr,
             shape=(y_size if dim == 0 else x_size,),
             strides=(1,),
@@ -56,8 +57,8 @@ class Max:
             block_shape=(1,),
             order=(0,),
         )
-        triton.language.store(output_block_ptr, output)
-        triton.language.store(indices_block_ptr, index)
+        tl.store(output_block_ptr, output)
+        tl.store(indices_block_ptr, index)
 
     @staticmethod
     @triton.jit
@@ -67,14 +68,14 @@ class Max:
         indices_ptr,
         y_size,
         x_size,
-        dim: triton.language.constexpr,
-        block_size: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        dim: tl.constexpr,
+        block_size: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        offset = triton.language.program_id(0)
+        offset = tl.program_id(0)
 
         if dim == 0:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(x_size, y_size),
                 strides=(1, x_size),
@@ -85,7 +86,7 @@ class Max:
             size_along_dim = y_size
             grad_output_size = x_size
         else:
-            grad_input_block_ptr = triton.language.make_block_ptr(
+            grad_input_block_ptr = tl.make_block_ptr(
                 grad_input_ptr,
                 shape=(y_size, x_size),
                 strides=(x_size, 1),
@@ -96,7 +97,7 @@ class Max:
             size_along_dim = x_size
             grad_output_size = y_size
 
-        grad_output_block_ptr = triton.language.make_block_ptr(
+        grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
             shape=(1, grad_output_size),
             strides=(grad_output_size, 1),
@@ -104,7 +105,7 @@ class Max:
             block_shape=(1, 1),
             order=(1, 0),
         )
-        indices_block_ptr = triton.language.make_block_ptr(
+        indices_block_ptr = tl.make_block_ptr(
             indices_ptr,
             shape=(1, grad_output_size),
             strides=(grad_output_size, 1),
@@ -112,14 +113,12 @@ class Max:
             block_shape=(1, 1),
             order=(1, 0),
         )
-        index = triton.language.load(indices_block_ptr)
-        grad_output = triton.language.load(grad_output_block_ptr)
+        index = tl.load(indices_block_ptr)
+        grad_output = tl.load(grad_output_block_ptr)
 
         for block_offset in range(0, size_along_dim, block_size):
-            condition = triton.language.arange(0, block_size) + block_offset == index
-            condition = condition.to(triton.language.float32)
-            grad_input = triton.language.where(condition, grad_output, 0)
-            triton.language.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
-            grad_input_block_ptr = triton.language.advance(
-                grad_input_block_ptr, (0, block_size)
-            )
+            condition = tl.arange(0, block_size) + block_offset == index
+            condition = condition.to(tl.float32)
+            grad_input = tl.where(condition, grad_output, 0)
+            tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, block_size))

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -21,19 +22,19 @@ from trident import language
 def mean_legacy(
     x_ptr,
     x_sz,
-    blk_sz: triton.language.constexpr,
-    dtype: triton.language.constexpr,
+    blk_sz: tl.constexpr,
+    dtype: tl.constexpr,
 ):
-    res = triton.language.zeros([blk_sz], dtype)
+    res = tl.zeros([blk_sz], dtype)
 
     for off in range(0, x_sz, blk_sz):
-        blk = triton.language.arange(0, blk_sz) + off
+        blk = tl.arange(0, blk_sz) + off
         msk = blk < x_sz
 
-        num = triton.language.load(x_ptr + blk, msk, 0)
+        num = tl.load(x_ptr + blk, msk, 0)
         res += num
 
-    return triton.language.sum(res, 0) / x_sz
+    return tl.sum(res, 0) / x_sz
 
 
 @triton.jit
@@ -41,15 +42,15 @@ def var_legacy(
     x_ptr,
     x_sz,
     mean,
-    blk_sz: triton.language.constexpr,
-    dtype: triton.language.constexpr,
+    blk_sz: tl.constexpr,
+    dtype: tl.constexpr,
 ):
-    res = triton.language.zeros([blk_sz], triton.language.float32)
+    res = tl.zeros([blk_sz], tl.float32)
 
     for blk_off in range(0, x_sz, blk_sz):
         blk, msk = language.make_block(x_sz, blk_sz, blk_off)
-        num = triton.language.load(x_ptr + blk, msk, 0).to(triton.language.float32)
-        num = triton.language.where(msk, num - mean, 0)
+        num = tl.load(x_ptr + blk, msk, 0).to(tl.float32)
+        num = tl.where(msk, num - mean, 0)
         res += language.pow2(num)
 
-    return (triton.language.sum(res, axis=0) / x_sz).to(dtype)
+    return (tl.sum(res, axis=0) / x_sz).to(dtype)

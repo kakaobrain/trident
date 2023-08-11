@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -27,21 +28,21 @@ class LeakyReLU:
         y_stride,
         a,
         size_1,
-        block_size: triton.language.constexpr,
+        block_size: tl.constexpr,
     ):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+        i = tl.program_id(0)
+        j = tl.program_id(1)
 
-        block = triton.language.arange(0, block_size) + j * block_size
+        block = tl.arange(0, block_size) + j * block_size
         mask = block < size_1
 
         x_ptr += i * x_stride + block
         y_ptr += i * y_stride + block
 
-        x = triton.language.load(x_ptr, mask, 0.0)
+        x = tl.load(x_ptr, mask, 0.0)
         y = language.leaky_relu(x, a)
 
-        triton.language.store(y_ptr, y, mask)
+        tl.store(y_ptr, y, mask)
 
     @staticmethod
     @triton.jit
@@ -52,18 +53,18 @@ class LeakyReLU:
         d_stride,
         a,
         size,
-        block_size: triton.language.constexpr,
+        block_size: tl.constexpr,
     ):
-        i = triton.language.program_id(0)
-        j = triton.language.program_id(1)
+        i = tl.program_id(0)
+        j = tl.program_id(1)
 
-        block = triton.language.arange(0, block_size) + j * block_size
+        block = tl.arange(0, block_size) + j * block_size
         mask = block < size
 
         x_ptr += i * x_stride + block
         d_ptr += i * d_stride + block
 
-        x = triton.language.load(x_ptr, mask, 0.0)
-        d = triton.language.where(x > 0, 1, a)
+        x = tl.load(x_ptr, mask, 0.0)
+        d = tl.where(x > 0, 1, a)
 
-        triton.language.store(d_ptr, d, mask)
+        tl.store(d_ptr, d, mask)

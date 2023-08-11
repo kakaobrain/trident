@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -51,15 +52,15 @@ class PReLU:
         weight_ptr,
         y_size,
         x_size,
-        y_block_size: triton.language.constexpr,
-        x_block_size: triton.language.constexpr,
+        y_block_size: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         num_x_blocks = language.cdiv(x_size, x_block_size)
         i = pid // num_x_blocks
         j = pid % num_x_blocks
 
-        input_block_ptr = triton.language.make_block_ptr(
+        input_block_ptr = tl.make_block_ptr(
             input_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -68,7 +69,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        weight_block_ptr = triton.language.make_block_ptr(
+        weight_block_ptr = tl.make_block_ptr(
             weight_ptr,
             shape=x_size,
             strides=1,
@@ -77,11 +78,11 @@ class PReLU:
             order=(0,),
         )
 
-        input = triton.language.load(input_block_ptr, boundary_check=(0, 1))
-        weight = triton.language.load(weight_block_ptr, boundary_check=(0,))
+        input = tl.load(input_block_ptr, boundary_check=(0, 1))
+        weight = tl.load(weight_block_ptr, boundary_check=(0,))
         output = language.leaky_relu(input, weight)
 
-        output_block_ptr = triton.language.make_block_ptr(
+        output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -90,7 +91,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        triton.language.store(output_block_ptr, output, boundary_check=(0, 1))
+        tl.store(output_block_ptr, output, boundary_check=(0, 1))
 
     @staticmethod
     @triton.autotune(
@@ -106,15 +107,15 @@ class PReLU:
         grad_output_ptr,
         y_size,
         x_size,
-        y_block_size: triton.language.constexpr,
-        x_block_size: triton.language.constexpr,
+        y_block_size: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
+        pid = tl.program_id(0)
         num_x_blocks = language.cdiv(x_size, x_block_size)
         i = pid // num_x_blocks
         j = pid % num_x_blocks
 
-        input_block_ptr = triton.language.make_block_ptr(
+        input_block_ptr = tl.make_block_ptr(
             input_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -123,7 +124,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        grad_input_block_ptr = triton.language.make_block_ptr(
+        grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -132,7 +133,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        weight_block_ptr = triton.language.make_block_ptr(
+        weight_block_ptr = tl.make_block_ptr(
             weight_ptr,
             shape=x_size,
             strides=1,
@@ -141,7 +142,7 @@ class PReLU:
             order=(0,),
         )
 
-        grad_weight_block_ptr = triton.language.make_block_ptr(
+        grad_weight_block_ptr = tl.make_block_ptr(
             grad_weight_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -150,7 +151,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        grad_output_block_ptr = triton.language.make_block_ptr(
+        grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
             shape=(y_size, x_size),
             strides=(x_size, 1),
@@ -159,16 +160,14 @@ class PReLU:
             order=(1, 0),
         )
 
-        input = triton.language.load(input_block_ptr, boundary_check=(0, 1))
-        weight = triton.language.load(weight_block_ptr, boundary_check=(0,))
-        grad_output = triton.language.load(grad_output_block_ptr, boundary_check=(0, 1))
+        input = tl.load(input_block_ptr, boundary_check=(0, 1))
+        weight = tl.load(weight_block_ptr, boundary_check=(0,))
+        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1))
 
-        grad_input = triton.language.where(input > 0, 1, weight)
-        grad_weight = triton.language.where(input > 0, 0, input)
+        grad_input = tl.where(input > 0, 1, weight)
+        grad_weight = tl.where(input > 0, 0, input)
 
-        triton.language.store(
-            grad_input_block_ptr, grad_input * grad_output, boundary_check=(0, 1)
-        )
-        triton.language.store(
+        tl.store(grad_input_block_ptr, grad_input * grad_output, boundary_check=(0, 1))
+        tl.store(
             grad_weight_block_ptr, grad_weight * grad_output, boundary_check=(0, 1)
         )

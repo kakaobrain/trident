@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
-dim = [triton.language.constexpr(i) for i in range(3)]
-zero = triton.language.constexpr(0)
+dim = [tl.constexpr(i) for i in range(3)]
+zero = tl.constexpr(0)

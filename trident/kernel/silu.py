@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 from trident import language
 
@@ -24,17 +25,17 @@ class SiLU:
         inp_ptr,
         inp_sz,
         out_ptr,
-        inp_bs: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        inp_bs: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, inp_bs) + pid * inp_bs
+        pid = tl.program_id(0)
+        blk = tl.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz
 
-        inp = triton.language.load(inp_ptr + blk, msk)
+        inp = tl.load(inp_ptr + blk, msk)
         out = inp * language.sigmoid(inp, dtype)
 
-        triton.language.store(out_ptr + blk, out, msk)
+        tl.store(out_ptr + blk, out, msk)
 
     @staticmethod
     @triton.jit
@@ -43,16 +44,16 @@ class SiLU:
         inp_ptr,
         inp_sz,
         grad_inp_ptr,
-        inp_bs: triton.language.constexpr,
-        dtype: triton.language.constexpr,
+        inp_bs: tl.constexpr,
+        dtype: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, inp_bs) + pid * inp_bs
+        pid = tl.program_id(0)
+        blk = tl.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz
 
-        grad_out = triton.language.load(grad_out_ptr + blk, msk)
-        inp = triton.language.load(inp_ptr + blk, msk)
+        grad_out = tl.load(grad_out_ptr + blk, msk)
+        inp = tl.load(inp_ptr + blk, msk)
         sig = language.sigmoid(inp, dtype)
         grad_inp = sig + inp * sig * (1 - sig)
 
-        triton.language.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)

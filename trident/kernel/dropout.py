@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import triton
+import triton.language as tl
 
 
 class Dropout:
     @staticmethod
     @triton.jit
-    def forward(inp_ptr, inp_sz, p, seed, out_ptr, inp_bs: triton.language.constexpr):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, inp_bs) + pid * inp_bs
+    def forward(inp_ptr, inp_sz, p, seed, out_ptr, inp_bs: tl.constexpr):
+        pid = tl.program_id(0)
+        blk = tl.arange(0, inp_bs) + pid * inp_bs
         msk = blk < inp_sz
 
-        inp = triton.language.load(inp_ptr + blk, msk)
-        rnd = triton.language.rand(seed, blk)
-        out = triton.language.where(rnd > p, inp / (1.0 - p), 0.0)
+        inp = tl.load(inp_ptr + blk, msk)
+        rnd = tl.rand(seed, blk)
+        out = tl.where(rnd > p, inp / (1.0 - p), 0.0)
 
-        triton.language.store(out_ptr + blk, out, msk)
+        tl.store(out_ptr + blk, out, msk)
 
     @staticmethod
     @triton.jit
@@ -36,15 +37,15 @@ class Dropout:
         out_ptr,
         out_sz,
         grad_inp_ptr,
-        out_bs: triton.language.constexpr,
+        out_bs: tl.constexpr,
     ):
-        pid = triton.language.program_id(0)
-        blk = triton.language.arange(0, out_bs) + pid * out_bs
+        pid = tl.program_id(0)
+        blk = tl.arange(0, out_bs) + pid * out_bs
         msk = blk < out_sz
 
-        grad_out = triton.language.load(grad_out_ptr + blk, msk)
-        out = triton.language.load(out_ptr + blk, msk)
-        out = triton.language.abs(out)
-        grad_inp = triton.language.where(out > 0.0, 1.0, 0.0)
+        grad_out = tl.load(grad_out_ptr + blk, msk)
+        out = tl.load(out_ptr + blk, msk)
+        out = tl.abs(out)
+        grad_inp = tl.where(out > 0.0, 1.0, 0.0)
 
-        triton.language.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
