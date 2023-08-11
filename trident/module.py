@@ -248,21 +248,22 @@ class GroupNorm(torch.nn.Module):
         if num_channels % num_groups != 0:
             raise ValueError("num_channels must be divisible by num_groups")
 
-        ctor_args = {"device": device, "dtype": dtype}
+        factory_kwargs = {"device": device, "dtype": dtype}
         self.num_groups = num_groups
         self.num_channels = num_channels
         self.eps = eps
-        self.device = device
-        self.dtype = dtype
+        self.affine = affine
 
         if affine:
             self.weight = torch.nn.Parameter(
-                torch.empty(num_channels, **ctor_args).fill_(1)
+                torch.empty(num_channels, **factory_kwargs)
             )
-            self.bias = torch.nn.Parameter(torch.zeros(num_channels, **ctor_args))
+            self.bias = torch.nn.Parameter(torch.empty(num_channels, **factory_kwargs))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
+
+        self.reset_parameters()
 
     def forward(self, input):
         """
@@ -277,6 +278,11 @@ class GroupNorm(torch.nn.Module):
         return function.group_norm(
             input, self.num_groups, self.weight, self.bias, self.eps
         )
+
+    def reset_parameters(self):
+        if self.affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
 
 
 class InstanceNorm1d(torch.nn.Module):

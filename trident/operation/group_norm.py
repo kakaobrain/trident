@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import torch
+import triton
 
-from trident import kernel, util
+from trident import function, kernel, util
 
 
 class GroupNorm(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return GroupNorm.__forward(*args, **kwargs)
+        input, num_groups, weight, bias, eps = args
+        return GroupNorm.__forward(input, num_groups, weight, bias, eps)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        inp, num_groups, wgt, bis, eps = inputs
-        ctx.save_for_backward(inp, wgt, bis)
+        input, num_groups, weight, bias, eps = inputs
+        ctx.save_for_backward(input, weight, bias)
         ctx.num_groups = num_groups
         ctx.eps = eps
 
@@ -36,67 +38,71 @@ class GroupNorm(torch.autograd.Function):
         )
 
     @staticmethod
-    def __forward(inp, num_groups, wgt, bis, eps):
-        bt_sz, vec_sz = inp.shape
-        new_inp = inp.view(bt_sz * num_groups, vec_sz // num_groups)
-
-        out = torch.empty_like(new_inp)
+    def __forward(input, num_groups, weight, bias, eps):
+        num_batches, y_size, x_size = input.shape
+        output = torch.zeros_like(input)
 
         def grid(meta):
-            return [bt_sz * num_groups]
+            return (num_batches * num_groups,)
 
-        kernel.LayerGroupNorm.forward[grid](
-            new_inp,
-            vec_sz // num_groups,
-            wgt,
-            bis,
-            eps,
-            out,
+        kernel.GroupNorm.forward[grid](
+            output,
+            input,
+            y_size,
+            x_size,
             num_groups,
-            blk_sz=util.block_size(vec_sz // num_groups, new_inp.element_size()),
-            dtype=util.dtype(new_inp.dtype),
-            num_warps=util.num_warps(vec_sz // num_groups, new_inp.element_size()),
+            weight,
+            bias,
+            eps,
+            group_block_size=triton.next_power_of_2(y_size // num_groups),
+            dtype=util.dtype(input.dtype),
         )
-
-        return out.view(bt_sz, vec_sz)
+        return output.view(num_batches, y_size, x_size)
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, num_groups, eps):
-        bt_sz, vec_sz = inp.shape
-        new_inp = inp.view(bt_sz * num_groups, vec_sz // num_groups)
+    def __backward(grad_output, inp, weight, bias, num_groups, eps):
+        factory_kwargs = {"device": grad_output.device, "dtype": grad_output.dtype}
+        num_batches, y_size, x_size = inp.shape
+        grad_input = torch.empty_like(inp)
 
-        grad_inp = torch.empty_like(inp)
-        grad_wgt = None if wgt is None else torch.zeros_like(wgt)
-        grad_bis = None if bis is None else torch.zeros_like(bis)
+        if weight is not None:
+            grad_weight_staging = torch.empty((num_batches, y_size), **factory_kwargs)
+        else:
+            grad_weight_staging = None
+
+        if bias is not None:
+            grad_bias_staging = torch.empty((num_batches, y_size), **factory_kwargs)
+        else:
+            grad_bias_staging = None
 
         def grid(meta):
-            return [bt_sz * num_groups]
+            return (num_batches * num_groups,)
 
-        # TODO: Create a tensor in a kernel after a bug of Triton is fixed.
-        wgt = torch.zeros(vec_sz, device="cuda").fill_(1) if wgt is None else wgt
-
-        kernel.LayerGroupNorm.backward[grid](
-            grad_out,
-            new_inp,
-            grad_inp,
-            vec_sz // num_groups,
-            wgt,
-            grad_wgt,
-            grad_bis,
-            eps,
+        kernel.GroupNorm.backward[grid](
+            grad_input,
+            grad_weight_staging,
+            grad_bias_staging,
+            grad_output,
+            inp,
+            y_size,
+            x_size,
             num_groups,
-            blk_sz=util.block_size(vec_sz // num_groups, inp.element_size()),
-            dtype=util.dtype(inp.dtype),
-            num_warps=util.num_warps(vec_sz // num_groups, inp.element_size()),
+            weight,
+            eps,
+            triton.next_power_of_2(x_size),
+            triton.next_power_of_2(y_size // num_groups),
+            util.dtype(grad_output.dtype),
+            num_warps=4,
         )
 
-        return (
-            grad_inp,
-            None,
-            grad_wgt,
-            grad_bis,
-            None,
-            None,
-            None,
-            None,
-        )
+        if weight is not None:
+            grad_weight = function.sum(grad_weight_staging, 0)
+        else:
+            grad_weight = None
+
+        if bias is not None:
+            grad_bias = function.sum(grad_bias_staging, 0)
+        else:
+            grad_bias = None
+
+        return grad_input, None, grad_weight, grad_bias, None, None, None, None

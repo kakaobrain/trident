@@ -71,7 +71,9 @@ def group_norm(input, num_groups, weight=None, bias=None, eps=1e-05):
 
     See GroupNorm for details.
     """
-    return operation.GroupNorm.apply(input, num_groups, weight, bias, eps)
+    return operation.GroupNorm.apply(
+        input.view(input.shape[0], input.shape[1], -1), num_groups, weight, bias, eps
+    ).view(input.shape)
 
 
 def instance_norm(

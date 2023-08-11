@@ -179,8 +179,8 @@ class LayerNorm:
         else:
             grad_norm = grad_output
 
-        grad_std = ((grad_norm * centered_mean) / -language.pow2(std)) / (2 * std)
-        grad_var = tl.sum(grad_std, 1) / x_size
+        grad_std = tl.sum(grad_norm * centered_mean, 1)
+        grad_var = grad_std / (-language.pow2(std) * 2 * std * x_size)
         grad_distance = 2 * centered_mean * grad_var
         grad_centered_mean = tl.where(condition, (grad_norm / std) + grad_distance, 0)
         grad_mean = -tl.sum(grad_centered_mean, 1) / x_size
