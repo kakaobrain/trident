@@ -173,6 +173,34 @@ class Conv2d(torch.nn.Module):
         return operation.Conv2d.apply(input, self.weight, self.bias)
 
 
+class CosineSimilarity(torch.nn.Module):
+    def __init__(self, dim: int = 1, eps: float = 1e-8):
+        """
+        Applies cosine similarity to inputs.
+
+        Args:
+            dim: Dimension where cosine similarity is computed.
+            eps: Small value to avoid division by zero.
+        """
+        super().__init__()
+        self.dim = dim
+        self.eps = eps
+
+    def forward(self, x1, x2):
+        """
+        Applies Cosine similarity to inputs.
+
+        Args:
+             x1: an input1. Tensors of up to 3 dimensions
+             x2: an input2. Tensors of up to 3 dimensions.
+
+        Returns:
+            cosine similarity between input1 and input2 along inserted dimension.
+        """
+
+        return function.cosine_similarity(x1, x2, self.dim, self.eps)
+
+
 class Dropout(torch.nn.Module):
     def __init__(self, p=0.5):
         """
