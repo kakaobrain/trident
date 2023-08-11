@@ -19,9 +19,7 @@ import util
 import trident
 
 
-@util.report(
-    "prelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16}
-)
+@util.report("prelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
 def bench_prelu_forward(y_size, x_size, ctx):
     factory_kwargs = {"device": "cuda"}
 
@@ -34,9 +32,7 @@ def bench_prelu_forward(y_size, x_size, ctx):
         return triton.testing.do_bench(lambda: trident.function.prelu(input, weight))
 
 
-@util.report(
-    "prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16}
-)
+@util.report("prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
 def bench_prelu_backward(y_size, x_size, ctx):
     factory_kwargs = {"device": "cuda"}
 
@@ -50,9 +46,7 @@ def bench_prelu_backward(y_size, x_size, ctx):
     output = operation.forward(input)
     grad_output = torch.ones_like(output)
 
-    return triton.testing.do_bench(
-        lambda: output.backward(grad_output, retain_graph=True)
-    )
+    return triton.testing.do_bench(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

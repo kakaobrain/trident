@@ -27,9 +27,7 @@ def test_forward(num_batches, num_channels, length, use_input_stats, device, dty
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(num_batches, num_channels, length, **factory_kwargs)
 
-    assert util.equal(
-        torch.nn.functional.instance_norm(input), trident.function.instance_norm(input)
-    )
+    assert util.equal(torch.nn.functional.instance_norm(input), trident.function.instance_norm(input))
 
     run_mean = torch.ones(num_channels, **factory_kwargs)
     run_var = torch.zeros(num_channels, **factory_kwargs)
@@ -67,9 +65,7 @@ def test_forward(num_batches, num_channels, length, use_input_stats, device, dty
     assert util.equal(z, c)
 
 
-@pytest.mark.parametrize(
-    "num_batches, num_channels, length", [(5, 10, 1024), (2, 2, 25000)]
-)
+@pytest.mark.parametrize("num_batches, num_channels, length", [(5, 10, 1024), (2, 2, 25000)])
 def test_backward(num_batches, num_channels, length, device):
     factory_kwargs = {"device": device}
     input = torch.randn(num_batches, num_channels, length, **factory_kwargs)
@@ -116,14 +112,10 @@ def test_instance_norm1d(num_channels, length, device, dtype):
     operation = trident.InstanceNorm1d(num_channels, affine=True, **factory_kwargs)
     assert operation.forward(input) is not None
 
-    operation = trident.InstanceNorm1d(
-        num_channels, track_running_stats=True, **factory_kwargs
-    )
+    operation = trident.InstanceNorm1d(num_channels, track_running_stats=True, **factory_kwargs)
     assert operation.forward(input) is not None
 
-    operation = trident.InstanceNorm1d(
-        num_channels, affine=False, track_running_stats=True, **factory_kwargs
-    )
+    operation = trident.InstanceNorm1d(num_channels, affine=False, track_running_stats=True, **factory_kwargs)
     assert operation.forward(input) is not None
 
 
@@ -138,12 +130,8 @@ def test_instance_norm2d(num_batches, num_channels, height, width, device, dtype
     operation = trident.InstanceNorm2d(num_channels, affine=True, **factory_kwargs)
     assert operation.forward(input) is not None
 
-    operation = trident.InstanceNorm2d(
-        num_channels, track_running_stats=True, **factory_kwargs
-    )
+    operation = trident.InstanceNorm2d(num_channels, track_running_stats=True, **factory_kwargs)
     assert operation.forward(input) is not None
 
-    operation = trident.InstanceNorm2d(
-        num_channels, affine=False, track_running_stats=True, **factory_kwargs
-    )
+    operation = trident.InstanceNorm2d(num_channels, affine=False, track_running_stats=True, **factory_kwargs)
     assert operation.forward(input) is not None

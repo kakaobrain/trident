@@ -26,9 +26,7 @@ def bench_linear_forward(m, n, k, ctx):
     bis = torch.randn(n, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(
-            lambda: torch.nn.functional.linear(inp, wgt, bis)
-        )
+        return triton.testing.do_bench(lambda: torch.nn.functional.linear(inp, wgt, bis))
     else:
         return triton.testing.do_bench(lambda: trident.function.linear(inp, wgt, bis))
 

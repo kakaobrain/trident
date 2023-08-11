@@ -24,9 +24,7 @@ def test_forward(num_vec, vec_sz, dtype, device):
     ctor_args = {"device": device, "dtype": dtype}
     inp = torch.randn(num_vec, vec_sz, **ctor_args)
 
-    assert util.equal(
-        torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1)
-    )
+    assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (5, 70)])

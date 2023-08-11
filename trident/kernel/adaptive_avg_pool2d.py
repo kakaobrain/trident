@@ -57,9 +57,7 @@ class AdaptiveAvgPool2d:
         y_ptr += row * y_row_stride + col
 
         kernel_block = tl.arange(0, kernel_size)
-        kernel_block = tl.ravel(
-            kernel_block[:, None] * x_row_stride + kernel_block[None, :]
-        )
+        kernel_block = tl.ravel(kernel_block[:, None] * x_row_stride + kernel_block[None, :])
         x_block = kernel_block[:, None] + col_offsets[None, :]
 
         x = tl.load(x_ptr + x_block)

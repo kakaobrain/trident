@@ -59,8 +59,6 @@ class ReLU(torch.autograd.Function):
             x.shape[0],
             triton.cdiv(x.shape[1], meta["block_size"]),
         )
-        kernel.ReLU.backward[grid](
-            dx, x, x.stride(0), x.shape[1], block_size=block_size
-        )
+        kernel.ReLU.backward[grid](dx, x, x.stride(0), x.shape[1], block_size=block_size)
 
         return grad_outputs[0] * dx, None

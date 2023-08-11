@@ -387,13 +387,9 @@ class CosineSimilarity:
             )
 
         for _ in range(0, size_along_dim, block_size):
-            x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero").to(
-                tl.float32
-            )
+            x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
 
-            x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero").to(
-                tl.float32
-            )
+            x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
 
             denominator = tl.load(denominator_block_ptr)
             numerator = tl.load(numerator_block_ptr)
@@ -402,9 +398,7 @@ class CosineSimilarity:
             square_sum1 = tl.sum(x1 * x1, 0)
             square_sum2 = tl.sum(x2 * x2, 0)
 
-            grad_denominator = (
-                grad_output * numerator * (-1 / (denominator * denominator))
-            )
+            grad_denominator = grad_output * numerator * (-1 / (denominator * denominator))
 
             grad_mul1 = grad_denominator * language.distance(x2, 0)
             grad_mul2 = grad_denominator * language.distance(x1, 0)

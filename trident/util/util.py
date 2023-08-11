@@ -56,21 +56,13 @@ def optimize_module(mod):
     if isinstance(mod, torch.nn.Dropout):
         opt_mod = module.Dropout(mod.p)
     elif isinstance(mod, torch.nn.GroupNorm):
-        opt_mod = module.GroupNorm(
-            mod.num_groups, mod.num_channels, mod.eps, mod.affine
-        )
+        opt_mod = module.GroupNorm(mod.num_groups, mod.num_channels, mod.eps, mod.affine)
     elif isinstance(mod, torch.nn.InstanceNorm1d):
-        opt_mod = module.InstanceNorm1d(
-            mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats
-        )
+        opt_mod = module.InstanceNorm1d(mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats)
     elif isinstance(mod, torch.nn.InstanceNorm2d):
-        opt_mod = module.InstanceNorm1d(
-            mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats
-        )
+        opt_mod = module.InstanceNorm1d(mod.num_features, mod.eps, mod.momentum, mod.affine, mod.track_running_stats)
     elif isinstance(mod, torch.nn.LayerNorm):
-        opt_mod = module.LayerNorm(
-            mod.normalized_shape, mod.eps, mod.elementwise_affine
-        )
+        opt_mod = module.LayerNorm(mod.normalized_shape, mod.eps, mod.elementwise_affine)
     elif isinstance(mod, torch.nn.Softmax):
         opt_mod = module.Softmax(mod.dim)
 

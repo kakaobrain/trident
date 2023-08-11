@@ -56,9 +56,7 @@ class Linear(torch.autograd.Function):
         )
         y = torch.empty((m, n), **ctor_args)
 
-        kernel.Linear.forward[grid](
-            inp, y, wgt, bis, bis_st, m, k, n, act=act, dtype=util.dtype(inp.dtype)
-        )
+        kernel.Linear.forward[grid](inp, y, wgt, bis, bis_st, m, k, n, act=act, dtype=util.dtype(inp.dtype))
 
         return y
 

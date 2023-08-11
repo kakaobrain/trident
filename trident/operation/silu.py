@@ -58,8 +58,6 @@ class SiLU(torch.autograd.Function):
         inp_bs = min(triton.next_power_of_2(inp_sz), 1024)
         dtype = inp.dtype
 
-        kernel.SiLU.backward[grid](
-            grad_out, inp, inp_sz, grad_inp, inp_bs=inp_bs, dtype=dtype
-        )
+        kernel.SiLU.backward[grid](grad_out, inp, inp_sz, grad_inp, inp_bs=inp_bs, dtype=dtype)
 
         return grad_inp, None
