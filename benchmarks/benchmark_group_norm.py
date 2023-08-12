@@ -29,9 +29,9 @@ def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, ctx):
     input = torch.randn((num_batches, y_size, x_size), device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.group_norm(input, num_groups))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.group_norm(input, num_groups))
     else:
-        return triton.testing.do_bench(lambda: trident.function.group_norm(input, num_groups))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.group_norm(input, num_groups))
 
 
 @util.report(
@@ -49,7 +49,7 @@ def bench_group_norm_backward(num_batches, y_size, x_size, num_groups, ctx):
     else:
         output = trident.function.group_norm(input, num_groups)
 
-    return triton.testing.do_bench(lambda: output.backward(target, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

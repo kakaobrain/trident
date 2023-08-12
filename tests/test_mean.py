@@ -14,7 +14,6 @@
 
 import pytest
 import torch
-import triton
 
 import trident
 from tests import util

@@ -34,6 +34,7 @@ import benchmark_silu
 import benchmark_softmax
 import benchmark_sum
 import benchmark_var
+import torch
 
 
 def print_scenarios():
@@ -149,6 +150,7 @@ def main():
     if args.list:
         print_scenarios()
     else:
+        torch.cuda.set_stream(torch.cuda.Stream())
         run_benchmarks(
             args.scenario.replace("_", "-") if args.scenario else None,
             args.mode,

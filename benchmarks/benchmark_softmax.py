@@ -29,9 +29,9 @@ def bench_softmax_forward(num_bt, vec_sz, ctx):
     inp = torch.randn(num_bt, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.softmax(inp, 1))
+        return triton.testing.do_bench_cudagraph(lambda: torch.softmax(inp, 1))
     else:
-        return triton.testing.do_bench(lambda: trident.function.softmax(inp, 1))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.softmax(inp, 1))
 
 
 @util.report(
@@ -51,7 +51,7 @@ def bench_softmax_backward(num_bt, vec_sz, ctx):
     out = lyr.forward(inp)
     grad_out = torch.ones_like(inp)
 
-    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

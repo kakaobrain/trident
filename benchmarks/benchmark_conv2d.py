@@ -30,9 +30,9 @@ def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
     wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.conv2d(inp, wgt))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.conv2d(inp, wgt))
     else:
-        return triton.testing.do_bench(lambda: trident.function.conv2d(inp, wgt))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.conv2d(inp, wgt))
 
 
 def run_benchmark(mode, show_plots):

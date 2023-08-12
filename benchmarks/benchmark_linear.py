@@ -26,9 +26,9 @@ def bench_linear_forward(m, n, k, ctx):
     bis = torch.randn(n, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.linear(inp, wgt, bis))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.linear(inp, wgt, bis))
     else:
-        return triton.testing.do_bench(lambda: trident.function.linear(inp, wgt, bis))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.linear(inp, wgt, bis))
 
 
 @util.report("linear backward", ["m", "k", "n"], [64 * i for i in range(1, 21)])
@@ -43,7 +43,7 @@ def bench_linear_backward(m, n, k, ctx):
     out = lyr.forward(inp)
     grad_out = torch.ones_like(out)
 
-    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

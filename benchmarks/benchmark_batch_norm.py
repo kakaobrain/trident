@@ -24,9 +24,9 @@ def bench_batch_norm_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.batch_norm(inp, None, None, training=True))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.batch_norm(inp, None, None, training=True))
     else:
-        return triton.testing.do_bench(lambda: trident.function.batch_norm(inp, training=True))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(inp, training=True))
 
 
 @util.report("backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
@@ -41,7 +41,7 @@ def bench_batch_norm_backward(num_vec, vec_sz, ctx):
     out = lyr.forward(inp)
     grad_out = torch.ones_like(inp)
 
-    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

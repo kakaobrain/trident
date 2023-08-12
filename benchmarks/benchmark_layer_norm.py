@@ -25,9 +25,9 @@ def bench_layer_norm_forward(num_vec, vec_sz, ctx):
     norm_sh = (inp.shape[-1],)
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
     else:
-        return triton.testing.do_bench(lambda: trident.function.layer_norm(inp, norm_sh))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.layer_norm(inp, norm_sh))
 
 
 @util.report("layer norm backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
@@ -43,7 +43,7 @@ def bench_layer_norm_backward(num_vec, vec_sz, ctx):
     out = lyr.forward(inp)
     grad_out = torch.ones_like(inp)
 
-    return triton.testing.do_bench(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

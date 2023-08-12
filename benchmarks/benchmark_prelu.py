@@ -27,9 +27,9 @@ def bench_prelu_forward(y_size, x_size, ctx):
     weight = torch.randn(x_size, **factory_kwargs)
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.prelu(input, weight))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.prelu(input, weight))
     else:
-        return triton.testing.do_bench(lambda: trident.function.prelu(input, weight))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.prelu(input, weight))
 
 
 @util.report("prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
@@ -46,7 +46,7 @@ def bench_prelu_backward(y_size, x_size, ctx):
     output = operation.forward(input)
     grad_output = torch.ones_like(output)
 
-    return triton.testing.do_bench(lambda: output.backward(grad_output, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):
