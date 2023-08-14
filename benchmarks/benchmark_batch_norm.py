@@ -19,21 +19,21 @@ import util
 import trident
 
 
-@util.report("forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
-def bench_batch_norm_forward(num_vec, vec_sz, ctx):
+@util.report("batch norm forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
+def bench_batch_norm_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.batch_norm(inp, None, None, training=True))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(inp, training=True))
 
 
-@util.report("backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
-def bench_batch_norm_backward(num_vec, vec_sz, ctx):
+@util.report("batch norm backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
+def bench_batch_norm_backward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
 
-    if ctx == "torch":
+    if backend == "torch":
         lyr = torch.nn.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")
     else:
         lyr = trident.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")

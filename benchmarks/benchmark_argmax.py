@@ -25,11 +25,11 @@ import trident
     [256 * i for i in range(1, 21)],
     {"y_size": 32},
 )
-def bench_mean_forward(y_size, x_size, ctx):
+def bench_mean_forward(y_size, x_size, backend):
     factory_kwargs = {"device": "cuda"}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.argmax(input, 1))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.util.argmax(input, 1))

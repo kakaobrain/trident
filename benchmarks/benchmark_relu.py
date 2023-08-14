@@ -20,10 +20,10 @@ import trident
 
 
 @util.report("relu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 32})
-def bench_relu_forward(num_vec, vec_sz, ctx):
+def bench_relu_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.relu(inp))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.relu(inp))

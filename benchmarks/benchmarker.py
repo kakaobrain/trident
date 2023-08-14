@@ -18,6 +18,7 @@ import benchmark_adaptive_avg_pool2d
 import benchmark_argmax
 import benchmark_batch_norm
 import benchmark_conv2d
+import benchmark_cosine_similarity
 import benchmark_dropout
 import benchmark_gelu
 import benchmark_group_norm
@@ -46,6 +47,7 @@ def print_scenarios():
                 "argmax",
                 "batch-norm",
                 "conv2d",
+                "cosine-similarity",
                 "dropout",
                 "gelu",
                 "group-norm",
@@ -76,6 +78,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_batch_norm.run_benchmark(mode, show_plots)
     elif scenario == "conv2d":
         benchmark_conv2d.run_benchmark(mode, show_plots)
+    elif scenario == "cosine-similarity":
+        benchmark_cosine_similarity.run_benchmark(mode, show_plots)
     elif scenario == "dropout":
         benchmark_dropout.run_benchmark(mode, show_plots)
     elif scenario == "gelu":
@@ -113,6 +117,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_argmax.run_benchmark(mode, show_plots)
         benchmark_batch_norm.run_benchmark(mode, show_plots)
         benchmark_conv2d.run_benchmark(mode, show_plots)
+        benchmark_cosine_similarity.run_benchmark(mode, show_plots)
         benchmark_dropout.run_benchmark(mode, show_plots)
         benchmark_gelu.run_benchmark(mode, show_plots)
         benchmark_group_norm.run_benchmark(mode, show_plots)

@@ -25,11 +25,11 @@ import trident
     [256 * i for i in range(1, 21)],
     {"y_size": 32},
 )
-def bench_sum_forward(y_size, x_size, ctx):
+def bench_sum_forward(y_size, x_size, backend):
     factory_kwargs = {"device": "cuda"}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.sum(input, 1))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.sum(input, 1))
@@ -41,12 +41,12 @@ def bench_sum_forward(y_size, x_size, ctx):
     [256 * i for i in range(1, 21)],
     {"y_size": 32},
 )
-def bench_sum_backward(y_size, x_size, ctx):
+def bench_sum_backward(y_size, x_size, backend):
     factory_kwargs = {"device": "cuda", "requires_grad": True}
     input = torch.randn(y_size, x_size, **factory_kwargs)
     target = torch.empty(y_size, **factory_kwargs)
 
-    if ctx == "torch":
+    if backend == "torch":
         output = torch.sum(input, 1)
     else:
         output = trident.function.sum(input, 1)

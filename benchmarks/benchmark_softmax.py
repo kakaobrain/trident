@@ -25,10 +25,10 @@ import trident
     [256 * i for i in range(1, 21)],
     {"num_bt": 32},
 )
-def bench_softmax_forward(num_bt, vec_sz, ctx):
+def bench_softmax_forward(num_bt, vec_sz, backend):
     inp = torch.randn(num_bt, vec_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.softmax(inp, 1))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.softmax(inp, 1))
@@ -40,10 +40,10 @@ def bench_softmax_forward(num_bt, vec_sz, ctx):
     [256 * i for i in range(1, 21)],
     {"num_bt": 32},
 )
-def bench_softmax_backward(num_bt, vec_sz, ctx):
+def bench_softmax_backward(num_bt, vec_sz, backend):
     inp = torch.randn(num_bt, vec_sz, device="cuda", requires_grad=True)
 
-    if ctx == "torch":
+    if backend == "torch":
         lyr = torch.nn.Softmax(1)
     else:
         lyr = trident.Softmax(1)
