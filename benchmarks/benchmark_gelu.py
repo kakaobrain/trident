@@ -24,9 +24,9 @@ def bench_gelu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.gelu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.gelu(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.gelu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.gelu(inp))
 
 
 def run_benchmark(mode, show_plots):

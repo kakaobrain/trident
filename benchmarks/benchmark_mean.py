@@ -30,9 +30,9 @@ def bench_mean_forward(y_size, x_size, ctx):
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.mean(input, 1))
+        return triton.testing.do_bench_cudagraph(lambda: torch.mean(input, 1))
     else:
-        return triton.testing.do_bench(lambda: trident.function.mean(input, 1))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.mean(input, 1))
 
 
 @util.report(
@@ -51,7 +51,7 @@ def bench_mean_backward(y_size, x_size, ctx):
     else:
         output = trident.function.mean(input, 1)
 
-    return triton.testing.do_bench(lambda: output.backward(target, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

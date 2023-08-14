@@ -24,9 +24,9 @@ def bench_silu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.silu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.silu(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.silu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.silu(inp))
 
 
 def run_benchmark(mode, show_plots):

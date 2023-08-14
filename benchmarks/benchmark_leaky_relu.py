@@ -29,9 +29,9 @@ def bench_leaky_relu_forward(num_vec, vec_sz, ctx):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.leaky_relu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.leaky_relu(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.leaky_relu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.leaky_relu(inp))
 
 
 def run_benchmark(mode, show_plots):

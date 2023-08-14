@@ -29,9 +29,9 @@ def bench_adaptive_avg_pool2d_forward(out_sz, h, w, ctx):
     inp = torch.randn(1, 1, h, w, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.adaptive_avg_pool2d(inp, out_sz))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.adaptive_avg_pool2d(inp, out_sz))
     else:
-        return triton.testing.do_bench(lambda: trident.function.adaptive_avg_pool2d(inp, out_sz))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.adaptive_avg_pool2d(inp, out_sz))
 
 
 def run_benchmark(mode, show_plots):

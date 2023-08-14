@@ -29,9 +29,9 @@ def bench_instance_norm_forward(num_bt, num_ch, vec_sz, ctx):
     inp = torch.randn(num_bt, num_ch, vec_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.instance_norm(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.instance_norm(inp))
     else:
-        return triton.testing.do_bench(lambda: trident.function.instance_norm(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.instance_norm(inp))
 
 
 def run_benchmark(mode, show_plots):

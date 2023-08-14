@@ -24,9 +24,9 @@ def bench_dropout_forward(p, inp_sz, ctx):
     inp = torch.randn(inp_sz, device="cuda")
 
     if ctx == "torch":
-        return triton.testing.do_bench(lambda: torch.nn.functional.dropout(inp, p))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.dropout(inp, p))
     else:
-        return triton.testing.do_bench(lambda: trident.function.dropout(inp, p))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.dropout(inp, p))
 
 
 def run_benchmark(mode, show_plots):
