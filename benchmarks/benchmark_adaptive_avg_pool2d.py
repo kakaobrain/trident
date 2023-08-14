@@ -25,10 +25,10 @@ import trident
     [2**i for i in range(1, 11)],
     {"h": 512, "w": 512},
 )
-def bench_adaptive_avg_pool2d_forward(out_sz, h, w, ctx):
+def bench_adaptive_avg_pool2d_forward(out_sz, h, w, backend):
     inp = torch.randn(1, 1, h, w, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.adaptive_avg_pool2d(inp, out_sz))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.adaptive_avg_pool2d(inp, out_sz))

@@ -20,22 +20,22 @@ import trident
 
 
 @util.report("linear forward", ["m", "k", "n"], [64 * i for i in range(1, 21)])
-def bench_linear_forward(m, n, k, ctx):
+def bench_linear_forward(m, n, k, backend):
     inp = torch.randn(m, k, device="cuda")
     wgt = torch.randn(n, k, device="cuda")
     bis = torch.randn(n, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.linear(inp, wgt, bis))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.linear(inp, wgt, bis))
 
 
 @util.report("linear backward", ["m", "k", "n"], [64 * i for i in range(1, 21)])
-def bench_linear_backward(m, n, k, ctx):
+def bench_linear_backward(m, n, k, backend):
     inp = torch.randn(m, k, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         lyr = torch.nn.Linear(k, n, True, device="cuda")
     else:
         lyr = trident.Linear(k, n, True)

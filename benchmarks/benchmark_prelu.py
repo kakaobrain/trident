@@ -20,25 +20,25 @@ import trident
 
 
 @util.report("prelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
-def bench_prelu_forward(y_size, x_size, ctx):
+def bench_prelu_forward(y_size, x_size, backend):
     factory_kwargs = {"device": "cuda"}
 
     input = torch.randn(y_size, x_size, **factory_kwargs)
     weight = torch.randn(x_size, **factory_kwargs)
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.prelu(input, weight))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.prelu(input, weight))
 
 
 @util.report("prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
-def bench_prelu_backward(y_size, x_size, ctx):
+def bench_prelu_backward(y_size, x_size, backend):
     factory_kwargs = {"device": "cuda"}
 
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    if ctx == "torch":
+    if backend == "torch":
         operation = torch.nn.PReLU(x_size, 0.3, **factory_kwargs)
     else:
         operation = trident.PReLU(x_size, 0.3, **factory_kwargs)

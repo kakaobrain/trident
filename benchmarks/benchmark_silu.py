@@ -20,10 +20,10 @@ import trident
 
 
 @util.report("silu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 1})
-def bench_silu_forward(num_vec, vec_sz, ctx):
+def bench_silu_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.silu(inp))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.silu(inp))

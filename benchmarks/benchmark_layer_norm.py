@@ -20,22 +20,22 @@ import trident
 
 
 @util.report("layer norm forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
-def bench_layer_norm_forward(num_vec, vec_sz, ctx):
+def bench_layer_norm_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
     norm_sh = (inp.shape[-1],)
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.layer_norm(inp, norm_sh))
 
 
 @util.report("layer norm backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
-def bench_layer_norm_backward(num_vec, vec_sz, ctx):
+def bench_layer_norm_backward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
     norm_sh = [inp.shape[-1]]
 
-    if ctx == "torch":
+    if backend == "torch":
         lyr = torch.nn.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")
     else:
         lyr = trident.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")

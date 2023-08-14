@@ -25,11 +25,11 @@ import trident
     [3 * i for i in range(1, 21)],
     {"num_bt": 2, "inp_ch": 3, "inp_sz": 256, "out_ch": 8},
 )
-def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, ctx):
+def bench_conv2d_forward(num_bt, inp_ch, inp_sz, out_ch, wgt_sz, backend):
     inp = torch.randn(num_bt, inp_ch, inp_sz, inp_sz, device="cuda")
     wgt = torch.randn(out_ch, inp_ch, wgt_sz, wgt_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.conv2d(inp, wgt))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.conv2d(inp, wgt))

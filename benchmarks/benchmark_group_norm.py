@@ -25,10 +25,10 @@ import trident
     [256 * i for i in range(1, 21)],
     {"num_batches": 4, "y_size": 256, "num_groups": 128},
 )
-def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, ctx):
+def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, backend):
     input = torch.randn((num_batches, y_size, x_size), device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.group_norm(input, num_groups))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.group_norm(input, num_groups))
@@ -40,11 +40,11 @@ def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, ctx):
     [256 * i for i in range(1, 21)],
     {"num_batches": 4, "y_size": 256, "num_groups": 128},
 )
-def bench_group_norm_backward(num_batches, y_size, x_size, num_groups, ctx):
+def bench_group_norm_backward(num_batches, y_size, x_size, num_groups, backend):
     input = torch.randn((num_batches, y_size, x_size), device="cuda", requires_grad=True)
     target = torch.randn((num_batches, y_size, x_size), device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         output = torch.group_norm(input, num_groups)
     else:
         output = trident.function.group_norm(input, num_groups)

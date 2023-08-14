@@ -25,10 +25,10 @@ import trident
     [256 * i for i in range(1, 21)],
     {"num_vec": 64},
 )
-def bench_leaky_relu_forward(num_vec, vec_sz, ctx):
+def bench_leaky_relu_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
-    if ctx == "torch":
+    if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.leaky_relu(inp))
     else:
         return triton.testing.do_bench_cudagraph(lambda: trident.function.leaky_relu(inp))
