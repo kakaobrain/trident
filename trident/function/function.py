@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import torch
+
 from trident import operation
 
 
@@ -193,7 +195,7 @@ def prelu(input, weight):
     return operation.PReLU.apply(input, weight)
 
 
-def softmax(input, dim=None):
+def softmax(input: torch.Tensor, dim: int = None):
     """
     Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
 
