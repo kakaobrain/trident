@@ -19,12 +19,12 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(5, 32), (2, 30000)])
-def test_forward(num_vec, vec_sz, dtype, device):
-    ctor_args = {"device": device, "dtype": dtype}
-    inp = torch.randn(num_vec, vec_sz, **ctor_args)
+@pytest.mark.parametrize("y_size, x_size, dim", [(5, 32, 1), (2, 30000, 1)])
+def test_forward(y_size, x_size, dim, dtype, device):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    assert util.equal(torch.nn.functional.softmax(inp, 1), trident.function.softmax(inp, 1))
+    assert util.equal(torch.nn.functional.softmax(input, dim), trident.function.softmax(input, dim))
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (5, 70)])
@@ -43,3 +43,11 @@ def test_backward(num_vec, vec_sz, device, dtype):
     (a,) = train(trident.function.softmax, 1)
 
     assert util.equal(x, a)
+
+
+@pytest.mark.parametrize("y_size, x_size, dim", [(1, 32, 1)])
+def test_softmax(y_size, x_size, dim, dtype, device):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    assert trident.Softmax(dim).forward(input) is not None

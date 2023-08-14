@@ -713,7 +713,7 @@ class SiLU(torch.nn.Module):
 
 
 class Softmax(torch.nn.Module):
-    def __init__(self, dim=None):
+    def __init__(self, dim: int = None):
         """
         Applies Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
 
@@ -724,7 +724,7 @@ class Softmax(torch.nn.Module):
 
         self.dim = dim
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Softmax to input.
 
@@ -734,7 +734,7 @@ class Softmax(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input with values in the range [0, 1]
         """
-        return operation.Softmax.apply(input, self.dim)
+        return function.softmax(input, self.dim)
 
 
 class Sum(torch.nn.Module):

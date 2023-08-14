@@ -21,54 +21,51 @@ from trident import kernel, math, util
 class Softmax(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return Softmax.__forward(*args, **kwargs)
+        input, dim = args
+        return Softmax.__forward(input, dim)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
+        input, dim = inputs
         ctx.save_for_backward(output)
+        ctx.dim = dim
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return Softmax.__backward(*grad_outputs, *ctx.saved_tensors)
+        (grad_output,) = grad_outputs
+        (output,) = ctx.saved_tensors
+        return Softmax.__backward(grad_output, output, ctx.dim)
 
     @staticmethod
-    def __forward(inp, dim):
-        assert inp.is_contiguous()
+    def __forward(input: torch.Tensor, dim: int):
         assert dim == 1
 
-        num_vec, vec_sz = inp.shape
+        y_size, x_size = input.shape
+        output = torch.empty_like(input)
 
         def grid(meta):
-            return [num_vec]
-
-        out = torch.empty_like(inp)
-        blk_sz = util.block_size(vec_sz, inp.element_size())
-        num_warps = util.num_warps(vec_sz, inp.element_size(), 4)
+            return (x_size if dim == 0 else y_size,)
 
         kernel.Softmax.forward[grid](
-            inp,
-            num_vec,
-            vec_sz,
-            out,
-            blk_sz,
-            util.dtype(inp.dtype),
-            num_warps=num_warps,
+            output,
+            input,
+            y_size,
+            x_size,
+            dim,
+            dtype=util.dtype(input.dtype),
         )
 
-        return out
+        return output
 
     @staticmethod
-    def __backward(grad_out, out):
-        assert grad_out.is_contiguous() and out.is_contiguous()
-
-        num_vec, vec_sz = out.shape
+    def __backward(grad_output: torch.Tensor, output: torch.Tensor, dim: int):
+        y_size, x_size = output.shape
+        grad_input = torch.empty_like(output)
+        block_size = max(triton.next_power_of_2(x_size), 16)
 
         def grid(meta):
-            return [num_vec]
+            return (x_size if dim == 0 else y_size,)
 
-        grad_inp = torch.empty_like(out)
-        blk_sz = max(triton.next_power_of_2(vec_sz), 16)
+        kernel.Softmax.backward[grid](grad_output, output, x_size, grad_input, block_size)
 
-        kernel.Softmax.backward[grid](grad_out, out, vec_sz, grad_inp, blk_sz)
-
-        return grad_inp, None
+        return grad_input, None
