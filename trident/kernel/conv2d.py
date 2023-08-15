@@ -49,7 +49,7 @@ class Conv2d:
         grp_sz: tl.constexpr,
     ):
         pid = tl.program_id(0)
-        num_grp = language.cdiv(out_w, grp_sz)
+        num_grp = tl.cdiv(out_w, grp_sz)
         bt = language.batch(pid, out_ch, num_grp, out_w)
         ch = language.channel(pid, out_ch, num_grp, out_w)
         grp = language.row(pid, num_grp, out_w)

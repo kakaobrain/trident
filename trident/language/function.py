@@ -24,11 +24,6 @@ def batch(index, num_channels, num_rows, num_cols):
 
 
 @triton.jit
-def cdiv(x, y):
-    return (x + y - 1) // y
-
-
-@triton.jit
 def channel(index, num_channels, num_rows, num_cols):
     return (index % (num_channels * num_rows * num_cols)) // (num_rows * num_cols)
 
@@ -66,6 +61,62 @@ def gelu(x):
 @triton.jit
 def gemv(a, x):
     return tl.sum(a * tl.trans(x[:, None]), 1)
+
+
+@triton.jit
+def linear(
+    input_ptr: tl.tensor,
+    weight_ptr: tl.tensor,
+    bias_ptr: tl.tensor,
+    m_size: int,
+    n_size: int,
+    k_size: int,
+    m_offset: int,
+    n_offset: int,
+    use_accelerator: tl.constexpr,
+    m_block_size: tl.constexpr,
+    n_block_size: tl.constexpr,
+    k_block_size: tl.constexpr,
+    dtype: tl.constexpr,
+):
+    input_block_ptr = tl.make_block_ptr(
+        input_ptr,
+        shape=(m_size, k_size),
+        strides=(k_size, 1),
+        offsets=(m_offset, 0),
+        block_shape=(m_block_size, k_block_size),
+        order=(1, 0),
+    )
+    weight_block_ptr = tl.make_block_ptr(
+        weight_ptr,
+        shape=(k_size, n_size),
+        strides=(1, k_size),
+        offsets=(0, n_offset),
+        block_shape=(k_block_size, n_block_size),
+        order=(0, 1),
+    )
+    output = tl.zeros((m_block_size, n_block_size), dtype)
+
+    for k_offset in range(0, k_size, k_block_size):
+        input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+        weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+        output += tl.dot(input, weight, use_accelerator).to(dtype)
+        input_block_ptr = tl.advance(input_block_ptr, (0, k_block_size))
+        weight_block_ptr = tl.advance(weight_block_ptr, (k_block_size, 0))
+
+    if bias_ptr is not None:
+        bias_block_ptr = tl.make_block_ptr(
+            bias_ptr,
+            shape=(n_size,),
+            strides=(1,),
+            offsets=(n_offset,),
+            block_shape=(n_block_size,),
+            order=(0,),
+        )
+        bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
+        output += bias
+
+    return output
 
 
 @triton.jit
