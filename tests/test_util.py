@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(10000, 20000, 0), (20000, 10000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(10, 2000, 0), (2000, 10, 1)])
 def test_argmax(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
 

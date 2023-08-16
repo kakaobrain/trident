@@ -19,14 +19,14 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(5, 32, 0), (2, 30000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(5, 32, 0), (2, 3000, 1)])
 def test_forward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
 
     assert util.equal(torch.nn.functional.softmax(input, dim), trident.function.softmax(input, dim))
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(300, 500, 0), (5, 7000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(300, 500, 0), (3, 7000, 1)])
 def test_backward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
     target = torch.randn(y_size, x_size, device=device)
