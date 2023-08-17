@@ -42,7 +42,7 @@ class GELU:
         )
 
         input = tl.load(input_block_ptr, boundary_check=(0,))
-        output = language.gelu(input)
+        output = language.math.GeLU.forward(input)
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
@@ -63,7 +63,5 @@ class GELU:
 
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
         input = tl.load(input_block_ptr, boundary_check=(0,))
-        a = tl.math.tanh(0.797884560802865 * (input + 0.044715 * language.pow3(input)))
-        b = input * (1.0 - language.pow2(a)) * (0.797884560802865 + 0.1070322244089 * language.pow2(input))
-        grad_input = grad_output * 0.5 * (1.0 + a + b)
+        grad_input = grad_output * language.math.GeLU.backward(input)
         tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))

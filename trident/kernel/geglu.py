@@ -18,7 +18,7 @@ import triton.language as tl
 from trident import language
 
 
-class Linear:
+class GEGLU:
     @staticmethod
     def configs():
         configs = []
@@ -29,8 +29,8 @@ class Linear:
                         config = triton.Config(
                             {
                                 "m_block_size": m_block_size,
-                                "k_block_size": k_block_size,
                                 "n_block_size": n_block_size,
+                                "k_block_size": k_block_size,
                             },
                             2 if k_block_size <= 64 else 4,
                             num_stages,
@@ -58,6 +58,7 @@ class Linear:
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
+        linear_ptr: tl.tensor,
         input_ptr: tl.tensor,
         weight_ptr: tl.tensor,
         bias_ptr: tl.tensor,
@@ -77,7 +78,7 @@ class Linear:
         m_offset = m_block * m_block_size
         n_offset = n_block * n_block_size
 
-        output = language.Linear.forward(
+        linear = language.Linear.forward(
             input_ptr,
             weight_ptr,
             bias_ptr,
@@ -92,6 +93,17 @@ class Linear:
             k_block_size,
             dtype,
         )
+        linear_block_ptr = tl.make_block_ptr(
+            linear_ptr,
+            shape=(m_size, n_size),
+            strides=(n_size, 1),
+            offsets=(m_offset, n_offset),
+            block_shape=(m_block_size, n_block_size),
+            order=(1, 0),
+        )
+        tl.store(linear_block_ptr, linear, boundary_check=(0, 1))
+
+        output = language.math.GeLU.forward(linear)
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(m_size, n_size),
@@ -109,6 +121,7 @@ class Linear:
         grad_input_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         weight_ptr: tl.tensor,
+        linear_ptr: tl.tensor,
         m_size: int,
         n_size: int,
         k_size: int,
@@ -125,20 +138,42 @@ class Linear:
         m_offset = m_block * m_block_size
         k_offset = k_block * k_block_size
 
-        grad_input = language.Linear.backward(
+        grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
-            weight_ptr,
-            m_size,
-            n_size,
-            k_size,
-            m_offset,
-            k_offset,
-            use_accelerator,
-            m_block_size,
-            n_block_size,
-            k_block_size,
-            dtype,
+            shape=(m_size, n_size),
+            strides=(n_size, 1),
+            offsets=(m_offset, 0),
+            block_shape=(m_block_size, n_block_size),
+            order=(1, 0),
         )
+        weight_block_ptr = tl.make_block_ptr(
+            weight_ptr,
+            shape=(n_size, k_size),
+            strides=(k_size, 1),
+            offsets=(0, k_offset),
+            block_shape=(n_block_size, k_block_size),
+            order=(1, 0),
+        )
+        linear_block_ptr = tl.make_block_ptr(
+            linear_ptr,
+            shape=(m_size, n_size),
+            strides=(n_size, 1),
+            offsets=(m_offset, 0),
+            block_shape=(m_block_size, n_block_size),
+            order=(1, 0),
+        )
+        grad_input = tl.zeros((m_block_size, k_block_size), dtype)
+
+        for n_offset in range(0, n_size, n_block_size):
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            grad_output *= language.math.GeLU.backward(linear)
+            weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            grad_input += tl.dot(grad_output, weight, use_accelerator)
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
+            linear_block_ptr = tl.advance(linear_block_ptr, (0, n_block_size))
+            weight_block_ptr = tl.advance(weight_block_ptr, (n_block_size, 0))
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(m_size, k_size),
@@ -156,6 +191,7 @@ class Linear:
         grad_weight_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         input_ptr: tl.tensor,
+        linear_ptr: tl.tensor,
         m_size: int,
         n_size: int,
         k_size: int,
@@ -172,20 +208,42 @@ class Linear:
         n_offset = n_block * n_block_size
         k_offset = k_block * k_block_size
 
-        grad_weight = language.Linear.backward_weight(
+        grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
-            input_ptr,
-            m_size,
-            n_size,
-            k_size,
-            n_offset,
-            k_offset,
-            use_accelerator,
-            m_block_size,
-            n_block_size,
-            k_block_size,
-            dtype,
+            shape=(n_size, m_size),
+            strides=(1, n_size),
+            offsets=(n_offset, 0),
+            block_shape=(n_block_size, m_block_size),
+            order=(0, 1),
         )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(m_size, k_size),
+            strides=(k_size, 1),
+            offsets=(0, k_offset),
+            block_shape=(m_block_size, k_block_size),
+            order=(1, 0),
+        )
+        linear_block_ptr = tl.make_block_ptr(
+            linear_ptr,
+            shape=(n_size, m_size),
+            strides=(1, n_size),
+            offsets=(n_offset, 0),
+            block_shape=(n_block_size, m_block_size),
+            order=(0, 1),
+        )
+        grad_weight = tl.zeros((n_block_size, k_block_size), dtype)
+
+        for m_offset in range(0, m_size, m_block_size):
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            grad_output *= language.math.GeLU.backward(linear)
+            input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            grad_weight += tl.dot(grad_output, input, use_accelerator)
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
+            linear_block_ptr = tl.advance(linear_block_ptr, (0, m_block_size))
+            input_block_ptr = tl.advance(input_block_ptr, (m_block_size, 0))
+
         grad_weight_block_ptr = tl.make_block_ptr(
             grad_weight_ptr,
             shape=(n_size, k_size),
@@ -202,14 +260,41 @@ class Linear:
     def backward_bias(
         grad_bias_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
+        linear_ptr: tl.tensor,
         m_size: int,
         n_size: int,
         block_size: tl.constexpr,
         dtype: tl.constexpr,
     ):
-        n_offset = tl.program_id(0)
-        grad_bias = language.Linear.backward_bias(grad_output_ptr, m_size, n_size, n_offset, block_size, dtype)
+        offset = tl.program_id(0)
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(n_size, m_size),
+            strides=(1, n_size),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(0, 1),
+        )
+        linear_block_ptr = tl.make_block_ptr(
+            linear_ptr,
+            shape=(n_size, m_size),
+            strides=(1, n_size),
+            offsets=(offset, 0),
+            block_shape=(1, block_size),
+            order=(0, 1),
+        )
+        sum = tl.zeros((1, block_size), dtype)
+
+        for m_offset in range(0, m_size, block_size):
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+            linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            grad_output *= language.math.GeLU.backward(linear)
+            sum += grad_output
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))
+            linear_block_ptr = tl.advance(linear_block_ptr, (0, block_size))
+
+        grad_bias = tl.sum(sum, 1)
         grad_bias_block_ptr = tl.make_block_ptr(
-            grad_bias_ptr, shape=(n_size,), strides=(1,), offsets=(n_offset,), block_shape=(1,), order=(0,)
+            grad_bias_ptr, shape=(n_size,), strides=(1,), offsets=(offset,), block_shape=(1,), order=(0,)
         )
         tl.store(grad_bias_block_ptr, grad_bias)

@@ -47,67 +47,6 @@ def exp(x):
 
 
 @triton.jit
-def gelu(x):
-    return 0.5 * x * (1 + tanh(0.797884560803 * (x + 0.044715 * pow3(x))))
-
-
-@triton.jit
-def linear(
-    input_ptr: tl.tensor,
-    weight_ptr: tl.tensor,
-    bias_ptr: tl.tensor,
-    m_size: int,
-    n_size: int,
-    k_size: int,
-    m_offset: int,
-    n_offset: int,
-    use_accelerator: tl.constexpr,
-    m_block_size: tl.constexpr,
-    n_block_size: tl.constexpr,
-    k_block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    input_block_ptr = tl.make_block_ptr(
-        input_ptr,
-        shape=(m_size, k_size),
-        strides=(k_size, 1),
-        offsets=(m_offset, 0),
-        block_shape=(m_block_size, k_block_size),
-        order=(1, 0),
-    )
-    weight_block_ptr = tl.make_block_ptr(
-        weight_ptr,
-        shape=(k_size, n_size),
-        strides=(1, k_size),
-        offsets=(0, n_offset),
-        block_shape=(k_block_size, n_block_size),
-        order=(0, 1),
-    )
-    output = tl.zeros((m_block_size, n_block_size), dtype)
-
-    for k_offset in range(0, k_size, k_block_size):
-        input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
-        weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
-        output += tl.dot(input, weight, use_accelerator).to(dtype)
-        input_block_ptr = tl.advance(input_block_ptr, (0, k_block_size))
-        weight_block_ptr = tl.advance(weight_block_ptr, (k_block_size, 0))
-
-    if bias_ptr is not None:
-        bias_block_ptr = tl.make_block_ptr(
-            bias_ptr,
-            shape=(n_size,),
-            strides=(1,),
-            offsets=(n_offset,),
-            block_shape=(n_block_size,),
-            order=(0,),
-        )
-        bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
-        output += bias
-
-    return output
-
-
-@triton.jit
 def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
     blk = tl.arange(0, w_bs)[:, None] + (tl.arange(0, h_bs) * w_st)[None, :]
     return blk[:, :, None] + (tl.arange(0, ch_bs) * ch_st)[None, None, :]
@@ -277,11 +216,6 @@ def sum(
 @triton.jit
 def std(var, eps=1e-05):
     return tl.sqrt(var + eps)
-
-
-@triton.jit
-def tanh(x):
-    return (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 
 
 @triton.jit

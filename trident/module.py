@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import torch
 
 from trident import function, operation, util
@@ -215,6 +217,48 @@ class Dropout(torch.nn.Module):
             an output is of the same shape as input
         """
         return operation.Dropout.apply(input, self.p) if self.training else input.clone()
+
+
+class GEGLU(torch.nn.Module):
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None):
+        """
+        Applies Linear Transformation to an input.
+
+        Args:
+            in_features: size of each input sample
+            out_features: size of each output sample
+            bias: If set to False, the layer will not learn an additive bias
+        """
+        super().__init__()
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = torch.nn.Parameter(torch.empty(out_features, in_features, **factory_kwargs))
+
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter("bias", None)
+
+        self.reset_parameters()
+
+    def forward(self, input: torch.Tensor, use_accelerator: bool = False):
+        """
+        Args:
+            input: an input (*, in_features)
+            use_accelerator: whether to use acceleration
+
+        Returns:
+            an output (*, out_features)
+        """
+        return function.geglu(input, self.weight, self.bias, use_accelerator)
+
+    def reset_parameters(self):
+        bound = math.sqrt(1 / self.in_features)
+        util.uniform(self.weight, -bound, bound)
+        if self.bias is not None:
+            util.uniform(self.bias, -bound, bound)
 
 
 class GELU(torch.nn.Module):

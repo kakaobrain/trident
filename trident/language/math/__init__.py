@@ -12,8 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import math
-from .combine import *
-from .constant import *
-from .function import *
-from .linear import *
+from .gelu import *
