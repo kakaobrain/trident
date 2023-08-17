@@ -18,68 +18,43 @@ import triton.language as tl
 from trident import language
 
 
-def configs_for_forward():
-    configs = []
-
-    for m_block_size in [32, 64]:
-        for n_block_size in [32, 64]:
-            for k_block_size in [32, 64, 128, 256]:
-                for num_stages in [2, 3, 4]:
-                    config = triton.Config(
-                        {
-                            "m_block_size": m_block_size,
-                            "k_block_size": n_block_size,
-                            "n_block_size": k_block_size,
-                        },
-                        2 if k_block_size <= 64 else 4,
-                        num_stages,
-                    )
-                    configs.append(config)
-
-    return configs
-
-
-def configs_for_backward():
-    configs = []
-
-    for m_block_size in [32, 64]:
-        for n_block_size in [32, 64]:
-            for k_block_size in [32, 64, 128, 256]:
-                for num_stages in [2, 3, 4]:
-                    config = triton.Config(
-                        {
-                            "m_block_size": m_block_size,
-                            "k_block_size": n_block_size,
-                            "n_block_size": k_block_size,
-                        },
-                        2 if k_block_size <= 64 else 4,
-                        num_stages,
-                    )
-                    configs.append(config)
-
-    return configs
-
-
-def configs_for_backward_bias():
-    configs = []
-
-    for block_size in [32, 64, 128, 256]:
-        for num_stages in [2, 3, 4]:
-            config = triton.Config(
-                {
-                    "block_size": block_size,
-                },
-                2 if block_size <= 64 else 4,
-                num_stages,
-            )
-            configs.append(config)
-
-    return configs
-
-
 class Linear:
     @staticmethod
-    @triton.autotune(configs=configs_for_forward(), key=["m_size", "n_size", "k_size"])
+    def configs():
+        configs = []
+        for m_block_size in [32, 64]:
+            for n_block_size in [32, 64]:
+                for k_block_size in [32, 64, 128, 256]:
+                    for num_stages in [2, 3]:
+                        config = triton.Config(
+                            {
+                                "m_block_size": m_block_size,
+                                "k_block_size": k_block_size,
+                                "n_block_size": n_block_size,
+                            },
+                            2 if k_block_size <= 64 else 4,
+                            num_stages,
+                        )
+                        configs.append(config)
+        return configs
+
+    @staticmethod
+    def configs_for_backward_bias():
+        configs = []
+        for block_size in [32, 64, 128, 256]:
+            for num_stages in [2, 3]:
+                config = triton.Config(
+                    {
+                        "block_size": block_size,
+                    },
+                    2 if block_size <= 64 else 4,
+                    num_stages,
+                )
+                configs.append(config)
+        return configs
+
+    @staticmethod
+    @triton.autotune(configs=configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -128,7 +103,7 @@ class Linear:
         tl.store(output_block_ptr, output, boundary_check=(0, 1))
 
     @staticmethod
-    @triton.autotune(configs=configs_for_backward(), key=["m_size", "n_size", "k_size"])
+    @triton.autotune(configs=configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -186,7 +161,7 @@ class Linear:
         tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
 
     @staticmethod
-    @triton.autotune(configs=configs_for_backward(), key=["m_size", "n_size", "k_size"])
+    @triton.autotune(configs=configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def backward_weight(
         grad_weight_ptr: tl.tensor,
