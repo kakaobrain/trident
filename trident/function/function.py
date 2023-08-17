@@ -132,13 +132,18 @@ def leaky_relu(input, negative_slope=0.01):
     return operation.LeakyReLU.apply(input, negative_slope)
 
 
-def linear(input, weight, bias=None, activation=""):
+def linear(
+    input: torch.Tensor,
+    weight: torch.Tensor,
+    bias: torch.Tensor = None,
+    use_accelerator: bool = False,
+):
     """
     Applies Linear Transformation to an input.
 
     See Linear for more details.
     """
-    return operation.Linear.apply(input, weight, bias, activation)
+    return operation.Linear.apply(input, weight, bias, use_accelerator)
 
 
 def max_pool2d(input, kernel_size):

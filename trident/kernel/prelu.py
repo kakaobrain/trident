@@ -56,7 +56,7 @@ class PReLU:
         x_block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
-        num_x_blocks = language.cdiv(x_size, x_block_size)
+        num_x_blocks = tl.cdiv(x_size, x_block_size)
         i = pid // num_x_blocks
         j = pid % num_x_blocks
 
@@ -111,7 +111,7 @@ class PReLU:
         x_block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
-        num_x_blocks = language.cdiv(x_size, x_block_size)
+        num_x_blocks = tl.cdiv(x_size, x_block_size)
         i = pid // num_x_blocks
         j = pid % num_x_blocks
 

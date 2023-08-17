@@ -21,89 +21,100 @@ from trident import kernel, util
 class Linear(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return Linear.__forward(*args, **kwargs)
+        input, weight, bias, use_accelerator = args
+        return Linear.__forward(input, weight, bias, use_accelerator)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        inp, wgt, bis, act = inputs
-        ctx.save_for_backward(inp, wgt, bis, output)
-        ctx.act = act
+        input, weight, bias, use_accelerator = inputs
+        ctx.save_for_backward(input, weight, bias, output)
+        ctx.use_accelerator = use_accelerator
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return Linear.__backward(*grad_outputs, *ctx.saved_tensors, ctx.act)
+        (grad_output,) = grad_outputs
+        input, weight, bias, output = ctx.saved_tensors
+        return Linear.__backward(grad_output, output, input, weight, bias, ctx.use_accelerator)
 
     @staticmethod
-    def __forward(inp, wgt, bis, act):
-        assert inp.is_contiguous()
-        assert wgt.is_contiguous()
-        assert inp.shape[1] == wgt.shape[1]
+    def __forward(input, weight, bias, use_accelerator):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        m_size, k_size = input.shape
+        n_size = weight.shape[0]
+        output = torch.empty((m_size, n_size), **factory_kwargs)
 
-        if bis is not None:
-            assert bis.is_contiguous()
-            assert wgt.shape[0] == bis.shape[0] if bis.dim() == 1 else bis.shape[1]
-            bis_st = bis.stride(0) if bis.dim() == 1 else bis.stride(1)
-        else:
-            bis_st = 0
+        def grid(meta):
+            return (triton.cdiv(m_size, meta["m_block_size"]) * triton.cdiv(n_size, meta["n_block_size"]),)
 
-        ctor_args = {"device": inp.device, "dtype": inp.dtype}
-
-        m, k = inp.shape
-        n, _ = wgt.shape
-        grid = lambda meta: (
-            triton.cdiv(m, meta["blk_sz_m"]),
-            triton.cdiv(n, meta["blk_sz_n"]),
+        kernel.Linear.forward[grid](
+            output,
+            input,
+            weight,
+            bias,
+            m_size,
+            n_size,
+            k_size,
+            use_accelerator,
+            dtype=util.dtype(input.dtype),
         )
-        y = torch.empty((m, n), **ctor_args)
 
-        kernel.Linear.forward[grid](inp, y, wgt, bis, bis_st, m, k, n, act=act, dtype=util.dtype(inp.dtype))
-
-        return y
+        return output
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, out, act):
-        m, k = inp.shape
-        n, _ = wgt.shape
-
-        ctor_args = {"device": inp.device, "dtype": inp.dtype}
-
-        grad_act = torch.empty_like(grad_out)
-        grad_bis = torch.zeros(n, **ctor_args) if bis is not None else None
+    def __backward(grad_output, output, input, weight, bias, use_accelerator):
+        m_size, k_size = input.shape
+        n_size = weight.shape[0]
+        grad_input = torch.empty_like(input)
+        grad_weight = torch.empty_like(weight)
 
         def grid(meta):
-            return [n]
-
-        kernel.Linear.backward_bias[grid](
-            grad_out,
-            out,
-            grad_act,
-            grad_bis,
-            m,
-            n,
-            act=act,
-            blk_sz=util.block_size(n, grad_act.element_size()),
-            num_warps=util.num_warps(n, grad_act.element_size()),
-        )
-
-        def grid(meta):
-            return [
-                triton.cdiv(max(m, n), meta["blk_sz_m"]),
-                triton.cdiv(k, meta["blk_sz_k"]),
-            ]
-
-        grad_inp = torch.empty_like(inp)
-        grad_wgt = torch.empty_like(wgt)
+            return (triton.cdiv(m_size, meta["m_block_size"]) * triton.cdiv(k_size, meta["k_block_size"]),)
 
         kernel.Linear.backward[grid](
-            grad_act,
-            wgt,
-            inp,
-            grad_inp,
-            grad_wgt,
-            m,
-            n,
-            k,
-            dtype=util.dtype(inp.dtype),
+            grad_input,
+            grad_output,
+            weight,
+            m_size,
+            n_size,
+            k_size,
+            use_accelerator,
+            dtype=util.dtype(input.dtype),
         )
 
-        return grad_inp, grad_wgt, grad_bis, None
+        def grid(meta):
+            return (triton.cdiv(n_size, meta["n_block_size"]) * triton.cdiv(k_size, meta["k_block_size"]),)
+
+        kernel.Linear.backward_weight[grid](
+            grad_weight,
+            grad_output,
+            input,
+            m_size,
+            n_size,
+            k_size,
+            use_accelerator,
+            dtype=util.dtype(input.dtype),
+        )
+
+        if bias is not None:
+            grad_bias = torch.empty_like(bias)
+
+            def grid(meta):
+                return (n_size,)
+
+            kernel.Linear.backward_bias[grid](
+                grad_bias,
+                grad_output,
+                m_size,
+                n_size,
+                dtype=util.dtype(input.dtype),
+            )
+        else:
+            grad_bias = None
+
+        return (
+            grad_input,
+            grad_weight,
+            grad_bias,
+            None,
+            None,
+        )

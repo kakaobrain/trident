@@ -19,54 +19,71 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize(
-    "num_bt, inp_feat, out_feat, act",
-    [(512, 512, 100, "relu"), (200, 120, 15, "leaky_relu")],
-)
-def test_forward(num_bt, inp_feat, out_feat, act, device):
-    inp = torch.randn(num_bt, inp_feat, device=device)
-    wgt = torch.randn(out_feat, inp_feat, device=device)
-    bis = torch.randn(out_feat, device=device)
+@pytest.mark.parametrize("m_size, n_size, k_size", [(512, 512, 100), (200, 120, 15)])
+def test_forward(m_size, n_size, k_size, device):
+    factory_kwargs = {"device": device}
+    input = torch.randn(m_size, k_size, **factory_kwargs)
+    weight = torch.randn(n_size, k_size, **factory_kwargs)
 
-    assert util.equal(torch.nn.functional.linear(inp, wgt), trident.function.linear(inp, wgt))
+    assert util.equal(torch.nn.functional.linear(input, weight), trident.function.linear(input, weight))
 
-    assert util.equal(
-        torch.nn.functional.linear(inp, wgt, bis),
-        trident.function.linear(inp, wgt, bis),
-    )
+    bias = torch.randn(n_size, **factory_kwargs)
 
-    assert util.equal(
-        util.activate(torch.nn.functional.linear(inp, wgt, bis), act),
-        trident.function.linear(inp, wgt, bis, act),
-    )
+    assert util.equal(torch.nn.functional.linear(input, weight, bias), trident.function.linear(input, weight, bias))
 
 
-@pytest.mark.parametrize(
-    "num_bt, inp_feat, out_feat, act",
-    [(12, 34, 3, "relu"), (43, 12, 2, "leaky_relu")],
-)
-def test_backward(num_bt, inp_feat, out_feat, act, device):
-    inp = torch.randn(num_bt, inp_feat, device=device)
-    wgt = torch.randn(out_feat, inp_feat, device=device)
-    bis = torch.randn(out_feat, device=device)
+@pytest.mark.parametrize("m_size, n_size, k_size", [(256, 512, 32), (200, 120, 15)])
+def test_backward(m_size, n_size, k_size, device):
+    factory_kwargs = {"device": device}
+    input = torch.randn(m_size, k_size, **factory_kwargs)
+    weight = torch.randn(n_size, k_size, **factory_kwargs)
+    target = torch.randn(m_size, n_size, **factory_kwargs)
 
-    tgt = torch.randn(num_bt, out_feat, device=device)
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        i.requires_grad = j.requires_grad = True
+        func(i, j).backward(target, retain_graph=True)
+        return (
+            i.grad,
+            j.grad,
+        )
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    (x, y) = train(torch.nn.functional.linear)
+    (a, b) = train(trident.function.linear)
 
-    lyr0 = torch.nn.Linear(inp_feat, out_feat, True, device=device)
-    lyr0.weight = torch.nn.Parameter(wgt)
-    lyr0.bias = torch.nn.Parameter(bis)
+    assert util.equal(x, a)
+    assert util.equal(y, b)
 
-    lyr1 = trident.Linear(inp_feat, out_feat, True, activation=act)
-    lyr1.weight = torch.nn.Parameter(wgt)
-    lyr1.bias = torch.nn.Parameter(bis)
+    bias = torch.randn(n_size, **factory_kwargs)
 
-    util.train(x, tgt, lyr0, act)
-    util.train(a, tgt, lyr1)
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        k = bias.clone()
+        i.requires_grad = j.requires_grad = k.requires_grad = True
+        func(i, j, k).backward(target, retain_graph=True)
+        return (
+            i.grad,
+            j.grad,
+            k.grad,
+        )
 
-    assert util.equal(x.grad, a.grad)
-    assert util.equal(lyr0.weight.grad, lyr1.weight.grad)
-    assert util.equal(lyr0.bias.grad, lyr1.bias.grad)
+    (x, y, z) = train(torch.nn.functional.linear)
+    (a, b, c) = train(trident.function.linear)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+    assert util.equal(z, c)
+
+
+@pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
+def test_linear(m_size, n_size, k_size, device):
+    factory_kwargs = {"device": device}
+    input = torch.randn(m_size, k_size, **factory_kwargs)
+
+    operation = trident.Linear(m_size, n_size, **factory_kwargs)
+    assert operation.forward(input) is not None
+
+    operation = trident.Linear(m_size, n_size, False, **factory_kwargs)
+    assert operation.forward(input) is not None

@@ -19,31 +19,33 @@ import util
 import trident
 
 
-@util.report("linear forward", ["m", "k", "n"], [64 * i for i in range(1, 21)])
-def bench_linear_forward(m, n, k, backend):
-    inp = torch.randn(m, k, device="cuda")
-    wgt = torch.randn(n, k, device="cuda")
-    bis = torch.randn(n, device="cuda")
+@util.report("linear forward", ["m_size", "n_size", "k_size"], [64 * i for i in range(1, 21)])
+def bench_linear_forward(m_size, n_size, k_size, backend):
+    input = torch.randn(m_size, k_size, device="cuda")
+    weight = torch.randn(n_size, k_size, device="cuda")
+    bias = torch.randn(n_size, device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.linear(inp, wgt, bis))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.linear(input, weight, bias))
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.linear(inp, wgt, bis))
+        return triton.testing.do_bench_cudagraph(
+            lambda: trident.function.linear(input, weight, bias, use_accelerator=True)
+        )
 
 
-@util.report("linear backward", ["m", "k", "n"], [64 * i for i in range(1, 21)])
-def bench_linear_backward(m, n, k, backend):
-    inp = torch.randn(m, k, device="cuda")
+@util.report("linear backward", ["m_size", "n_size", "k_size"], [64 * i for i in range(1, 21)])
+def bench_linear_backward(m_size, n_size, k_size, backend):
+    input = torch.randn(m_size, k_size, device="cuda")
 
     if backend == "torch":
-        lyr = torch.nn.Linear(k, n, True, device="cuda")
+        operation = torch.nn.Linear(k_size, n_size, True, device="cuda")
     else:
-        lyr = trident.Linear(k, n, True)
+        operation = trident.Linear(k_size, n_size, True)
 
-    out = lyr.forward(inp)
-    grad_out = torch.ones_like(out)
+    output = operation.forward(input)
+    grad_output = torch.randn(output)
 
-    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

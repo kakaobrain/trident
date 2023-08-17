@@ -537,7 +537,7 @@ class LeakyReLU(torch.nn.Module):
 
 
 class Linear(torch.nn.Module):
-    def __init__(self, in_features, out_features, bias=True, activation=None):
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None):
         """
         Applies Linear Transformation to an input.
 
@@ -545,30 +545,27 @@ class Linear(torch.nn.Module):
             in_features: size of each input sample
             out_features: size of each output sample
             bias: If set to False, the layer will not learn an additive bias
-            activation: activation function
         """
         super().__init__()
 
-        self.weight = torch.nn.Parameter(torch.empty(out_features, in_features, device="cuda"))
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.weight = torch.nn.Parameter(torch.empty(out_features, in_features, **factory_kwargs))
 
         if bias:
-            self.bias = torch.nn.Parameter(torch.empty(out_features, device="cuda"))
+            self.bias = torch.nn.Parameter(torch.empty(out_features, **factory_kwargs))
         else:
             self.register_parameter("bias", None)
 
-        self.activation = activation
-
-    def forward(self, input):
+    def forward(self, input: torch.Tensor, use_accelerator: bool = False):
         """
-        Applies Linear Transformation to an input.
-
         Args:
             input: an input (*, in_features)
+            use_accelerator: whether to use acceleration
 
         Returns:
             an output (*, out_features)
         """
-        return function.linear(input, self.weight, self.bias, self.activation)
+        return function.linear(input, self.weight, self.bias, use_accelerator)
 
 
 class Max(torch.nn.Module):
