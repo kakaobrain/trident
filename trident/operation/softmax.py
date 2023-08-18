@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import torch
-import triton
 
-from trident import kernel, math, util
+from trident import kernel, util
 
 
 class Softmax(torch.autograd.Function):
@@ -38,8 +37,6 @@ class Softmax(torch.autograd.Function):
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: int):
-        assert dim == 1
-
         y_size, x_size = input.shape
         output = torch.empty_like(input)
 
@@ -59,13 +56,41 @@ class Softmax(torch.autograd.Function):
 
     @staticmethod
     def __backward(grad_output: torch.Tensor, output: torch.Tensor, dim: int):
-        y_size, x_size = output.shape
-        grad_input = torch.empty_like(output)
-        block_size = max(triton.next_power_of_2(x_size), 16)
+        if dim == 0:
+            x_size, y_size = output.shape
+            y_stride = 1
+            x_stride = y_size
+        else:
+            y_size, x_size = output.shape
+            y_stride = x_size
+            x_stride = 1
 
         def grid(meta):
-            return (x_size if dim == 0 else y_size,)
+            return (y_size,)
 
-        kernel.Softmax.backward[grid](grad_output, output, x_size, grad_input, block_size)
+        factory_kwargs = {"device": grad_output.device}
+        delta = torch.empty(x_size, **factory_kwargs)
+        kernel.Softmax.backward_delta[grid](
+            delta,
+            grad_output,
+            output,
+            x_size,
+            y_size,
+            x_stride,
+            y_stride,
+        )
+
+        grad_input = torch.empty_like(output)
+        kernel.Softmax.backward[grid](
+            grad_input,
+            grad_output,
+            output,
+            delta,
+            x_size,
+            y_size,
+            x_stride,
+            y_stride,
+            dtype=util.dtype(output.dtype),
+        )
 
         return grad_input, None

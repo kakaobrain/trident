@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(5, 32, 1), (2, 30000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(5, 32, 0), (2, 30000, 1)])
 def test_forward(y_size, x_size, dim, dtype, device):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
@@ -27,20 +27,20 @@ def test_forward(y_size, x_size, dim, dtype, device):
     assert util.equal(torch.nn.functional.softmax(input, dim), trident.function.softmax(input, dim))
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(4, 64), (5, 70)])
-def test_backward(num_vec, vec_sz, device, dtype):
-    ctor_args = {"device": device, "dtype": dtype}
-    inp = torch.randn(num_vec, vec_sz, **ctor_args)
-    tgt = torch.randn(num_vec, vec_sz, **ctor_args)
+@pytest.mark.parametrize("y_size, x_size, dim", [(300, 500, 0), (5, 7000, 1)])
+def test_backward(y_size, x_size, dim, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    target = torch.randn(y_size, x_size, **factory_kwargs)
 
     def train(func, dim):
-        i = inp.clone()
+        i = input.clone()
         i.requires_grad = True
-        func(i, dim).backward(tgt, retain_graph=True)
+        func(i, dim).backward(target, retain_graph=True)
         return [i.grad]
 
-    (x,) = train(torch.nn.functional.softmax, 1)
-    (a,) = train(trident.function.softmax, 1)
+    (x,) = train(torch.nn.functional.softmax, dim)
+    (a,) = train(trident.function.softmax, dim)
 
     assert util.equal(x, a)
 
