@@ -21,40 +21,40 @@ from trident import kernel, util
 class GELU(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        return GELU.__forward(*args, **kwargs)
+        (input,) = args
+        return GELU.__forward(input)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        ctx.save_for_backward(*inputs)
+        (input,) = inputs
+        ctx.save_for_backward(input)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return GELU.__backward(*grad_outputs, *ctx.saved_tensors)
+        (grad_output,) = grad_outputs
+        (input,) = ctx.saved_tensors
+        return GELU.__backward(grad_output, input)
 
     @staticmethod
-    def __forward(inp):
-        inp_sz = inp.numel()
+    def __forward(input):
+        x_size = input.numel()
+        output = torch.empty_like(input)
 
         def grid(meta):
-            return [triton.cdiv(inp_sz, meta["blk_sz"])]
+            return (triton.cdiv(x_size, meta["x_block_size"]),)
 
-        out = torch.empty_like(inp)
-        blk_sz = util.block_size(inp_sz, inp.element_size())
+        kernel.GELU.forward[grid](output, input, x_size, dtype=util.dtype(input.dtype))
 
-        kernel.GELU.forward[grid](inp, inp_sz, out, blk_sz)
-
-        return out
+        return output
 
     @staticmethod
-    def __backward(grad_out, inp):
-        inp_sz = inp.numel()
+    def __backward(grad_output, input):
+        x_size = input.numel()
+        grad_input = torch.empty_like(input)
 
         def grid(meta):
-            return [triton.cdiv(inp_sz, meta["blk_sz"])]
+            return [triton.cdiv(x_size, meta["x_block_size"])]
 
-        grad_inp = torch.empty_like(inp)
-        blk_sz = util.block_size(inp_sz, inp.element_size())
+        kernel.GELU.backward[grid](grad_input, grad_output, input, x_size, dtype=util.dtype(input.dtype))
 
-        kernel.GELU.backward[grid](grad_out, inp, grad_inp, inp_sz, blk_sz)
-
-        return grad_inp
+        return grad_input

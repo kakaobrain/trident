@@ -20,36 +20,50 @@ from trident import language
 
 class GELU:
     @staticmethod
-    @triton.jit
-    def forward(inp_ptr, inp_sz, out_ptr, blk_sz: tl.constexpr):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, blk_sz) + pid * blk_sz
-        msk = blk < inp_sz
-
-        inp = tl.load(inp_ptr + blk, msk, 0)
-        out = language.gelu(inp)
-
-        tl.store(out_ptr + blk, out, msk)
+    def configs():
+        configs = []
+        for x_block_size in [256, 512, 1024, 2048]:
+            for num_stages in [4, 5]:
+                config = triton.Config({"x_block_size": x_block_size}, 2 if x_block_size <= 512 else 4, num_stages)
+                configs.append(config)
+        return configs
 
     @staticmethod
+    @triton.autotune(configs(), ["x_size"])
     @triton.jit
-    def backward(
-        grad_out_ptr,
-        inp_ptr,
-        grad_inp_ptr,
-        inp_sz,
-        blk_sz: tl.constexpr,
-    ):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, blk_sz) + pid * blk_sz
-        msk = blk < inp_sz
+    def forward(output_ptr, input_ptr, x_size, x_block_size: tl.constexpr, dtype: tl.constexpr):
+        x_offset = tl.program_id(0) * x_block_size
 
-        inp = tl.load(inp_ptr + blk, msk, 0)
-        a = 0.797884560802865
-        b = language.tanh(a * (inp + 0.044715 * language.pow3(inp)))
-        c = 1.0 + b
-        d = inp * (1.0 - language.pow2(b)) * a * (1 + 0.134145 * language.pow2(inp))
-        grad_out = tl.load(grad_out_ptr + blk, msk, 0)
-        grad_inp = 0.5 * (c + d)
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
 
-        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        output = language.gelu(input)
+        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
+
+    @staticmethod
+    @triton.autotune(configs(), ["x_size"])
+    @triton.jit
+    def backward(grad_input_ptr, grad_output_ptr, input_ptr, x_size, x_block_size: tl.constexpr, dtype: tl.constexpr):
+        x_offset = tl.program_id(0) * x_block_size
+
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+
+        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        a = tl.math.tanh(0.797884560802865 * (input + 0.044715 * language.pow3(input)))
+        b = input * (1.0 - language.pow2(a)) * (0.797884560802865 + 0.1070322244089 * language.pow2(input))
+        grad_input = grad_output * 0.5 * (1.0 + a + b)
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))
