@@ -19,18 +19,32 @@ import util
 import trident
 
 
-@util.report("gelu forward", ["vec_sz"], [32 * i for i in range(1, 21)], {"num_vec": 1})
-def bench_gelu_forward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
+@util.report("gelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"num_batches": 64})
+def bench_gelu_forward(num_batches, x_size, backend):
+    input = torch.randn((num_batches, x_size), device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.gelu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.gelu(input))
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.gelu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.gelu(input))
+
+
+@util.report("gelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"num_batches": 64})
+def bench_gelu_backward(num_batches, x_size, backend):
+    input = torch.randn((num_batches, x_size), device="cuda", requires_grad=True)
+
+    if backend == "torch":
+        output = torch.nn.functional.gelu(input)
+    else:
+        output = trident.function.gelu(input)
+
+    target = torch.randn((num_batches, x_size), device="cuda")
+
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_gelu_forward.run(print_data=True, show_plots=show_plots)
     else:
-        raise NotImplementedError("The backward isn't implemented.")
+        bench_gelu_backward.run(print_data=True, show_plots=show_plots)
