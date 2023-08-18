@@ -34,13 +34,6 @@ def col(idx, num_col):
 
 
 @triton.jit
-def diagflat(x, sz):
-    vec = tl.arange(0, sz)
-    dig = vec[:, None] == vec[None, :]
-    return dig * tl.ravel(x)
-
-
-@triton.jit
 def distance(x, dim):
     return tl.sqrt(tl.sum(x * x, dim))
 
@@ -56,11 +49,6 @@ def exp(x):
 @triton.jit
 def gelu(x):
     return 0.5 * x * (1 + tanh(0.797884560803 * (x + 0.044715 * pow3(x))))
-
-
-@triton.jit
-def gemv(a, x):
-    return tl.sum(a * tl.trans(x[:, None]), 1)
 
 
 @triton.jit
