@@ -20,72 +20,83 @@ from trident import language
 
 class Sum:
     @staticmethod
+    def configs_for_forward():
+        configs = []
+        for y_block_size in [512, 1024, 2048]:
+            for num_stages in [4, 5]:
+                config = triton.Config(
+                    {
+                        "y_block_size": y_block_size,
+                    },
+                    2 if y_block_size <= 1024 else 4,
+                    num_stages,
+                )
+                configs.append(config)
+        return configs
+
+    @staticmethod
+    def configs_for_backward():
+        configs = []
+        for x_block_size in [512, 1024, 2048]:
+            for num_stages in [4, 5]:
+                config = triton.Config(
+                    {
+                        "x_block_size": x_block_size,
+                    },
+                    2 if x_block_size <= 1024 else 4,
+                    num_stages,
+                )
+                configs.append(config)
+        return configs
+
+    @staticmethod
+    @triton.autotune(configs_for_forward(), ["x_size"])
     @triton.jit
     def forward(
-        output_ptr,
-        input_ptr,
-        y_size,
-        x_size,
-        dim: tl.constexpr,
-        block_size: tl.constexpr,
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        y_size: int,
+        x_size: int,
+        y_stride: int,
+        x_stride: int,
+        y_block_size: tl.constexpr,
         dtype: tl.constexpr,
     ):
-        offset = tl.program_id(0)
-        output = language.sum(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
+        y_offset = tl.program_id(0)
+        output = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, y_block_size, dtype)
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
-            shape=(y_size if dim == 0 else x_size,),
+            shape=(y_size,),
             strides=(1,),
-            offsets=(offset,),
+            offsets=(y_offset,),
             block_shape=(1,),
             order=(0,),
         )
         tl.store(output_block_ptr, output)
 
     @staticmethod
+    @triton.autotune(configs_for_backward(), ["y_size"])
     @triton.jit
     def backward(
-        grad_input_ptr,
-        grad_output_ptr,
-        y_size,
-        x_size,
-        dim: tl.constexpr,
-        block_size: tl.constexpr,
+        grad_input_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        y_size: int,
+        x_size: int,
+        y_stride: int,
+        x_stride: int,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
-
-        if dim == 0:
-            grad_input_block_ptr = tl.make_block_ptr(
-                grad_input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-            dim = x_size
-        else:
-            grad_input_block_ptr = tl.make_block_ptr(
-                grad_input_ptr,
-                shape=(x_size, y_size),
-                strides=(1, x_size),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(0, 1),
-            )
-            dim = y_size
-
-        grad_output_block_ptr = tl.make_block_ptr(
-            grad_output_ptr,
-            shape=(1, dim),
-            strides=(dim, 1),
-            offsets=(0, 0),
-            block_shape=(1, block_size),
+        y_offset = tl.program_id(0)
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
             order=(1, 0),
         )
+        grad_input = language.Sum.backward(grad_output_ptr, y_size, y_offset, x_block_size)
 
-        for _ in range(0, dim, block_size):
-            grad_output = tl.load(grad_output_block_ptr)
-            tl.store(grad_input_block_ptr, grad_output, boundary_check=(1,))
-            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, block_size))
-            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))
+        for x_offset in range(0, x_size, x_block_size):
+            tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, x_block_size))

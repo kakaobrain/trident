@@ -135,9 +135,16 @@ def mean(
     block_size: tl.constexpr,
     dtype: tl.constexpr,
 ):
-    accumulation = sum(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
-    size_along_dim = y_size if dim == 0 else x_size
-    output = accumulation / size_along_dim
+    if dim == 0:
+        x_size, y_size = y_size, x_size
+        y_stride = 1
+        x_stride = y_size
+    else:
+        y_stride = x_size
+        x_stride = 1
+
+    accumulation = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, offset, block_size, dtype)
+    output = accumulation / x_size
 
     return output.to(dtype)
 
@@ -168,49 +175,6 @@ def sigmoid(x, dtype):
         return tl.sigmoid(x)
     else:
         return tl.sigmoid(x.to(tl.float32))
-
-
-@triton.jit
-def sum(
-    input_ptr,
-    y_size,
-    x_size,
-    offset,
-    dim: tl.constexpr,
-    block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    if dim == 0:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(0, offset),
-            block_shape=(block_size, 1),
-            order=(0, 1),
-        )
-        size_along_dim = y_size
-        accumulation = tl.zeros((block_size, 1), tl.float32)
-    else:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = x_size
-        accumulation = tl.zeros((1, block_size), tl.float32)
-
-    for _ in range(0, size_along_dim, block_size):
-        input = tl.load(input_block_ptr, boundary_check=(dim,), padding_option="zero").to(tl.float32)
-        accumulation += input
-        input_block_ptr = tl.advance(input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size))
-
-    output = tl.sum(accumulation, dim)
-
-    return output.to(dtype)
 
 
 @triton.jit
