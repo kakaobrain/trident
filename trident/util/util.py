@@ -43,6 +43,19 @@ def shared_memory_size_per_block():
     return 64 * 1024
 
 
+def size_and_stride(input: torch.Tensor, dim: int):
+    if dim == 0:
+        x_size, y_size = input.shape
+        y_stride = input.stride(1)
+        x_stride = input.stride(0)
+    else:
+        y_size, x_size = input.shape
+        y_stride = input.stride(0)
+        x_stride = input.stride(1)
+
+    return y_size, x_size, y_stride, x_stride
+
+
 def block_size(num_element, element_size, correction=1):
     return min(
         triton.next_power_of_2(num_element),

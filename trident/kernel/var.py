@@ -106,12 +106,13 @@ class Var:
             grad_output_size = y_size
             size_along_dim = x_size
 
-        grad_output = language.sum(
+        grad_output = language.Sum.forward(
             grad_output_ptr,
             1,
             grad_output_size,
+            size_along_dim,
+            1,
             0,
-            language.dim[1],
             block_size,
             dtype,
         ) / (grad_output_size - correction)

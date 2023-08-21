@@ -56,20 +56,14 @@ class Softmax(torch.autograd.Function):
 
     @staticmethod
     def __backward(grad_output: torch.Tensor, output: torch.Tensor, dim: int):
-        if dim == 0:
-            x_size, y_size = output.shape
-            y_stride = 1
-            x_stride = y_size
-        else:
-            y_size, x_size = output.shape
-            y_stride = x_size
-            x_stride = 1
+        factory_kwargs = {"device": grad_output.device}
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(output, dim)
 
         def grid(meta):
             return (y_size,)
 
-        factory_kwargs = {"device": grad_output.device}
         delta = torch.empty(x_size, **factory_kwargs)
+
         kernel.Softmax.backward_delta[grid](
             delta,
             grad_output,
@@ -81,6 +75,7 @@ class Softmax(torch.autograd.Function):
         )
 
         grad_input = torch.empty_like(output)
+
         kernel.Softmax.backward[grid](
             grad_input,
             grad_output,
