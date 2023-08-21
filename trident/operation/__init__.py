@@ -18,6 +18,7 @@ from .batch_norm import *
 from .conv2d import *
 from .cosine_similarity import *
 from .dropout import *
+from .geglu import *
 from .gelu import *
 from .group_norm import *
 from .instance_norm import *

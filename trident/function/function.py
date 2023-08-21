@@ -67,6 +67,16 @@ def dropout(input, p=0.5, training=True):
     return operation.Dropout.apply(input, p) if training else input.clone()
 
 
+def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, use_accelerator: bool = False):
+    """
+    Applies GEGLU to an input.
+
+    See GEGLU for details.
+    """
+    output, _ = operation.GEGLU.apply(input, weight, bias, use_accelerator)
+    return output
+
+
 def gelu(input, approximate="none"):
     """
     Applies the Gaussian Error Linear Units to an input.
