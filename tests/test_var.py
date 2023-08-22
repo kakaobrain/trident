@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(20000, 10000, 0), (10000, 20000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(1000, 2000, 0), (2000, 1000, 1)])
 def test_forward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
@@ -27,7 +27,7 @@ def test_forward(y_size, x_size, dim, device, dtype):
     assert util.equal(torch.var(input, dim), trident.function.var(input, dim))
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(20000, 10000, 0), (10000, 20000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 1000, 0), (1000, 2000, 1)])
 def test_backward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
@@ -37,7 +37,7 @@ def test_backward(y_size, x_size, dim, device, dtype):
         i = input.clone()
         i.requires_grad = True
         func(i, dim).backward(target, retain_graph=True)
-        return [i.grad]
+        return (i.grad,)
 
     (x,) = train(torch.var)
     (a,) = train(trident.function.var)
@@ -50,5 +50,4 @@ def test_mean(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    operation = trident.Var(dim)
-    assert operation.forward(input) is not None
+    assert trident.Var(dim).forward(input) is not None

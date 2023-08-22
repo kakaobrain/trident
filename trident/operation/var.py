@@ -38,48 +38,34 @@ class Var(torch.autograd.Function):
         return Var.__backward(grad_output, input, ctx.dim, ctx.correction)
 
     @staticmethod
-    def __forward(input, dim, correction):
+    def __forward(input: torch.Tensor, dim: int, correction: int):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = x_size
-            size_along_dim = y_size
-        else:
-            output_size = y_size
-            size_along_dim = x_size
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
 
         def grid(meta):
-            return (output_size,)
+            return (y_size,)
 
-        output = torch.empty(output_size, **factory_kwargs)
+        output = torch.empty(y_size, **factory_kwargs)
 
         kernel.Var.forward[grid](
             output,
             input,
             y_size,
             x_size,
-            dim,
+            y_stride,
+            x_stride,
             correction,
-            util.block_size(size_along_dim, input.element_size(), 4),
             util.dtype(input.dtype),
         )
 
         return output
 
     @staticmethod
-    def __backward(grad_output, input, dim, correction):
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = x_size
-            size_along_dim = y_size
-        else:
-            output_size = y_size
-            size_along_dim = x_size
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor, dim: int, correction: int):
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
 
         def grid(meta):
-            return (output_size,)
+            return (y_size,)
 
         grad_input = torch.zeros_like(input)
 
@@ -89,9 +75,9 @@ class Var(torch.autograd.Function):
             input,
             y_size,
             x_size,
-            dim,
+            y_stride,
+            x_stride,
             correction,
-            util.block_size(size_along_dim, input.element_size()),
             util.dtype(grad_input.dtype),
         )
 

@@ -19,3 +19,4 @@ from .function import *
 from .linear import *
 from .mean import *
 from .sum import *
+from .var import *

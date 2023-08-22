@@ -136,11 +136,6 @@ def pow2(x):
 
 
 @triton.jit
-def pow3(x):
-    return x * x * x
-
-
-@triton.jit
 def row(idx, num_row, num_col):
     return (idx % (num_row * num_col)) // num_col
 
@@ -163,32 +158,23 @@ def fast_var(
     input_ptr,
     y_size,
     x_size,
+    y_stride,
+    x_stride,
     offset,
-    dim: tl.constexpr,
     correction: tl.constexpr,
     block_size: tl.constexpr,
     dtype: tl.constexpr,
 ):
-    if dim == 0:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(x_size, y_size),
-            strides=(1, x_size),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = y_size
-    else:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = x_size
+    input_block_ptr = tl.make_block_ptr(
+        input_ptr,
+        shape=(y_size, x_size),
+        strides=(y_stride, x_stride),
+        offsets=(offset, 0),
+        block_shape=(1, block_size),
+        order=(1, 0),
+    )
+
+    size_along_dim = x_size
 
     count = tl.zeros((1, block_size), tl.float32)
     mean = tl.zeros((1, block_size), tl.float32)
@@ -204,54 +190,6 @@ def fast_var(
         input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
 
     output, _, _ = tl.reduce((m2, mean, count), 1, language.combine_welford)
-    output /= size_along_dim - correction
-
-    return output.to(dtype)
-
-
-@triton.jit
-def var(
-    input_ptr,
-    y_size,
-    x_size,
-    offset,
-    mean,
-    dim: tl.constexpr,
-    correction: tl.constexpr,
-    block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    if dim == 0:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(x_size, y_size),
-            strides=(1, x_size),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = y_size
-    else:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = x_size
-
-    accumulation = tl.zeros((1, block_size), tl.float32)
-
-    for block_offset in range(0, size_along_dim, block_size):
-        input = tl.load(input_block_ptr, boundary_check=(1,))
-        mask = (tl.arange(0, block_size) + block_offset) < size_along_dim
-        input = tl.where(mask, input - mean, 0.0)
-        accumulation += pow2(input)
-        input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
-
-    output = tl.sum(accumulation, 1)
     output /= size_along_dim - correction
 
     return output.to(dtype)
