@@ -33,16 +33,7 @@ class LayerNorm:
         dtype: tl.constexpr,
     ):
         offset = tl.program_id(0)
-
-        mean = language.mean(
-            input_ptr,
-            y_size,
-            x_size,
-            offset,
-            language.dim[1],
-            block_size,
-            dtype,
-        )
+        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
         var = language.var(
             input_ptr,
             y_size,
@@ -121,15 +112,7 @@ class LayerNorm:
     ):
         offset = tl.program_id(0)
 
-        mean = language.mean(
-            input_ptr,
-            y_size,
-            x_size,
-            offset,
-            language.dim[1],
-            block_size,
-            dtype,
-        )
+        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
         var = language.var(
             input_ptr,
             y_size,

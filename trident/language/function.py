@@ -126,30 +126,6 @@ def max(
 
 
 @triton.jit
-def mean(
-    input_ptr,
-    y_size,
-    x_size,
-    offset,
-    dim: tl.constexpr,
-    block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    if dim == 0:
-        x_size, y_size = y_size, x_size
-        y_stride = 1
-        x_stride = y_size
-    else:
-        y_stride = x_size
-        x_stride = 1
-
-    accumulation = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, offset, block_size, dtype)
-    output = accumulation / x_size
-
-    return output.to(dtype)
-
-
-@triton.jit
 def norm(x, mean, std):
     return (x - mean) / std
 
