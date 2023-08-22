@@ -37,47 +37,33 @@ class Mean(torch.autograd.Function):
         return Mean.__backward(grad_output, input, ctx.dim)
 
     @staticmethod
-    def __forward(input, dim):
+    def __forward(input: torch.Tensor, dim: int):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = x_size
-            size_along_dim = y_size
-        else:
-            output_size = y_size
-            size_along_dim = x_size
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
 
         def grid(meta):
-            return (output_size,)
+            return (y_size,)
 
-        output = torch.empty(output_size, **factory_kwargs)
+        output = torch.empty(y_size, **factory_kwargs)
 
         kernel.Mean.forward[grid](
             output,
             input,
             y_size,
             x_size,
-            dim,
-            util.block_size(size_along_dim, input.element_size()),
+            y_stride,
+            x_stride,
             util.dtype(input.dtype),
         )
 
         return output
 
     @staticmethod
-    def __backward(grad_output, input, dim):
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = y_size
-            size_along_dim = x_size
-        else:
-            output_size = x_size
-            size_along_dim = y_size
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor, dim: int):
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
 
         def grid(meta):
-            return (output_size,)
+            return (y_size,)
 
         grad_input = torch.zeros_like(input)
 
@@ -86,8 +72,8 @@ class Mean(torch.autograd.Function):
             grad_output,
             y_size,
             x_size,
-            dim,
-            util.block_size(size_along_dim, input.element_size()),
+            y_stride,
+            x_stride,
             util.dtype(grad_input.dtype),
         )
 

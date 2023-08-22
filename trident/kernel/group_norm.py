@@ -59,14 +59,15 @@ class GroupNorm:
         batch_offset = batch * y_size * x_size
         group_offset = group * group_size * x_size
 
-        mean = language.mean(
+        mean = language.Mean.forward(
             input_ptr + batch_offset,
             num_groups,
             x_size * group_size,
+            x_size * group_size,
+            1,
             group,
-            language.dim[1],
-            x_block_size,
             dtype,
+            x_block_size,
         )
         var = language.var(
             input_ptr + batch_offset,
@@ -162,14 +163,15 @@ class GroupNorm:
         batch_offset = batch * y_size * x_size
         group_offset = group * group_size * x_size
 
-        mean = language.mean(
+        mean = language.Mean.forward(
             input_ptr + batch_offset,
             num_groups,
             x_size * group_size,
+            x_size * group_size,
+            1,
             group,
-            language.dim[1],
-            x_block_size,
             dtype,
+            x_block_size,
         )
         var = language.var(
             input_ptr + batch_offset,
