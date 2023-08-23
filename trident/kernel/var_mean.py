@@ -18,7 +18,7 @@ import triton.language as tl
 from trident import language
 
 
-class Var:
+class VarMean:
     @staticmethod
     def configs():
         configs = []
@@ -33,6 +33,7 @@ class Var:
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
+        mean_ptr: tl.tensor,
         input_ptr: tl.tensor,
         y_size: int,
         x_size: int,
@@ -62,7 +63,16 @@ class Var:
             block_shape=(1,),
             order=(0,),
         )
+        mean_block_ptr = tl.make_block_ptr(
+            mean_ptr,
+            shape=(y_size,),
+            strides=(1,),
+            offsets=(y_offset,),
+            block_shape=(1,),
+            order=(0,),
+        )
         tl.store(output_block_ptr, output)
+        tl.store(mean_block_ptr, mean)
 
     @staticmethod
     @triton.autotune(configs(), ["x_size"])
@@ -75,19 +85,34 @@ class Var:
         x_size: int,
         y_stride: int,
         x_stride: int,
+        mean_ptr: tl.tensor,
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
-        y_offset = tl.program_id(0)
+        pid = tl.program_id(0)
+        num_x_blocks = tl.cdiv(x_size, x_block_size)
+        y_offset = pid // num_x_blocks
+        xid = pid % num_x_blocks
+        x_offset = xid * x_block_size
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(y_offset, 0),
+            offsets=(y_offset, x_offset),
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+        mean_block_ptr = tl.make_block_ptr(
+            mean_ptr,
+            shape=(y_size,),
+            strides=(1,),
+            offsets=(y_offset,),
+            block_shape=(1,),
+            order=(0,),
+        )
+        mean = tl.load(mean_block_ptr)
         grad_output = language.Sum.forward(
             grad_output_ptr,
             1,
@@ -98,11 +123,8 @@ class Var:
             x_block_size,
             dtype,
         )
-        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, y_offset, dtype, x_block_size)
-
-        for block_offset in range(0, x_size, x_block_size):
-            grad_var = language.Var.backward(
-                input_ptr, y_size, x_size, x_size, 1, y_offset, block_offset, mean, correction, x_block_size
-            )
-            grad_input = grad_output * grad_var
-            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))
+        grad_var_mean = language.VarMean.backward(
+            input_ptr, y_size, x_size, x_stride, y_stride, y_offset, x_offset, mean, correction, x_block_size
+        )
+        grad_input = grad_output * grad_var_mean
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))

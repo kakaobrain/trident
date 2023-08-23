@@ -36,3 +36,4 @@ from .silu import *
 from .softmax import *
 from .sum import *
 from .var import *
+from .var_mean import *

@@ -33,8 +33,9 @@ class LayerNorm:
         dtype: tl.constexpr,
     ):
         offset = tl.program_id(0)
-        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
-        var = language.Var.forward(input_ptr, y_size, x_size, x_size, 1, offset, mean, language.zero, dtype, block_size)
+        var, mean = language.VarMean.forward(
+            input_ptr, y_size, x_size, x_size, 1, offset, language.zero, dtype, block_size
+        )
         std = language.std(var, eps)
 
         input_block_ptr = tl.make_block_ptr(
