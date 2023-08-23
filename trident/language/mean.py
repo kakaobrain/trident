@@ -39,20 +39,8 @@ class Mean:
     @staticmethod
     @triton.jit
     def backward(
-        grad_output_ptr: tl.tensor,
-        y_size: int,
-        y_offset: int,
+        x_size: int,
+        dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
-        grad_output_block_ptr = tl.make_block_ptr(
-            grad_output_ptr,
-            shape=(y_size, 1),
-            strides=(1, 0),
-            offsets=(y_offset, 0),
-            block_shape=(1, 1),
-            order=(0, 1),
-        )
-        grad_output = tl.load(grad_output_block_ptr)
-        grad_input = tl.broadcast_to(grad_output / y_size, (1, x_block_size))
-
-        return grad_input
+        return tl.broadcast_to(1.0 / x_size, (1, x_block_size)).to(dtype)
