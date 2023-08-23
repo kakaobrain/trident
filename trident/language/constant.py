@@ -17,3 +17,4 @@ import triton.language as tl
 
 dim = [tl.constexpr(i) for i in range(3)]
 zero = tl.constexpr(0)
+e = tl.constexpr(2.71828182846)
