@@ -20,108 +20,89 @@ from trident import language
 
 class Var:
     @staticmethod
+    def configs():
+        configs = []
+        for x_block_size in [512, 1024, 2048, 4096]:
+            for num_stages in [4, 5]:
+                config = triton.Config({"x_block_size": x_block_size}, 2 if x_block_size <= 512 else 4, num_stages)
+                configs.append(config)
+        return configs
+
+    @staticmethod
+    @triton.autotune(configs(), ["x_size"])
     @triton.jit
     def forward(
-        output_ptr,
-        input_ptr,
-        y_size,
-        x_size,
-        dim: tl.constexpr,
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        y_size: int,
+        x_size: int,
+        y_stride: int,
+        x_stride: int,
         correction: tl.constexpr,
-        block_size: tl.constexpr,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
+        y_offset = tl.program_id(0)
         output = language.fast_var(
             input_ptr,
             y_size,
             x_size,
-            offset,
-            dim,
+            y_stride,
+            x_stride,
+            y_offset,
             correction,
-            block_size,
+            x_block_size,
             dtype,
         )
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
-            shape=(y_size if dim == 0 else x_size,),
+            shape=(y_size,),
             strides=(1,),
-            offsets=(offset,),
+            offsets=(y_offset,),
             block_shape=(1,),
             order=(0,),
         )
         tl.store(output_block_ptr, output)
 
     @staticmethod
+    @triton.autotune(configs(), ["x_size"])
     @triton.jit
     def backward(
-        grad_input_ptr,
-        grad_output_ptr,
-        input_ptr,
-        y_size,
-        x_size,
-        dim: tl.constexpr,
+        grad_input_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        y_size: int,
+        x_size: int,
+        y_stride: int,
+        x_stride: int,
         correction: tl.constexpr,
-        block_size: tl.constexpr,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
-
-        if dim == 0:
-            grad_input_block_ptr = tl.make_block_ptr(
-                grad_input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(0, offset),
-                block_shape=(block_size, 1),
-                order=(0, 1),
-            )
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(0, offset),
-                block_shape=(block_size, 1),
-                order=(0, 1),
-            )
-            grad_output_size = x_size
-            size_along_dim = y_size
-        else:
-            grad_input_block_ptr = tl.make_block_ptr(
-                grad_input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-            grad_output_size = y_size
-            size_along_dim = x_size
-
+        y_offset = tl.program_id(0)
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
         grad_output = language.Sum.forward(
             grad_output_ptr,
             1,
-            grad_output_size,
-            size_along_dim,
+            y_size,
+            x_size,
             1,
             0,
-            block_size,
+            x_block_size,
             dtype,
-        ) / (grad_output_size - correction)
-        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
+        )
+        mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, y_offset, dtype, x_block_size)
 
-        for block_offset in range(0, size_along_dim, block_size):
-            input = tl.load(input_block_ptr, boundary_check=(dim,), padding_option="zero")
-            mask = (tl.arange(0, block_size) + block_offset) < size_along_dim
-            centered_mean = tl.where(mask[:, None] if dim == 0 else mask[None, :], input - mean, 0.0)
-            grad_input = grad_output * 2 * centered_mean / size_along_dim
-            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(dim,))
-            input_block_ptr = tl.advance(input_block_ptr, (block_size, 0) if dim == 0 else (0, block_size))
+        for block_offset in range(0, x_size, x_block_size):
+            grad_var = language.Var.backward(
+                input_ptr, y_size, x_size, x_size, 1, y_offset, block_offset, mean, correction, x_block_size
+            )
+            grad_input = grad_output * grad_var
+            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))

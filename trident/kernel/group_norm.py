@@ -69,16 +69,17 @@ class GroupNorm:
             dtype,
             x_block_size,
         )
-        var = language.var(
+        var = language.Var.forward(
             input_ptr + batch_offset,
             num_groups,
             x_size * group_size,
+            x_size * group_size,
+            1,
             group,
             mean,
-            language.dim[1],
             language.zero,
-            x_block_size,
             dtype,
+            x_block_size,
         )
         std = language.std(var, eps)
 
@@ -173,16 +174,17 @@ class GroupNorm:
             dtype,
             x_block_size,
         )
-        var = language.var(
+        var = language.Var.forward(
             input_ptr + batch_offset,
             num_groups,
             x_size * group_size,
+            x_size * group_size,
+            1,
             group,
             mean,
-            language.dim[1],
             language.zero,
-            x_block_size,
             dtype,
+            x_block_size,
         )
         std = language.std(var, eps)
 

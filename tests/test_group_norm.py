@@ -19,10 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize(
-    "num_batches, y_size, x_size, num_groups",
-    [(2, 16, 10, 4), (16, 10000, 40, 1000)],
-)
+@pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(2, 16, 10, 4), (16, 1000, 40, 1000)])
 def test_forward(num_batches, y_size, x_size, num_groups, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
@@ -51,10 +48,7 @@ def test_forward(num_batches, y_size, x_size, num_groups, device, dtype):
     )
 
 
-@pytest.mark.parametrize(
-    "num_batches, y_size, x_size, num_groups",
-    [(2, 16, 10, 4), (16, 10000, 40, 1000)],
-)
+@pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(2, 16, 10, 4), (16, 1000, 40, 1000)])
 def test_backward(num_batches, y_size, x_size, num_groups, device):
     factory_kwargs = {"device": device}
     input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)

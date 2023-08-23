@@ -34,17 +34,7 @@ class LayerNorm:
     ):
         offset = tl.program_id(0)
         mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
-        var = language.var(
-            input_ptr,
-            y_size,
-            x_size,
-            offset,
-            mean,
-            language.dim[1],
-            language.zero,
-            block_size,
-            dtype,
-        )
+        var = language.Var.forward(input_ptr, y_size, x_size, x_size, 1, offset, mean, language.zero, dtype, block_size)
         std = language.std(var, eps)
 
         input_block_ptr = tl.make_block_ptr(
@@ -113,16 +103,17 @@ class LayerNorm:
         offset = tl.program_id(0)
 
         mean = language.Mean.forward(input_ptr, y_size, x_size, x_size, 1, offset, dtype, block_size)
-        var = language.var(
+        var = language.Var.forward(
             input_ptr,
             y_size,
             x_size,
+            x_size,
+            1,
             offset,
             mean,
-            language.dim[1],
             language.zero,
-            block_size,
             dtype,
+            block_size,
         )
         std = language.std(var, eps)
 
