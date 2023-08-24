@@ -828,3 +828,30 @@ class Var(torch.nn.Module):
             the variance along the specified dimension in an input
         """
         return function.var(input, self.dim, self.correction)
+
+
+class VarMean(torch.nn.Module):
+    def __init__(self, dim: int = None, correction: int = 1):
+        """
+        Computes the variance and mean along the specified dimension in an input.
+
+        Args:
+            dim: the dimension or dimensions to reduce
+            correction: the difference between the sample size and sample degrees of freedom
+        """
+        super().__init__()
+
+        self.dim = dim
+        self.correction = correction
+
+    def forward(self, input: torch.Tensor):
+        """
+        Computes the variance and mean along the specified dimension in an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            the variance and mean along the specified dimension in an input
+        """
+        return function.var_mean(input, self.dim, self.correction)

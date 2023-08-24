@@ -37,6 +37,7 @@ import benchmark_silu
 import benchmark_softmax
 import benchmark_sum
 import benchmark_var
+import benchmark_var_mean
 import torch
 
 
@@ -68,6 +69,7 @@ def print_scenarios():
                 "softmax",
                 "sum",
                 "var",
+                "var_mean",
             ]
         )
     )
@@ -120,6 +122,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_sum.run_benchmark(mode, show_plots)
     elif scenario == "var":
         benchmark_var.run_benchmark(mode, show_plots)
+    elif scenario == "var-mean":
+        benchmark_var_mean.run_benchmark(mode, show_plots)
     elif not scenario:
         benchmark_adaptive_avg_pool2d.run_benchmark(mode, show_plots)
         benchmark_argmax.run_benchmark(mode, show_plots)
@@ -144,6 +148,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_softmax.run_benchmark(mode, show_plots)
         benchmark_sum.run_benchmark(mode, show_plots)
         benchmark_var.run_benchmark(mode, show_plots)
+        benchmark_var_mean.run_benchmark(mode, show_plots)
     else:
         print_scenarios()
 

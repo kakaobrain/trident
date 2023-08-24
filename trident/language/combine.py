@@ -20,10 +20,11 @@ from trident import language
 
 @triton.jit
 def combine_welford(m2_a, mean_a, count_a, m2_b, mean_b, count_b):
+    count = count_a + count_b
     return (
-        m2_a + m2_b + language.pow2(mean_b - mean_a) * count_a * count_b / (count_a + count_b),
-        (mean_a * count_a + mean_b * count_b) / (count_a + count_b),
-        count_a + count_b,
+        m2_a + m2_b + tl.math.pow(mean_b - mean_a, 2.0) * count_a * count_b / count,
+        (mean_a * count_a + mean_b * count_b) / count,
+        count,
     )
 
 

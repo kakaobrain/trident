@@ -253,3 +253,12 @@ def var(input, dim, correction=1):
     See Var for more details.
     """
     return operation.Var.apply(input, dim, correction)
+
+
+def var_mean(input, dim, correction=1):
+    """
+    Returns the variance and mean along the specified dimension in an input.
+
+    See VarMean for more details.
+    """
+    return operation.VarMean.apply(input, dim, correction)

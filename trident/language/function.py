@@ -154,48 +154,6 @@ def std(var, eps=1e-05):
 
 
 @triton.jit
-def fast_var(
-    input_ptr,
-    y_size,
-    x_size,
-    y_stride,
-    x_stride,
-    offset,
-    correction: tl.constexpr,
-    block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    input_block_ptr = tl.make_block_ptr(
-        input_ptr,
-        shape=(y_size, x_size),
-        strides=(y_stride, x_stride),
-        offsets=(offset, 0),
-        block_shape=(1, block_size),
-        order=(1, 0),
-    )
-
-    size_along_dim = x_size
-
-    count = tl.zeros((1, block_size), tl.float32)
-    mean = tl.zeros((1, block_size), tl.float32)
-    m2 = tl.zeros((1, block_size), tl.float32)
-
-    for block_offset in range(0, size_along_dim, block_size):
-        input = tl.load(input_block_ptr, boundary_check=(1,))
-        mask = (tl.arange(0, block_size) + block_offset) < size_along_dim
-        input = tl.where(mask, input, 0.0)
-        count += 1
-        m2 += (input - mean) * (input - (mean + (input - mean) / count))
-        mean += (input - mean) / count
-        input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
-
-    output, _, _ = tl.reduce((m2, mean, count), 1, language.combine_welford)
-    output /= size_along_dim - correction
-
-    return output.to(dtype)
-
-
-@triton.jit
 def relu(x):
     return tl.where(x > 0, x, 0)
 
