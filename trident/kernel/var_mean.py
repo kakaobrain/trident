@@ -104,6 +104,14 @@ class VarMean:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(y_size, 1),
+            strides=(1, 0),
+            offsets=(y_offset, 0),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
         mean_block_ptr = tl.make_block_ptr(
             mean_ptr,
             shape=(y_size,),
@@ -112,19 +120,10 @@ class VarMean:
             block_shape=(1,),
             order=(0,),
         )
+        grad_output = tl.load(grad_output_block_ptr)
         mean = tl.load(mean_block_ptr)
-        grad_output = language.Sum.forward(
-            grad_output_ptr,
-            1,
-            y_size,
-            x_size,
-            1,
-            0,
-            x_block_size,
-            dtype,
+        grad_var = language.VarMean.backward(
+            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, x_offset, mean, correction, dtype, x_block_size
         )
-        grad_var_mean = language.VarMean.backward(
-            input_ptr, y_size, x_size, x_stride, y_stride, y_offset, x_offset, mean, correction, x_block_size
-        )
-        grad_input = grad_output * grad_var_mean
-        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))
+        grad_input = grad_output * grad_var
+        tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
