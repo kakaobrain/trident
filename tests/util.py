@@ -16,7 +16,7 @@ import torch
 
 
 def equal(a, b):
-    return torch.allclose(a, b, rtol=1e-2, atol=1e-2)
+    return torch.allclose(a, b, rtol=0, atol=1e-02)
 
 
 def train(inp, tgt, mod, act=None, crit=torch.nn.MSELoss()):
