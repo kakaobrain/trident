@@ -14,6 +14,7 @@
 
 
 import torch
+import triton
 
 from trident import kernel, math, util
 
@@ -65,7 +66,7 @@ class Var(torch.autograd.Function):
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
 
         def grid(meta):
-            return (y_size,)
+            return (y_size * triton.cdiv(x_size, meta["x_block_size"]),)
 
         grad_input = torch.zeros_like(input)
 

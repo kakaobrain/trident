@@ -15,6 +15,8 @@
 import triton
 import triton.language as tl
 
+from trident import language
+
 
 class Var:
     @staticmethod
@@ -64,19 +66,20 @@ class Var:
         x_offset: int,
         mean: tl.tensor,
         correction: tl.constexpr,
+        dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
         input_block_ptr = tl.make_block_ptr(
             input_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(y_offset, 0),
+            offsets=(y_offset, x_offset),
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
-        input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
+        input = tl.load(input_block_ptr, boundary_check=(1,))
         condition = tl.arange(0, x_block_size) + x_offset < x_size
-        centered_mean = tl.where(condition[None, :], input - mean, 0.0) / (x_size - correction)
-        grad_input = 2 * centered_mean / x_size
+        centered_mean = tl.where(condition[None, :], input - mean, 0.0)
+        grad_input = 2 * centered_mean / (x_size - correction)
 
-        return grad_input
+        return grad_input.to(dtype)
