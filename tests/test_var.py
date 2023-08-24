@@ -31,7 +31,7 @@ def test_forward(y_size, x_size, dim, device, dtype):
 def test_backward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.ones(x_size if dim == 0 else y_size, **factory_kwargs)
+    target = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
 
     def train(func):
         i = input.clone()
