@@ -18,39 +18,39 @@ import triton.language as tl
 from trident import language
 
 
+def sum_configs_for_forward():
+    configs = []
+    for y_block_size in [512, 1024, 2048]:
+        for num_stages in [4, 5]:
+            config = triton.Config(
+                {
+                    "y_block_size": y_block_size,
+                },
+                2 if y_block_size <= 1024 else 4,
+                num_stages,
+            )
+            configs.append(config)
+    return configs
+
+
+def sum_configs_for_backward():
+    configs = []
+    for x_block_size in [512, 1024, 2048]:
+        for num_stages in [4, 5]:
+            config = triton.Config(
+                {
+                    "x_block_size": x_block_size,
+                },
+                2 if x_block_size <= 1024 else 4,
+                num_stages,
+            )
+            configs.append(config)
+    return configs
+
+
 class Sum:
     @staticmethod
-    def configs_for_forward():
-        configs = []
-        for y_block_size in [512, 1024, 2048]:
-            for num_stages in [4, 5]:
-                config = triton.Config(
-                    {
-                        "y_block_size": y_block_size,
-                    },
-                    2 if y_block_size <= 1024 else 4,
-                    num_stages,
-                )
-                configs.append(config)
-        return configs
-
-    @staticmethod
-    def configs_for_backward():
-        configs = []
-        for x_block_size in [512, 1024, 2048]:
-            for num_stages in [4, 5]:
-                config = triton.Config(
-                    {
-                        "x_block_size": x_block_size,
-                    },
-                    2 if x_block_size <= 1024 else 4,
-                    num_stages,
-                )
-                configs.append(config)
-        return configs
-
-    @staticmethod
-    @triton.autotune(configs_for_forward(), ["x_size"])
+    @triton.autotune(sum_configs_for_forward(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -75,7 +75,7 @@ class Sum:
         tl.store(output_block_ptr, output)
 
     @staticmethod
-    @triton.autotune(configs_for_backward(), ["y_size"])
+    @triton.autotune(sum_configs_for_backward(), ["y_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

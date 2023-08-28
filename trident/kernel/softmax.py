@@ -18,21 +18,22 @@ import triton.language as tl
 from trident import language
 
 
-class Softmax:
-    def configs():
-        configs = []
-        for num_warps in [4, 8, 16]:
-            for block_size in [128, 256, 512, 1024, 2048]:
-                config = triton.Config(
-                    {"block_size": block_size},
-                    num_warps=num_warps,
-                )
-                configs.append(config)
-        return configs
+def softmax_configs():
+    configs = []
+    for num_warps in [4, 8, 16]:
+        for block_size in [128, 256, 512, 1024, 2048]:
+            config = triton.Config(
+                {"block_size": block_size},
+                num_warps=num_warps,
+            )
+            configs.append(config)
+    return configs
 
+
+class Softmax:
     @staticmethod
     @triton.autotune(
-        configs=configs(),
+        configs=softmax_configs(),
         key=["y_size", "x_size", "dim"],
     )
     @triton.jit
@@ -127,7 +128,7 @@ class Softmax:
 
     @staticmethod
     @triton.autotune(
-        configs=configs(),
+        configs=softmax_configs(),
         key=["y_size", "x_size"],
     )
     @triton.jit
@@ -181,7 +182,7 @@ class Softmax:
 
     @staticmethod
     @triton.autotune(
-        configs=configs(),
+        configs=softmax_configs(),
         key=["y_size", "x_size"],
     )
     @triton.jit
