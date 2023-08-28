@@ -33,6 +33,7 @@ import benchmark_max_pool2d
 import benchmark_mean
 import benchmark_prelu
 import benchmark_relu
+import benchmark_rms_norm
 import benchmark_silu
 import benchmark_softmax
 import benchmark_sum
@@ -65,6 +66,7 @@ def print_scenarios():
                 "mean",
                 "prelu",
                 "relu",
+                "rms-norm",
                 "silu",
                 "softmax",
                 "sum",
@@ -114,6 +116,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_prelu.run_benchmark(mode, show_plots)
     elif scenario == "relu":
         benchmark_relu.run_benchmark(mode, show_plots)
+    elif scenario == "rms-norm":
+        benchmark_rms_norm.run_benchmark(mode, show_plots)
     elif scenario == "silu":
         benchmark_silu.run_benchmark(mode, show_plots)
     elif scenario == "softmax":
@@ -144,6 +148,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_mean.run_benchmark(mode, show_plots)
         benchmark_prelu.run_benchmark(mode, show_plots)
         benchmark_relu.run_benchmark(mode, show_plots)
+        benchmark_rms_norm.run_benchmark(mode, show_plots)
         benchmark_silu.run_benchmark(mode, show_plots)
         benchmark_softmax.run_benchmark(mode, show_plots)
         benchmark_sum.run_benchmark(mode, show_plots)

@@ -733,6 +733,50 @@ class PReLU(torch.nn.Module):
         return operation.PReLU.apply(input, self.weight)
 
 
+class RMSNorm(torch.nn.Module):
+    def __init__(self, normalized_shape, p=-1.0, eps=1e-05, bias=False, device=None, dtype=None):
+        """
+        Applies Root Mean Square Layer Normalization to an input.
+
+        Args:
+            normalized_shape: input shape from an expected input of size
+            p: partial RMSNorm, valid value [0, 1] otherwise it's disabled
+            eps: a value added to the denominator for numerical stability
+            bias: a boolean value that when set to True, this module has learnable bias parameters.
+        """
+        super().__init__()
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.normalized_shape = normalized_shape
+        self.p = p
+        self.eps = eps
+        self.weight = torch.nn.Parameter(torch.empty(normalized_shape, **factory_kwargs))
+
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty(normalized_shape, **factory_kwargs))
+        else:
+            self.register_parameter("bias", None)
+
+        self.reset_parameters()
+
+    def forward(self, input):
+        """
+        Applies Root Mean Square Layer Normalization to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return function.rms_norm(input, self.p, self.weight, self.bias, self.eps)
+
+    def reset_parameters(self):
+        util.fill(self.weight, 1.0)
+        if self.bias is not None:
+            util.zero(self.bias)
+
+
 class SiLU(torch.nn.Module):
     def __init__(self):
         """

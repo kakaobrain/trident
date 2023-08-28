@@ -194,6 +194,16 @@ def relu(input):
     return operation.ReLU.apply(input)
 
 
+def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Tensor = None, eps: float = 1e-08):
+    """
+    Applies Root Mean Square Layer Normalization to an input.
+
+    See RMSNorm for details.
+    """
+    output, _ = operation.RMSNorm.apply(input.view(-1, input.shape[-1]), p, weight, bias, eps)
+    return output.view(input.shape)
+
+
 def silu(input):
     """
     Applies the Sigmoid Linear Unit to an input.

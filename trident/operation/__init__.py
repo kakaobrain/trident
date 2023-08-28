@@ -31,6 +31,7 @@ from .max_pool2d import *
 from .mean import *
 from .prelu import *
 from .relu import *
+from .rms_norm import *
 from .silu import *
 from .softmax import *
 from .sum import *
