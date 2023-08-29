@@ -72,7 +72,7 @@ class RMSNorm:
 
         input = tl.load(input_block_ptr, boundary_check=(1,))
         partial_input = tl.where(tl.arange(0, x_block_size) < partial_size, input, 0)
-        rms = tl.math.sqrt(tl.sum(tl.math.pow(partial_input, 2.0), 1) / partial_size)
+        rms = tl.math.sqrt(tl.sum(partial_input * partial_input, 1) / partial_size)
         norm = input / (rms + eps)
         weight = tl.load(weight_block_ptr, boundary_check=(0,))
         output = norm * weight
@@ -168,7 +168,7 @@ class RMSNorm:
         norm = input / (rms + eps)
         grad_weight = grad_output * norm
         tl.store(grad_weight_staging_block_ptr, grad_weight.to(dtype), boundary_check=(1,))
-        grad_rms = grad_norm * -input / tl.math.pow(rms + eps, 2.0)
+        grad_rms = grad_norm * -input / (rms * rms + eps)
         grad_rms = tl.where(tl.arange(0, x_block_size) < x_size, grad_rms, 0.0)
         grad_rms = tl.sum(grad_rms, 1)
         grad_mean_square = grad_rms / (2 * rms)
