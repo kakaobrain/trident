@@ -20,11 +20,12 @@ class GeLU:
     @staticmethod
     @triton.jit
     def forward(input: tl.tensor):
-        return 0.5 * input * (1 + tl.math.tanh(0.797884560802865 * (input + 0.044715 * tl.math.pow(input, 3.0))))
+        return 0.5 * input * (1 + tl.math.tanh(0.797884560802865 * (input + 0.044715 * input * input * input)))
 
     @staticmethod
     @triton.jit
-    def backward(input: tl.tensor):
-        a = tl.math.tanh(0.797884560802865 * (input + 0.044715 * tl.math.pow(input, 3.0)))
-        b = input * (1.0 - tl.math.pow(a, 2.0)) * (0.797884560802865 + 0.1070322244089 * tl.math.pow(input, 2.0))
-        return 0.5 * (1.0 + a + b)
+    def backward(grad_output: tl.tensor, input: tl.tensor):
+        squared_input = input * input
+        alpha = tl.math.tanh(0.797884560802865 * (input + 0.044715 * squared_input * input))
+        beta = input * (1.0 - alpha * alpha) * (0.797884560802865 + 0.1070322244089 * squared_input)
+        return grad_output * 0.5 * (1.0 + alpha + beta)
