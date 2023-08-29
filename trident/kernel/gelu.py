@@ -63,5 +63,5 @@ class GELU:
 
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
         input = tl.load(input_block_ptr, boundary_check=(0,))
-        grad_input = grad_output * language.math.GeLU.backward(input)
+        grad_input = language.math.GeLU.backward(grad_output, input)
         tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))

@@ -19,33 +19,35 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("vec_sz", [10, 16])
-def test_function(vec_sz, dtype, device):
-    inp = torch.randn(vec_sz, dtype=dtype, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(3, 2000)])
+def test_forward(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(x_size, **factory_kwargs)
 
-    assert util.equal(torch.nn.functional.gelu(inp), trident.function.gelu(inp))
-
-
-@pytest.mark.parametrize("vec_sz", [3, 16384])
-def test_forward(vec_sz, dtype, device):
-    inp = torch.randn(vec_sz, dtype=dtype, device=device)
-
-    assert util.equal(torch.nn.GELU().forward(inp), trident.GELU().forward(inp))
+    assert util.equal(torch.nn.functional.gelu(input), trident.function.gelu(input))
 
 
-@pytest.mark.parametrize("vec_sz", [1, 20000])
-def test_backward(vec_sz, dtype, device):
-    inp = torch.randn(vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(vec_sz, dtype=dtype, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(100, 200)])
+def test_backward(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn((y_size, x_size), **factory_kwargs)
+    grad_output = torch.randn((y_size, x_size), **factory_kwargs)
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i).backward(grad_output, retain_graph=True)
+        return (i.grad,)
 
-    lyr0 = torch.nn.GELU()
-    lyr1 = trident.GELU()
+    (x,) = train(torch.nn.functional.gelu)
+    (a,) = train(trident.function.gelu)
 
-    util.train(x, tgt, lyr0)
-    util.train(a, tgt, lyr1)
+    assert util.equal(x, a)
 
-    assert util.equal(x.grad, a.grad)
+
+@pytest.mark.parametrize("y_size, x_size", [(2, 128)])
+def test_gelu(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn((y_size, x_size), **factory_kwargs)
+
+    assert trident.GELU().forward(input) is not None

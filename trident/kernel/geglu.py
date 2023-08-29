@@ -167,7 +167,7 @@ class GEGLU:
         for n_offset in range(0, n_size, n_block_size):
             grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
             linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            grad_output *= language.math.GeLU.backward(linear)
+            grad_output = language.math.GeLU.backward(grad_output, linear)
             weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
             grad_input += tl.dot(grad_output, weight, use_accelerator)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
@@ -237,7 +237,7 @@ class GEGLU:
         for m_offset in range(0, m_size, m_block_size):
             grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
             linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            grad_output *= language.math.GeLU.backward(linear)
+            grad_output = language.math.GeLU.backward(grad_output, linear)
             input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
             grad_weight += tl.dot(grad_output, input, use_accelerator)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
@@ -288,7 +288,7 @@ class GEGLU:
         for m_offset in range(0, m_size, block_size):
             grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
             linear = tl.load(linear_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            grad_output *= language.math.GeLU.backward(linear)
+            grad_output = language.math.GeLU.backward(grad_output, linear)
             sum += grad_output
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))
             linear_block_ptr = tl.advance(linear_block_ptr, (0, block_size))
