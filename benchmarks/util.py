@@ -25,12 +25,10 @@ def make_benchmark(title, x_names, x_vals, args):
         title,
         args,
         ylabel="milliseconds",
-        x_log=True,
-        y_log=True,
     )
 
 
 def report(title, x_names, x_vals, args=None):
     if args is None:
         args = {}
-    return triton.testing.perf_report(make_benchmark(title, x_names, x_vals, args))
+    return triton.testing.perf_report([make_benchmark(title, x_names, x_vals, args)])
