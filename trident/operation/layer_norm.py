@@ -29,43 +29,46 @@ class LayerNorm(torch.autograd.Function):
     @staticmethod
     def setup_context(ctx, inputs, output):
         input, normalized_shape, weight, bias, eps = inputs
-        ctx.save_for_backward(input, weight, bias)
+        output, rstd, mean = output
+        ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.normalized_shape = normalized_shape
-        ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        (grad_output,) = grad_outputs
-        input, weight, bias = ctx.saved_tensors
-        return LayerNorm.__backward(grad_output, input, ctx.normalized_shape, weight, bias, ctx.eps)
+        grad_output, _, _ = grad_outputs
+        input, weight, bias, rstd, mean = ctx.saved_tensors
+        return LayerNorm.__backward(grad_output, input, ctx.normalized_shape, weight, bias, rstd, mean)
 
     @staticmethod
     def __forward(input, normalized_shape, weight, bias, eps):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         x_size = functools.reduce(lambda x, y: x * y, normalized_shape)
         y_size = input.numel() // x_size
-        output = torch.empty((y_size, x_size), **factory_kwargs)
+        output = torch.empty_like(input)
+        rstd = torch.empty(y_size, **factory_kwargs)
+        mean = torch.empty(y_size, **factory_kwargs)
 
         def grid(meta):
             return (y_size,)
 
         kernel.LayerNorm.forward[grid](
             output,
+            rstd,
+            mean,
             input,
             y_size,
             x_size,
             weight,
             bias,
             eps,
-            block_size=util.block_size(x_size, input.element_size()),
-            dtype=util.dtype(input.dtype),
-            num_warps=util.num_warps(x_size, input.element_size()),
+            util.dtype(input.dtype),
+            triton.next_power_of_2(x_size),
         )
 
-        return output
+        return output, rstd, mean
 
     @staticmethod
-    def __backward(grad_output, input, normalized_shape, weight, bias, eps):
+    def __backward(grad_output, input, normalized_shape, weight, bias, rstd, mean):
         factory_kwargs = {"device": grad_output.device, "dtype": grad_output.dtype}
         x_size = functools.reduce(lambda x, y: x * y, normalized_shape)
         y_size = grad_output.numel() // x_size
@@ -73,6 +76,7 @@ class LayerNorm(torch.autograd.Function):
 
         if weight is not None:
             grad_weight_staging = torch.empty((y_size, x_size), **factory_kwargs)
+            # grad_weight_staging = torch.empty((x_size, y_size), **factory_kwargs)
         else:
             grad_weight_staging = None
 
@@ -87,18 +91,19 @@ class LayerNorm(torch.autograd.Function):
             y_size,
             x_size,
             weight,
-            eps,
-            block_size=triton.next_power_of_2(x_size),
-            dtype=util.dtype(grad_output.dtype),
+            rstd,
+            mean,
+            util.dtype(grad_output.dtype),
+            triton.next_power_of_2(x_size),
         )
 
         if weight is not None:
-            grad_weight = function.sum(grad_weight_staging, 0)
+            grad_weight = torch.sum(grad_weight_staging, 0)
         else:
             grad_weight = None
 
         if bias is not None:
-            grad_bias = function.sum(grad_output, 0)
+            grad_bias = torch.sum(grad_output, 0)
         else:
             grad_bias = None
 

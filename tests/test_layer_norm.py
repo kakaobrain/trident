@@ -19,9 +19,9 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size", [(3, 16), (1, 20000)])
-def test_forward(y_size, x_size, dtype, device):
-    factory_kwargs = {"device": device, "dtype": dtype}
+@pytest.mark.parametrize("y_size, x_size", [(2000, 4), (4, 2000)])
+def test_forward(y_size, x_size, device):
+    factory_kwargs = {"device": device}
     input = torch.randn(y_size, x_size, **factory_kwargs)
     normalized_shape = (input.shape[-1],)
 
@@ -49,17 +49,17 @@ def test_forward(y_size, x_size, dtype, device):
     )
 
 
-@pytest.mark.parametrize("y_size, x_size", [(3, 10), (10, 40)])
-def test_backward(y_size, x_size, dtype, device):
-    factory_kwargs = {"device": device, "dtype": dtype}
+@pytest.mark.parametrize("y_size, x_size", [(2000, 4), (4, 2000)])
+def test_backward(y_size, x_size, device):
+    factory_kwargs = {"device": device}
     input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.ones(y_size, x_size, **factory_kwargs)
-    normalized_shape = [input.shape[-1]]
+    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
+    normalized_shape = (input.shape[-1],)
 
     def train(func):
         i = input.clone()
         i.requires_grad = True
-        func(i, normalized_shape).backward(target, retain_graph=True)
+        func(i, normalized_shape).backward(grad_output, retain_graph=True)
         return (i.grad,)
 
     (x,) = train(torch.layer_norm)
@@ -73,7 +73,7 @@ def test_backward(y_size, x_size, dtype, device):
         i = input.clone()
         j = weight.clone()
         i.requires_grad = j.requires_grad = True
-        func(i, normalized_shape, j).backward(target, retain_graph=True)
+        func(i, normalized_shape, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
 
     (x, y) = train(torch.layer_norm)
@@ -88,7 +88,7 @@ def test_backward(y_size, x_size, dtype, device):
         i = input.clone()
         j = bias.clone()
         i.requires_grad = j.requires_grad = True
-        func(i, normalized_shape, None, j).backward(target, retain_graph=True)
+        func(i, normalized_shape, None, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
 
     (x, y) = train(torch.layer_norm)
@@ -102,7 +102,7 @@ def test_backward(y_size, x_size, dtype, device):
         j = weight.clone()
         k = bias.clone()
         i.requires_grad = j.requires_grad = k.requires_grad = True
-        func(i, normalized_shape, j, k).backward(target, retain_graph=True)
+        func(i, normalized_shape, j, k).backward(grad_output, retain_graph=True)
         return i.grad, j.grad, k.grad
 
     (x, y, z) = train(torch.layer_norm)

@@ -61,6 +61,7 @@ class VarMean:
     @staticmethod
     @triton.jit
     def backward(
+        grad_output_ptr: tl.tensor,
         input_ptr: tl.tensor,
         y_size: int,
         x_size: int,
@@ -73,6 +74,14 @@ class VarMean:
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(y_size, 1),
+            strides=(1, 0),
+            offsets=(y_offset, 0),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
         input_block_ptr = tl.make_block_ptr(
             input_ptr,
             shape=(y_size, x_size),
@@ -81,9 +90,10 @@ class VarMean:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+        grad_output = tl.load(grad_output_block_ptr)
         input = tl.load(input_block_ptr, boundary_check=(1,))
         condition = tl.arange(0, x_block_size) + x_offset < x_size
         centered_mean = tl.where(condition[None, :], input - mean, 0.0)
-        grad_input = 2 * centered_mean / (x_size - correction)
+        grad_input = grad_output * 2 * centered_mean / (x_size - correction)
 
         return grad_input.to(dtype)

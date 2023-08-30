@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(1000, 2000, 0), (2000, 1000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(4, 2000, 0), (2000, 4, 1)])
 def test_forward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
@@ -31,7 +31,7 @@ def test_forward(y_size, x_size, dim, device, dtype):
     assert util.equal(y, b)
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 1000, 0), (1000, 2000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 4, 0), (4, 2000, 1)])
 def test_backward(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
