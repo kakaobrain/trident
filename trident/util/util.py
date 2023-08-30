@@ -33,6 +33,8 @@ def dtype(input):
         return tl.float32
     elif input == torch.float16:
         return tl.float16
+    elif input == torch.bfloat16:
+        return tl.bfloat16
     elif input == torch.int64:
         return tl.int64
     else:
