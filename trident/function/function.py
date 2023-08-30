@@ -201,6 +201,8 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
     See RMSNorm for details.
     """
     output, _ = operation.RMSNorm.apply(input.view(-1, input.shape[-1]), p, weight, bias, eps)
+    if weight is not None and weight.dtype != input.dtype:
+        output = output.to(weight.dtype)
     return output.view(input.shape)
 
 
