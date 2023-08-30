@@ -23,11 +23,11 @@ class Var:
     @triton.jit
     def forward(
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
-        y_offset: int,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
+        y_offset: tl.int32,
         mean: tl.tensor,
         correction: tl.constexpr,
         dtype: tl.constexpr,
@@ -46,8 +46,8 @@ class Var:
         for block_offset in range(0, x_size, x_block_size):
             input = tl.load(input_block_ptr, boundary_check=(1,))
             mask = (tl.arange(0, x_block_size) + block_offset) < x_size
-            input = tl.where(mask, input - mean, 0.0)
-            output += tl.math.pow(input, 2.0)
+            centered_mean = tl.where(mask, input - mean, 0.0)
+            output += centered_mean * centered_mean
             input_block_ptr = tl.advance(input_block_ptr, (0, x_block_size))
 
         output = tl.sum(output, 1) / (x_size - correction)
@@ -58,12 +58,12 @@ class Var:
     @triton.jit
     def backward(
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
-        y_offset: int,
-        x_offset: int,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
+        y_offset: tl.int32,
+        x_offset: tl.int32,
         mean: tl.tensor,
         correction: tl.constexpr,
         dtype: tl.constexpr,
