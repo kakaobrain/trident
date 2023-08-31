@@ -20,7 +20,12 @@ setuptools.setup(
     description="A performance library for machine learning applications",
     author="Kakao Brain Corp",
     packages=setuptools.find_packages(),
-    install_requires=["pytest", "matplotlib", "pandas"],
+    install_requires=[
+        "pytest",
+        "matplotlib",
+        "pandas",
+        "triton@git+https://github.com/openai/triton.git@main#subdirectory=python",
+    ],
     classifiers=[
         "Development Status :: 1 - Alpha",
         "Intended Audience :: Developers",
