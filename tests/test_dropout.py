@@ -19,24 +19,24 @@ import trident
 from tests import util
 
 
-def test_function(dtype, device):
-    inp = torch.randn(8, dtype=dtype, device=device)
+def test_function(device):
+    inp = torch.randn(8, device=device)
     p = 0.0
 
     assert util.equal(torch.nn.functional.dropout(inp, p), trident.function.dropout(inp, p))
 
 
-def test_forward(dtype, device):
-    inp = torch.randn(16, dtype=dtype, device=device)
+def test_forward(device):
+    inp = torch.randn(16, device=device)
     p = 1.0
 
     assert util.equal(torch.nn.Dropout(p).forward(inp), trident.Dropout(p).forward(inp))
 
 
 @pytest.mark.parametrize("p", [0.0, 1.0])
-def test_backward(p, dtype, device):
-    inp = torch.randn(8, dtype=dtype, device=device)
-    tgt = torch.randn(8, dtype=dtype, device=device)
+def test_backward(p, device):
+    inp = torch.randn(8, device=device)
+    tgt = torch.randn(8, device=device)
 
     x = inp.clone()
     a = inp.clone()

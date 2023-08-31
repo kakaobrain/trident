@@ -20,9 +20,8 @@ from tests import util
 
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(10000, 20000, 0), (10000, 20000, 1)])
-def test_forward(y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+def test_forward(y_size, x_size, dim, device):
+    input = torch.randn(y_size, x_size, device=device)
 
     (x, y) = torch.max(input, dim)
     (i, j) = trident.function.max(input, dim)
@@ -32,10 +31,9 @@ def test_forward(y_size, x_size, dim, device, dtype):
 
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(10000, 20000, 0), (20000, 10000, 1)])
-def test_backward(y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
+def test_backward(y_size, x_size, dim, device):
+    input = torch.randn(y_size, x_size, device=device)
+    target = torch.randn(x_size if dim == 0 else y_size, device=device)
 
     def train(func):
         i = input.clone()

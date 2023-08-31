@@ -20,20 +20,16 @@ from tests import util
 
 
 @pytest.mark.parametrize("tgt_sz", [2, 4, 8])
-def test_function(tgt_sz, dtype, device):
-    inp = torch.randn(4, 4, 128, 128, dtype=dtype, device=device)
+def test_function(tgt_sz, device):
+    inp = torch.randn(4, 4, 128, 128, device=device)
 
     assert util.equal(
-        torch.nn.functional.adaptive_avg_pool2d(inp, tgt_sz),
-        trident.function.adaptive_avg_pool2d(inp, tgt_sz),
+        torch.nn.functional.adaptive_avg_pool2d(inp, tgt_sz), trident.function.adaptive_avg_pool2d(inp, tgt_sz)
     )
 
 
 @pytest.mark.parametrize("tgt_sz", [2, 4, 8])
-def test_forward(tgt_sz, dtype, device):
-    inp = torch.randn(2, 256, 256, dtype=dtype, device=device)
+def test_forward(tgt_sz, device):
+    inp = torch.randn(2, 256, 256, device=device)
 
-    assert util.equal(
-        torch.nn.AdaptiveAvgPool2d(tgt_sz).forward(inp),
-        trident.AdaptiveAvgPool2d(tgt_sz).forward(inp),
-    )
+    assert util.equal(torch.nn.AdaptiveAvgPool2d(tgt_sz).forward(inp), trident.AdaptiveAvgPool2d(tgt_sz).forward(inp))

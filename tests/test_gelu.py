@@ -20,18 +20,16 @@ from tests import util
 
 
 @pytest.mark.parametrize("y_size, x_size", [(3, 2000)])
-def test_forward(y_size, x_size, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(x_size, **factory_kwargs)
+def test_forward(y_size, x_size, device):
+    input = torch.randn(x_size, device=device)
 
     assert util.equal(torch.nn.functional.gelu(input), trident.function.gelu(input))
 
 
 @pytest.mark.parametrize("y_size, x_size", [(100, 200)])
-def test_backward(y_size, x_size, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((y_size, x_size), **factory_kwargs)
-    grad_output = torch.randn((y_size, x_size), **factory_kwargs)
+def test_backward(y_size, x_size, device):
+    input = torch.randn((y_size, x_size), device=device)
+    grad_output = torch.randn((y_size, x_size), device=device)
 
     def train(func):
         i = input.clone()

@@ -21,8 +21,7 @@ from tests import util
 
 @pytest.mark.parametrize("y_size, x_size", [(2000, 4), (4, 2000)])
 def test_forward(y_size, x_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device=device)
     normalized_shape = (input.shape[-1],)
 
     assert util.equal(
@@ -30,14 +29,14 @@ def test_forward(y_size, x_size, device):
         trident.function.layer_norm(input, normalized_shape),
     )
 
-    weight = torch.randn(normalized_shape, **factory_kwargs)
+    weight = torch.randn(normalized_shape, device=device)
 
     assert util.equal(
         torch.nn.functional.layer_norm(input, normalized_shape, weight),
         trident.function.layer_norm(input, normalized_shape, weight),
     )
 
-    bias = torch.randn(normalized_shape, **factory_kwargs)
+    bias = torch.randn(normalized_shape, device=device)
 
     assert util.equal(
         torch.nn.functional.layer_norm(input, normalized_shape, None, bias),
@@ -51,9 +50,8 @@ def test_forward(y_size, x_size, device):
 
 @pytest.mark.parametrize("y_size, x_size", [(2000, 4), (4, 2000)])
 def test_backward(y_size, x_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device=device)
+    grad_output = torch.randn(y_size, x_size, device=device)
     normalized_shape = (input.shape[-1],)
 
     def train(func):
@@ -67,7 +65,7 @@ def test_backward(y_size, x_size, device):
 
     assert util.equal(x, a)
 
-    weight = torch.randn(normalized_shape, **factory_kwargs)
+    weight = torch.randn(normalized_shape, device=device)
 
     def train(func):
         i = input.clone()
@@ -82,7 +80,7 @@ def test_backward(y_size, x_size, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
 
-    bias = torch.randn(normalized_shape, **factory_kwargs)
+    bias = torch.randn(normalized_shape, device=device)
 
     def train(func):
         i = input.clone()

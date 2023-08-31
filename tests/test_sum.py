@@ -20,18 +20,16 @@ from tests import util
 
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(1000, 2000, 0), (2000, 1000, 1)])
-def test_forward(y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+def test_forward(y_size, x_size, dim, device):
+    input = torch.randn(y_size, x_size, device=device)
 
     assert util.equal(torch.sum(input, dim), trident.function.sum(input, dim))
 
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(2000, 1000, 0), (1000, 2000, 1)])
-def test_backward(y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
+def test_backward(y_size, x_size, dim, device):
+    input = torch.randn(y_size, x_size, device=device)
+    target = torch.randn(x_size if dim == 0 else y_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -47,9 +45,7 @@ def test_backward(y_size, x_size, dim, device, dtype):
 
 @pytest.mark.parametrize("dim", [0, 1])
 def test_sum_issue1(dim, device):
-    dtype = torch.float16
-    factory_kwargs = {"device": device, "dtype": dtype}
-
+    factory_kwargs = {"device": device, "dtype": torch.float16}
     input = torch.tensor(
         [
             [

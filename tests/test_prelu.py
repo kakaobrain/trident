@@ -20,28 +20,24 @@ from tests import util
 
 
 @pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_forward(y_size, x_size, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    weight = torch.randn(x_size, **factory_kwargs)
+def test_forward(y_size, x_size, device):
+    input = torch.randn(y_size, x_size, device=device)
+    weight = torch.randn(x_size, device=device)
 
     assert util.equal(torch.nn.functional.prelu(input, weight), trident.function.prelu(input, weight))
 
 
 @pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
-def test_backward(y_size, x_size, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.randn(y_size, x_size, **factory_kwargs)
+def test_backward(y_size, x_size, device):
+    input = torch.randn(y_size, x_size, device=device)
+    target = torch.randn(y_size, x_size, device=device)
 
     x = input.clone()
     a = input.clone()
     x.requires_grad = a.requires_grad = True
 
-    y = torch.nn.PReLU(x_size, 0.3, **factory_kwargs)
-    b = trident.PReLU(x_size, 0.3, **factory_kwargs)
+    y = torch.nn.PReLU(x_size, 0.3, device=device)
+    b = trident.PReLU(x_size, 0.3, device=device)
 
     util.train(x, target, y)
     util.train(a, target, b)

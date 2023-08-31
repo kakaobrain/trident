@@ -20,23 +20,22 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(2, 16, 10, 4), (16, 1000, 40, 1000)])
-def test_forward(num_batches, y_size, x_size, num_groups, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+def test_forward(num_batches, y_size, x_size, num_groups, device):
+    input = torch.randn((num_batches, y_size, x_size), device=device)
 
     assert util.equal(
         torch.nn.functional.group_norm(input, num_groups),
         trident.function.group_norm(input, num_groups),
     )
 
-    weight = torch.randn(y_size, **factory_kwargs)
+    weight = torch.randn(y_size, device=device)
 
     assert util.equal(
         torch.nn.functional.group_norm(input, num_groups, weight),
         trident.function.group_norm(input, num_groups, weight),
     )
 
-    bias = torch.randn(y_size, **factory_kwargs)
+    bias = torch.randn(y_size, device=device)
 
     assert util.equal(
         torch.nn.functional.group_norm(input, num_groups, None, bias),
@@ -50,9 +49,8 @@ def test_forward(num_batches, y_size, x_size, num_groups, device, dtype):
 
 @pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(2, 16, 10, 4), (16, 1000, 40, 1000)])
 def test_backward(num_batches, y_size, x_size, num_groups, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
-    target = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+    input = torch.randn((num_batches, y_size, x_size), device=device)
+    target = torch.randn((num_batches, y_size, x_size), device=device)
 
     def train(func):
         i = input.clone()
@@ -65,7 +63,7 @@ def test_backward(num_batches, y_size, x_size, num_groups, device):
 
     assert util.equal(x, a)
 
-    weight = torch.randn(y_size, **factory_kwargs)
+    weight = torch.randn(y_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -80,7 +78,7 @@ def test_backward(num_batches, y_size, x_size, num_groups, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
 
-    bias = torch.randn(y_size, **factory_kwargs)
+    bias = torch.randn(y_size, device=device)
 
     def train(func):
         i = input.clone()
