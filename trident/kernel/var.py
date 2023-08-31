@@ -93,18 +93,19 @@ class Var:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
-        grad_output_block_ptr = tl.make_block_ptr(
-            grad_output_ptr,
-            shape=(y_size, 1),
-            strides=(1, 0),
-            offsets=(y_offset, 0),
-            block_shape=(1, 1),
-            order=(1, 0),
-        )
-        grad_output = tl.load(grad_output_block_ptr)
         mean = language.Mean.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size)
-        grad_var = language.Var.backward(
-            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, x_offset, mean, correction, dtype, x_block_size
+        grad_input = language.Var.backward(
+            grad_output_ptr,
+            input_ptr,
+            y_size,
+            x_size,
+            y_stride,
+            x_stride,
+            y_offset,
+            x_offset,
+            mean,
+            correction,
+            dtype,
+            x_block_size,
         )
-        grad_input = grad_output * grad_var
         tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))

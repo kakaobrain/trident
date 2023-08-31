@@ -19,31 +19,37 @@ import util
 import trident
 
 
-@util.report("layer norm forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
-def bench_layer_norm_forward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
-    norm_sh = (inp.shape[-1],)
+@util.report("layer norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 4, "y_size": 2048})
+def bench_layer_norm_forward(num_batches, y_size, x_size, backend):
+    input = torch.randn((num_batches, y_size, x_size), device="cuda")
+    normalized_shape = (input.shape[-1],)
+    weight = torch.randn(x_size, device="cuda")
+    bias = torch.randn(x_size, device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.layer_norm(inp, norm_sh))
+        return triton.testing.do_bench_cudagraph(
+            lambda: torch.nn.functional.layer_norm(input, normalized_shape, weight, bias)
+        )
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.layer_norm(inp, norm_sh))
+        return triton.testing.do_bench_cudagraph(
+            lambda: trident.function.layer_norm(input, normalized_shape, weight, bias)
+        )
 
 
-@util.report("layer norm backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 3})
-def bench_layer_norm_backward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
-    norm_sh = [inp.shape[-1]]
+@util.report("layer norm backward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 512, "y_size": 2048})
+def bench_layer_norm_backward(num_batches, y_size, x_size, backend):
+    input = torch.randn((num_batches, y_size, x_size), device="cuda", requires_grad=True)
+    weight = torch.randn(x_size, device="cuda", requires_grad=True)
+    bias = torch.randn(x_size, device="cuda", requires_grad=True)
+    normalized_shape = (input.shape[-1],)
+    grad_output = torch.randn((num_batches, y_size, x_size), device="cuda")
 
     if backend == "torch":
-        lyr = torch.nn.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")
+        output = torch.nn.functional.layer_norm(input, normalized_shape, weight, bias)
     else:
-        lyr = trident.LayerNorm(norm_sh, dtype=torch.float32, device="cuda")
+        output = trident.function.layer_norm(input, normalized_shape, weight, bias)
 
-    out = lyr.forward(inp)
-    grad_out = torch.ones_like(inp)
-
-    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

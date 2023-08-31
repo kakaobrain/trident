@@ -80,15 +80,5 @@ class Mean:
             block_shape=(1, x_block_size),
             order=(0, 1),
         )
-        grad_output_block_ptr = tl.make_block_ptr(
-            grad_output_ptr,
-            shape=(y_size, 1),
-            strides=(1, 0),
-            offsets=(y_offset, 0),
-            block_shape=(1, 1),
-            order=(0, 1),
-        )
-        grad_mean = language.Mean.backward(x_size, dtype, x_block_size)
-        grad_output = tl.load(grad_output_block_ptr)
-        grad_input = grad_mean * grad_output
+        grad_input = language.Mean.backward(grad_output_ptr, y_size, x_size, y_offset, dtype, x_block_size)
         tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
