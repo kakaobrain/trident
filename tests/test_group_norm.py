@@ -23,10 +23,7 @@ from tests import util
 def test_forward(num_batches, y_size, x_size, num_groups, device):
     input = torch.randn((num_batches, y_size, x_size), device=device)
 
-    assert util.equal(
-        torch.nn.functional.group_norm(input, num_groups),
-        trident.function.group_norm(input, num_groups),
-    )
+    assert util.equal(torch.nn.functional.group_norm(input, num_groups), trident.function.group_norm(input, num_groups))
 
     weight = torch.randn(y_size, device=device)
 
@@ -35,7 +32,7 @@ def test_forward(num_batches, y_size, x_size, num_groups, device):
         trident.function.group_norm(input, num_groups, weight),
     )
 
-    bias = torch.randn(y_size, device=device)
+    bias = torch.rand_like(weight)
 
     assert util.equal(
         torch.nn.functional.group_norm(input, num_groups, None, bias),
@@ -50,12 +47,12 @@ def test_forward(num_batches, y_size, x_size, num_groups, device):
 @pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(2, 16, 10, 4), (16, 1000, 40, 1000)])
 def test_backward(num_batches, y_size, x_size, num_groups, device):
     input = torch.randn((num_batches, y_size, x_size), device=device)
-    target = torch.randn((num_batches, y_size, x_size), device=device)
+    grad_output = torch.rand_like(input)
 
     def train(func):
         i = input.clone()
         i.requires_grad = True
-        func(i, num_groups).backward(target, retain_graph=True)
+        func(i, num_groups).backward(grad_output, retain_graph=True)
         return (i.grad,)
 
     (x,) = train(torch.group_norm)
@@ -69,7 +66,7 @@ def test_backward(num_batches, y_size, x_size, num_groups, device):
         i = input.clone()
         j = weight.clone()
         i.requires_grad = j.requires_grad = True
-        func(i, num_groups, j).backward(target, retain_graph=True)
+        func(i, num_groups, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
 
     (x, y) = train(torch.group_norm)
@@ -85,7 +82,7 @@ def test_backward(num_batches, y_size, x_size, num_groups, device):
         j = weight.clone()
         k = bias.clone()
         i.requires_grad = j.requires_grad = k.requires_grad = True
-        func(i, num_groups, j, k).backward(target, retain_graph=True)
+        func(i, num_groups, j, k).backward(grad_output, retain_graph=True)
         return i.grad, j.grad, k.grad
 
     (x, y, z) = train(torch.group_norm)
