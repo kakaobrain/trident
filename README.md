@@ -20,6 +20,12 @@ detail.
 bash install_package.sh
 ```
 
+You can also install Trident using pip.
+
+```bash
+pip install git+https://github.com/kakaobrain/trident.git
+```
+
 ## 🧑‍💻Contribution
 
 You must set up `pre-commit` to maintain the consistent coding style.
