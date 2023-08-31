@@ -16,7 +16,7 @@ import triton
 import triton.language as tl
 
 
-class GeLU:
+class GELU:
     @staticmethod
     @triton.jit
     def forward(input: tl.tensor):

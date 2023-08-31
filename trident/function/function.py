@@ -205,6 +205,16 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
     return output.view(input.shape)
 
 
+def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
+    """
+    Applies shift and the Gaussian Error Linear Units to an input.
+
+    See ShiftGELU for details.
+    """
+    output, _ = operation.ShiftGELU.apply(input.view(-1, input.shape[-1]), bias)
+    return output.view(input.shape)
+
+
 def silu(input):
     """
     Applies the Sigmoid Linear Unit to an input.

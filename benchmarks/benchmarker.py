@@ -34,6 +34,7 @@ import benchmark_mean
 import benchmark_prelu
 import benchmark_relu
 import benchmark_rms_norm
+import benchmark_shift_gelu
 import benchmark_silu
 import benchmark_softmax
 import benchmark_sum
@@ -67,6 +68,7 @@ def print_scenarios():
                 "prelu",
                 "relu",
                 "rms-norm",
+                "shift-gelu",
                 "silu",
                 "softmax",
                 "sum",
@@ -118,6 +120,8 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_relu.run_benchmark(mode, show_plots)
     elif scenario == "rms-norm":
         benchmark_rms_norm.run_benchmark(mode, show_plots)
+    elif scenario == "shift-gelu":
+        benchmark_shift_gelu.run_benchmark(mode, show_plots)
     elif scenario == "silu":
         benchmark_silu.run_benchmark(mode, show_plots)
     elif scenario == "softmax":
@@ -149,6 +153,7 @@ def run_benchmarks(scenario, mode, show_plots):
         benchmark_prelu.run_benchmark(mode, show_plots)
         benchmark_relu.run_benchmark(mode, show_plots)
         benchmark_rms_norm.run_benchmark(mode, show_plots)
+        benchmark_shift_gelu.run_benchmark(mode, show_plots)
         benchmark_silu.run_benchmark(mode, show_plots)
         benchmark_softmax.run_benchmark(mode, show_plots)
         benchmark_sum.run_benchmark(mode, show_plots)
