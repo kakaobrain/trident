@@ -777,6 +777,37 @@ class RMSNorm(torch.nn.Module):
             util.zero(self.bias)
 
 
+class ShiftGELU(torch.nn.Module):
+    def __init__(self, num_features: torch.int, device=None, dtype=None):
+        """
+        Applies shift and the Gaussian Error Linear Units to an input.
+
+        Args:
+            num_features: number of features
+        """
+        super().__init__()
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.bias = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs))
+
+        self.reset_parameters()
+
+    def forward(self, input):
+        """
+        Applies shift and the Gaussian Error Linear Units to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        return function.shift_gelu(input, self.bias)
+
+    def reset_parameters(self):
+        util.uniform(self.bias, 0.0, 1.0)
+
+
 class SiLU(torch.nn.Module):
     def __init__(self):
         """
