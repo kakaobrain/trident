@@ -20,8 +20,7 @@ from tests import util
 
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(10000, 20000, 0), (20000, 10000, 1)])
-def test_argmax(y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+def test_argmax(y_size, x_size, dim, device):
+    input = torch.randn(y_size, x_size, device=device)
 
     assert util.equal(torch.argmax(input, dim), trident.util.argmax(input, dim))

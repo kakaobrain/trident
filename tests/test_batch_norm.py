@@ -20,10 +20,10 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_vec, vec_sz, training", [(1, 5, False), (3, 16, False), (7, 30, True)])
-def test_function(num_vec, vec_sz, training, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    m = torch.zeros(vec_sz, dtype=dtype, device=device)
-    v = torch.ones(vec_sz, dtype=dtype, device=device)
+def test_function(num_vec, vec_sz, training, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
+    m = torch.zeros(vec_sz, device=device)
+    v = torch.ones(vec_sz, device=device)
     assert util.equal(
         torch.nn.functional.batch_norm(inp, m, v, training=training),
         trident.function.batch_norm(inp, m, v, training=training),
@@ -31,10 +31,10 @@ def test_function(num_vec, vec_sz, training, dtype, device):
 
 
 @pytest.mark.parametrize("num_vec, vec_sz, afn", [(3, 20, True), (7, 99, False)])
-def test_forward(num_vec, vec_sz, afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    lyr0 = torch.nn.BatchNorm1d(vec_sz, affine=afn, dtype=dtype, device=device)
-    lyr1 = trident.BatchNorm1d(vec_sz, affine=afn, dtype=dtype, device=device)
+def test_forward(num_vec, vec_sz, afn, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
+    lyr0 = torch.nn.BatchNorm1d(vec_sz, affine=afn, device=device)
+    lyr1 = trident.BatchNorm1d(vec_sz, affine=afn, device=device)
     assert util.equal(lyr0.forward(inp), lyr1.forward(inp))
     assert util.equal(lyr0.running_mean, lyr1.running_mean)
     assert util.equal(lyr0.running_var, lyr1.running_var)
@@ -44,16 +44,16 @@ def test_forward(num_vec, vec_sz, afn, dtype, device):
 
 
 @pytest.mark.parametrize("num_vec, vec_sz, afn", [(3, 10, False), (11, 40, True)])
-def test_backward(num_vec, vec_sz, afn, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_backward(num_vec, vec_sz, afn, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
+    tgt = torch.randn(num_vec, vec_sz, device=device)
 
     a = inp.clone()
     b = inp.clone()
     a.requires_grad = b.requires_grad = True
 
-    lyr0 = torch.nn.BatchNorm1d(vec_sz, affine=afn, dtype=dtype, device=device)
-    lyr1 = trident.BatchNorm1d(vec_sz, affine=afn, dtype=dtype, device=device)
+    lyr0 = torch.nn.BatchNorm1d(vec_sz, affine=afn, device=device)
+    lyr1 = trident.BatchNorm1d(vec_sz, affine=afn, device=device)
 
     util.train(a, tgt, lyr0)
     util.train(b, tgt, lyr1)

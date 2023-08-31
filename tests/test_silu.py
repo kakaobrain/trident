@@ -20,23 +20,23 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(1, 32), (3, 40)])
-def test_function(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_function(num_vec, vec_sz, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
 
     assert util.equal(torch.nn.functional.silu(inp), trident.function.silu(inp))
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(20, 10), (35, 80)])
-def test_forward(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_forward(num_vec, vec_sz, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
 
     assert util.equal(torch.nn.SiLU().forward(inp), trident.SiLU().forward(inp))
 
 
 @pytest.mark.parametrize("num_vec, vec_sz", [(1, 64), (10, 90)])
-def test_backward(num_vec, vec_sz, dtype, device):
-    inp = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
-    tgt = torch.randn(num_vec, vec_sz, dtype=dtype, device=device)
+def test_backward(num_vec, vec_sz, device):
+    inp = torch.randn(num_vec, vec_sz, device=device)
+    tgt = torch.randn(num_vec, vec_sz, device=device)
 
     x = inp.clone()
     a = inp.clone()

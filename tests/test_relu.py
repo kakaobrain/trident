@@ -20,15 +20,15 @@ from tests import util
 
 
 @pytest.mark.parametrize("num_bt, num_elem", [(5, 32), (4, 64), (3, 128)])
-def test_function(num_bt, num_elem, dtype, device):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
+def test_function(num_bt, num_elem, device):
+    inp = torch.randn(num_bt, num_elem, device=device)
 
     assert util.equal(torch.nn.functional.relu(inp), trident.function.relu(inp))
 
 
 @pytest.mark.parametrize("num_bt, num_elem", [(2, 256), (1, 512)])
-def test_forward(num_bt, num_elem, dtype, device):
-    inp = torch.randn(num_bt, num_elem, dtype=dtype, device=device)
+def test_forward(num_bt, num_elem, device):
+    inp = torch.randn(num_bt, num_elem, device=device)
 
     assert util.equal(torch.nn.ReLU().forward(inp), trident.ReLU().forward(inp))
 

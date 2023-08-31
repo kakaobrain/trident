@@ -112,7 +112,7 @@ class GEGLU:
             block_shape=(m_block_size, n_block_size),
             order=(1, 0),
         )
-        tl.store(output_block_ptr, output, boundary_check=(0, 1))
+        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0, 1))
 
     @staticmethod
     @triton.autotune(configs=geglu_configs(), key=["m_size", "n_size", "k_size"])

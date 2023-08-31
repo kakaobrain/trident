@@ -26,13 +26,12 @@ def geglu(input, weight, bias: torch.Tensor = None):
 # @pytest.mark.skip
 @pytest.mark.parametrize("m_size, n_size, k_size", [(64, 32, 64)])
 def test_forward(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn((m_size, k_size), **factory_kwargs)
-    weight = torch.randn((n_size, k_size), **factory_kwargs)
+    input = torch.randn((m_size, k_size), device=device)
+    weight = torch.randn((n_size, k_size), device=device)
 
     assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
 
-    bias = torch.randn(n_size, **factory_kwargs)
+    bias = torch.randn(n_size, device=device)
 
     assert util.equal(geglu(input, weight, bias), trident.function.geglu(input, weight, bias))
 
@@ -40,10 +39,9 @@ def test_forward(m_size, n_size, k_size, device):
 # @pytest.mark.skip
 @pytest.mark.parametrize("m_size, n_size, k_size", [(16, 32, 16)])
 def test_backward(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn((m_size, k_size), **factory_kwargs)
-    weight = torch.randn((n_size, k_size), **factory_kwargs)
-    target = torch.randn((m_size, n_size), **factory_kwargs)
+    input = torch.randn((m_size, k_size), device=device)
+    weight = torch.randn((n_size, k_size), device=device)
+    target = torch.randn((m_size, n_size), device=device)
 
     def train(func):
         i = input.clone()
@@ -58,7 +56,7 @@ def test_backward(m_size, n_size, k_size, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
 
-    bias = torch.randn(n_size, **factory_kwargs)
+    bias = torch.randn(n_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -77,8 +75,8 @@ def test_backward(m_size, n_size, k_size, device):
 
 
 @pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
-def test_geglu(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
+def test_geglu(m_size, n_size, k_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(m_size, k_size, **factory_kwargs)
 
     operation = trident.GEGLU(m_size, n_size, **factory_kwargs)

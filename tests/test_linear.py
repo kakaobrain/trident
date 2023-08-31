@@ -21,23 +21,21 @@ from tests import util
 
 @pytest.mark.parametrize("m_size, n_size, k_size", [(512, 512, 100), (200, 120, 15)])
 def test_forward(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn(m_size, k_size, **factory_kwargs)
-    weight = torch.randn(n_size, k_size, **factory_kwargs)
+    input = torch.randn(m_size, k_size, device=device)
+    weight = torch.randn(n_size, k_size, device=device)
 
     assert util.equal(torch.nn.functional.linear(input, weight), trident.function.linear(input, weight))
 
-    bias = torch.randn(n_size, **factory_kwargs)
+    bias = torch.randn(n_size, device=device)
 
     assert util.equal(torch.nn.functional.linear(input, weight, bias), trident.function.linear(input, weight, bias))
 
 
 @pytest.mark.parametrize("m_size, n_size, k_size", [(256, 512, 32), (200, 120, 15)])
 def test_backward(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
-    input = torch.randn(m_size, k_size, **factory_kwargs)
-    weight = torch.randn(n_size, k_size, **factory_kwargs)
-    target = torch.randn(m_size, n_size, **factory_kwargs)
+    input = torch.randn(m_size, k_size, device=device)
+    weight = torch.randn(n_size, k_size, device=device)
+    target = torch.randn(m_size, n_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -55,7 +53,7 @@ def test_backward(m_size, n_size, k_size, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
 
-    bias = torch.randn(n_size, **factory_kwargs)
+    bias = torch.randn(n_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -78,8 +76,8 @@ def test_backward(m_size, n_size, k_size, device):
 
 
 @pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
-def test_linear(m_size, n_size, k_size, device):
-    factory_kwargs = {"device": device}
+def test_linear(m_size, n_size, k_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(m_size, k_size, **factory_kwargs)
 
     operation = trident.Linear(m_size, n_size, **factory_kwargs)

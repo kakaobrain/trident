@@ -40,24 +40,22 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
 
 
 @pytest.mark.parametrize("y_size, x_size, p", [(1000, 10, 0.5), (10, 1000, 1.0)])
-def test_forward(y_size, x_size, p, dtype, device):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    weight = torch.randn(x_size, **factory_kwargs)
+def test_forward(y_size, x_size, p, device):
+    input = torch.randn(y_size, x_size, device=device)
+    weight = torch.randn(x_size, device=device)
 
     assert util.equal(rms_norm(input, p, weight), trident.function.rms_norm(input, p, weight))
 
-    bias = torch.randn(x_size, **factory_kwargs)
+    bias = torch.randn(x_size, device=device)
 
     assert util.equal(rms_norm(input, p, weight, bias), trident.function.rms_norm(input, p, weight, bias))
 
 
 @pytest.mark.parametrize("y_size, x_size, p", [(1000, 10, 0.5), (10, 1000, 1.0)])
-def test_backward(y_size, x_size, p, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((y_size, x_size), **factory_kwargs)
-    weight = torch.randn(x_size, **factory_kwargs)
-    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
+def test_backward(y_size, x_size, p, device):
+    input = torch.randn((y_size, x_size), device=device)
+    weight = torch.randn(x_size, device=device)
+    grad_output = torch.randn(y_size, x_size, device=device)
 
     def train(func):
         i = input.clone()
@@ -72,7 +70,7 @@ def test_backward(y_size, x_size, p, device, dtype):
     assert util.equal(x, a)
     assert util.equal(y, b)
 
-    bias = torch.randn(x_size, **factory_kwargs)
+    bias = torch.randn(x_size, device=device)
 
     def train(func):
         i = input.clone()

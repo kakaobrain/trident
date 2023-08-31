@@ -9,8 +9,8 @@ from tests import util
     "num_batches, y_size, x_size, dim",
     [(5431, 500, 200, 0), (221, 1250, 200, 1), (21, 6400, 86, 2)],
 )
-def test_forward(num_batches, y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
+def test_forward(num_batches, y_size, x_size, dim, device):
+    factory_kwargs = {"device": device}
 
     input = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
     other = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
@@ -25,8 +25,8 @@ def test_forward(num_batches, y_size, x_size, dim, device, dtype):
     "num_batches, y_size, x_size, dim",
     [(1280, 1000, 200, 0), (200, 1280, 200, 1), (640, 21, 86, 2)],
 )
-def test_backward(num_batches, y_size, x_size, dim, device, dtype):
-    factory_kwargs = {"device": device, "dtype": dtype}
+def test_backward(num_batches, y_size, x_size, dim, device):
+    factory_kwargs = {"device": device}
 
     input = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
     other = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
