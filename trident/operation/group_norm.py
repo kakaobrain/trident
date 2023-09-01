@@ -27,18 +27,25 @@ class GroupNorm(torch.autograd.Function):
     @staticmethod
     def setup_context(ctx, inputs, output):
         input, num_groups, weight, bias, eps = inputs
-        ctx.save_for_backward(input, weight, bias)
+        _, rstd, mean = output
+        ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.num_groups = num_groups
-        ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return GroupNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.num_groups, ctx.eps)
+        grad_output, _, _ = grad_outputs
+        input, weight, bias, rstd, mean = ctx.saved_tensors
+        return GroupNorm.__backward(grad_output, input, weight, bias, rstd, mean, ctx.num_groups)
 
     @staticmethod
-    def __forward(input, num_groups, weight, bias, eps):
+    def __forward(
+        input: torch.Tensor, num_groups: torch.int, weight: torch.Tensor, bias: torch.Tensor, eps: torch.float
+    ):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
         num_batches, y_size, x_size = input.shape
         output = torch.zeros_like(input)
+        rstd = torch.empty((num_batches, num_groups), **factory_kwargs)
+        mean = torch.empty((num_batches, num_groups), **factory_kwargs)
 
         def grid(meta):
             return (num_batches * num_groups,)
@@ -46,22 +53,34 @@ class GroupNorm(torch.autograd.Function):
         kernel.GroupNorm.forward[grid](
             output,
             input,
+            rstd,
+            mean,
             y_size,
             x_size,
             num_groups,
             weight,
             bias,
             eps,
-            group_block_size=triton.next_power_of_2(y_size // num_groups),
-            dtype=util.dtype(input.dtype),
+            util.dtype(input.dtype),
+            triton.next_power_of_2(y_size // num_groups),
+            triton.next_power_of_2(x_size),
         )
-        return output.view(num_batches, y_size, x_size)
+
+        return output, rstd, mean
 
     @staticmethod
-    def __backward(grad_output, inp, weight, bias, num_groups, eps):
+    def __backward(
+        grad_output: torch.Tensor,
+        input: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+        rstd: torch.Tensor,
+        mean: torch.Tensor,
+        num_groups: torch.int,
+    ):
         factory_kwargs = {"device": grad_output.device, "dtype": grad_output.dtype}
-        num_batches, y_size, x_size = inp.shape
-        grad_input = torch.empty_like(inp)
+        num_batches, y_size, x_size = input.shape
+        grad_input = torch.empty_like(input)
 
         if weight is not None:
             grad_weight_staging = torch.empty((num_batches, y_size), **factory_kwargs)
@@ -81,16 +100,16 @@ class GroupNorm(torch.autograd.Function):
             grad_weight_staging,
             grad_bias_staging,
             grad_output,
-            inp,
+            input,
             y_size,
             x_size,
             num_groups,
             weight,
-            eps,
-            triton.next_power_of_2(x_size),
-            triton.next_power_of_2(y_size // num_groups),
+            rstd,
+            mean,
             util.dtype(grad_output.dtype),
-            num_warps=4,
+            triton.next_power_of_2(y_size // num_groups),
+            triton.next_power_of_2(x_size),
         )
 
         if weight is not None:
