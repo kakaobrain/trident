@@ -35,15 +35,16 @@ def bench_linear_forward(m_size, n_size, k_size, backend):
 
 @util.report("linear backward", ["m_size", "n_size", "k_size"], [64 * i for i in range(1, 21)])
 def bench_linear_backward(m_size, n_size, k_size, backend):
-    input = torch.randn(m_size, k_size, device="cuda")
+    input = torch.randn(m_size, k_size, device="cuda", requires_grad=True)
+    weight = torch.randn(n_size, k_size, device="cuda", requires_grad=True)
+    bias = torch.randn(n_size, device="cuda", requires_grad=True)
 
     if backend == "torch":
-        operation = torch.nn.Linear(k_size, n_size, True, device="cuda")
+        output = torch.nn.functional.linear(input, weight, bias)
     else:
-        operation = trident.Linear(k_size, n_size, True)
+        output = trident.function.linear(input, weight, bias, use_accelerator=True)
 
-    output = operation.forward(input)
-    grad_output = torch.randn(output)
+    grad_output = torch.rand_like(output)
 
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
