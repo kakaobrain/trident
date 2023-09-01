@@ -157,7 +157,11 @@ def linear(
 
     See Linear for more details.
     """
-    return operation.Linear.apply(input, weight, bias, use_accelerator)
+    if input.dim() == 2:
+        output = operation.Linear.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
+        return output.view(output.shape[1:3])
+    else:
+        return operation.Linear.apply(input, weight, bias, use_accelerator)
 
 
 def max_pool2d(input, kernel_size):
