@@ -1084,7 +1084,7 @@ class SiLU(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        return operation.SiLU.apply(input)
+        return function.silu(input)
 
     def extra_repr(self):
         """

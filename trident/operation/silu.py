@@ -15,7 +15,7 @@
 import torch
 import triton
 
-from trident import kernel, math
+from trident import kernel, util
 
 
 class SiLU(torch.autograd.Function):
@@ -25,39 +25,33 @@ class SiLU(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        (inp,) = inputs
-        ctx.save_for_backward(inp)
+        (input,) = inputs
+        ctx.save_for_backward(input)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return SiLU.__backward(*grad_outputs, *ctx.saved_tensors)
+        (grad_output,) = grad_outputs
+        (input,) = ctx.saved_tensors
+        return SiLU.__backward(grad_output, input)
 
     @staticmethod
-    def __forward(inp):
-        out = torch.empty_like(inp)
-        inp_sz = inp.numel()
+    def __forward(input: torch.Tensor):
+        output = torch.empty_like(input)
 
         def grid(meta):
-            return (triton.cdiv(inp_sz, meta["inp_bs"]),)
+            return (triton.cdiv(input.numel(), meta["x_block_size"]),)
 
-        inp_bs = min(triton.next_power_of_2(inp_sz), 1024)
-        dtype = inp.dtype
+        kernel.SiLU.forward[grid](output, input, input.numel(), util.dtype(input.dtype))
 
-        kernel.SiLU.forward[grid](inp, inp_sz, out, inp_bs=inp_bs, dtype=dtype)
-
-        return out
+        return output
 
     @staticmethod
-    def __backward(grad_out, inp):
-        grad_inp = torch.empty_like(inp)
-        inp_sz = inp.numel()
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor):
+        grad_input = torch.empty_like(input)
 
         def grid(meta):
-            return (triton.cdiv(inp_sz, meta["inp_bs"]),)
+            return (triton.cdiv(input.numel(), meta["x_block_size"]),)
 
-        inp_bs = min(triton.next_power_of_2(inp_sz), 1024)
-        dtype = inp.dtype
+        kernel.SiLU.backward[grid](grad_input, grad_output, input, input.numel(), util.dtype(input.dtype))
 
-        kernel.SiLU.backward[grid](grad_out, inp, inp_sz, grad_inp, inp_bs=inp_bs, dtype=dtype)
-
-        return grad_inp, None
+        return grad_input, None
