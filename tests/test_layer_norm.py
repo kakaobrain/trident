@@ -109,3 +109,13 @@ def test_backward(y_size, x_size, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
     assert util.equal(z, c)
+
+
+@pytest.mark.parametrize("y_size, x_size", [(1, 32)])
+def test_layer_norm(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+    normalized_shape = (input.shape[-1],)
+
+    assert trident.LayerNorm(normalized_shape, **factory_kwargs).forward(input) is not None
+    assert trident.LayerNorm(normalized_shape, elementwise_affine=False, **factory_kwargs).forward(input) is not None

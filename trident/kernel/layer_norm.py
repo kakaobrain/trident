@@ -101,8 +101,8 @@ class LayerNorm:
             output += bias
 
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(1,))
-        tl.store(rstd_block_ptr, rstd)
-        tl.store(mean_block_ptr, mean)
+        tl.store(rstd_block_ptr, rstd.to(dtype))
+        tl.store(mean_block_ptr, mean.to(dtype))
 
     @staticmethod
     @triton.jit
