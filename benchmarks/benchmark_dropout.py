@@ -19,18 +19,31 @@ import util
 import trident
 
 
-@util.report("dropout forward", ["inp_sz"], [32 * i for i in range(1, 21)], {"p": 0.5})
-def bench_dropout_forward(p, inp_sz, backend):
-    inp = torch.randn(inp_sz, device="cuda")
+@util.report("dropout forward", ["x_size"], [256 * i for i in range(1, 21)], {"p": 0.5})
+def bench_dropout_forward(x_size, p, backend):
+    input = torch.randn(x_size, device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.dropout(inp, p))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.dropout(input, p))
     else:
-        return triton.testing.do_bench(lambda: trident.function.dropout(inp, p))
+        return triton.testing.do_bench(lambda: trident.function.dropout(input, p))
+
+
+@util.report("dropout backward", ["x_size"], [256 * i for i in range(1, 21)], {"p": 0.5})
+def bench_dropout_backward(x_size, p, backend):
+    input = torch.randn(x_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(x_size, device="cuda")
+
+    if backend == "torch":
+        output = torch.nn.functional.dropout(input, p)
+    else:
+        output = trident.function.dropout(input, p)
+
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_dropout_forward.run(print_data=True, show_plots=show_plots)
     else:
-        raise NotImplementedError("The backward isn't implemented.")
+        bench_dropout_backward.run(print_data=True, show_plots=show_plots)

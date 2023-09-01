@@ -269,7 +269,7 @@ class Dropout(torch.nn.Module):
         Returns:
             an output is of the same shape as input
         """
-        return operation.Dropout.apply(input, self.p) if self.training else input.clone()
+        return function.dropout(input, self.p, self.training)
 
     def extra_repr(self):
         """

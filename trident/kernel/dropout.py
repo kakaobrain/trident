@@ -15,37 +15,92 @@
 import triton
 import triton.language as tl
 
+from trident import language
+
+
+def dropout_configs():
+    configs = []
+    for x_block_size in [256, 512, 1024, 2048]:
+        for num_warps in [2, 4, 8]:
+            config = triton.Config({"x_block_size": x_block_size}, num_warps, 4)
+            configs.append(config)
+    return configs
+
 
 class Dropout:
     @staticmethod
+    @triton.autotune(dropout_configs(), ["x_size"])
     @triton.jit
-    def forward(inp_ptr, inp_sz, p, seed, out_ptr, inp_bs: tl.constexpr):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, inp_bs) + pid * inp_bs
-        msk = blk < inp_sz
-
-        inp = tl.load(inp_ptr + blk, msk)
-        rnd = tl.rand(seed, blk)
-        out = tl.where(rnd > p, inp / (1.0 - p), 0.0)
-
-        tl.store(out_ptr + blk, out, msk)
+    def forward(
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        x_size: tl.int32,
+        p: tl.float32,
+        seed: tl.int32,
+        dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
+    ):
+        x_offset = tl.program_id(0) * x_block_size
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        condition = tl.rand(seed, tl.arange(0, x_block_size) + x_offset) > p
+        output = tl.where(condition, input / (1.0 - p + language.eps), 0.0)
+        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
+    @triton.autotune(dropout_configs(), ["x_size"])
     @triton.jit
     def backward(
-        grad_out_ptr,
-        out_ptr,
-        out_sz,
-        grad_inp_ptr,
-        out_bs: tl.constexpr,
+        grad_input_ptr,
+        grad_output_ptr,
+        output_ptr,
+        x_size,
+        p: tl.float32,
+        dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, out_bs) + pid * out_bs
-        msk = blk < out_sz
-
-        grad_out = tl.load(grad_out_ptr + blk, msk)
-        out = tl.load(out_ptr + blk, msk)
-        out = tl.abs(out)
-        grad_inp = tl.where(out > 0.0, 1.0, 0.0)
-
-        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        x_offset = tl.program_id(0) * x_block_size
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
+        output = tl.load(output_block_ptr, boundary_check=(0,))
+        condition = (p == 0.0) | (output > 0.0)
+        grad_input = tl.where(condition, grad_output, 0.0)
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))

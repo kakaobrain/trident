@@ -66,7 +66,10 @@ def dropout(input, p=0.5, training=True):
 
     See Dropout for details.
     """
-    return operation.Dropout.apply(input, p) if training else input.clone()
+    if training:
+        return operation.Dropout.apply(input.view(-1, input.shape[-1]), p).view(input.shape)
+    else:
+        return input.clone()
 
 
 def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, use_accelerator: bool = False):
