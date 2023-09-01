@@ -19,18 +19,31 @@ import util
 import trident
 
 
-@util.report("silu forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 1})
-def bench_silu_forward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
+@util.report("silu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 20})
+def bench_silu_forward(y_size, x_size, backend):
+    input = torch.randn((y_size, x_size), device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.silu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.silu(input))
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.silu(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.silu(input))
+
+
+@util.report("silu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 20})
+def bench_silu_backward(y_size, x_size, backend):
+    input = torch.randn((y_size, x_size), device="cuda", requires_grad=True)
+    grad_output = torch.randn((y_size, x_size), device="cuda")
+
+    if backend == "torch":
+        output = torch.nn.functional.silu(input)
+    else:
+        output = trident.function.silu(input)
+
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_silu_forward.run(print_data=True, show_plots=show_plots)
     else:
-        raise NotImplementedError("The backward isn't implemented.")
+        bench_silu_backward.run(print_data=True, show_plots=show_plots)

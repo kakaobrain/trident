@@ -19,30 +19,33 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(1, 32), (3, 40)])
-def test_function(num_vec, vec_sz, device):
-    inp = torch.randn(num_vec, vec_sz, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(20, 10), (35, 80)])
+def test_forward(y_size, x_size, device):
+    input = torch.randn(y_size, x_size, device=device)
 
-    assert util.equal(torch.nn.functional.silu(inp), trident.function.silu(inp))
-
-
-@pytest.mark.parametrize("num_vec, vec_sz", [(20, 10), (35, 80)])
-def test_forward(num_vec, vec_sz, device):
-    inp = torch.randn(num_vec, vec_sz, device=device)
-
-    assert util.equal(torch.nn.SiLU().forward(inp), trident.SiLU().forward(inp))
+    assert util.equal(torch.nn.functional.silu(input), trident.function.silu(input))
 
 
-@pytest.mark.parametrize("num_vec, vec_sz", [(1, 64), (10, 90)])
-def test_backward(num_vec, vec_sz, device):
-    inp = torch.randn(num_vec, vec_sz, device=device)
-    tgt = torch.randn(num_vec, vec_sz, device=device)
+@pytest.mark.parametrize("y_size, x_size", [(2, 64), (10, 90)])
+def test_backward(y_size, x_size, device):
+    input = torch.randn(y_size, x_size, device=device)
+    grad_output = torch.rand_like(input)
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i).backward(grad_output, retain_graph=True)
+        return (i.grad,)
 
-    util.train(x, tgt, torch.nn.SiLU())
-    util.train(a, tgt, trident.SiLU())
+    (x,) = train(torch.nn.functional.silu)
+    (a,) = train(trident.function.silu)
 
-    assert util.equal(x.grad, a.grad)
+    assert util.equal(x, a)
+
+
+@pytest.mark.parametrize("y_size, x_size", [(1, 32)])
+def test_silu(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    assert trident.SiLU().forward(input) is not None

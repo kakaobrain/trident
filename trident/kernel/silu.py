@@ -18,42 +18,86 @@ import triton.language as tl
 from trident import language
 
 
+def silu_configs():
+    configs = []
+    for x_block_size in [256, 512, 1024, 2048]:
+        for num_warps in [2, 4, 8, 16]:
+            config = triton.Config({"x_block_size": x_block_size}, num_warps)
+            configs.append(config)
+    return configs
+
+
 class SiLU:
     @staticmethod
+    @triton.autotune(silu_configs(), ["x_size"])
     @triton.jit
     def forward(
-        inp_ptr,
-        inp_sz,
-        out_ptr,
-        inp_bs: tl.constexpr,
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        x_size: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, inp_bs) + pid * inp_bs
-        msk = blk < inp_sz
-
-        inp = tl.load(inp_ptr + blk, msk)
-        out = inp * language.sigmoid(inp, dtype)
-
-        tl.store(out_ptr + blk, out, msk)
+        x_offset = tl.program_id(0) * x_block_size
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        sigma = 1 / (1 + tl.math.fast_expf(-input.to(tl.float32)))
+        output = input * sigma
+        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
+    @triton.autotune(silu_configs(), ["x_size"])
     @triton.jit
     def backward(
-        grad_out_ptr,
-        inp_ptr,
-        inp_sz,
-        grad_inp_ptr,
-        inp_bs: tl.constexpr,
+        grad_input_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        x_size: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        pid = tl.program_id(0)
-        blk = tl.arange(0, inp_bs) + pid * inp_bs
-        msk = blk < inp_sz
-
-        grad_out = tl.load(grad_out_ptr + blk, msk)
-        inp = tl.load(inp_ptr + blk, msk)
-        sig = language.sigmoid(inp, dtype)
-        grad_inp = sig + inp * sig * (1 - sig)
-
-        tl.store(grad_inp_ptr + blk, grad_out * grad_inp, msk)
+        x_offset = tl.program_id(0) * x_block_size
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(x_size,),
+            strides=(1,),
+            offsets=(x_offset,),
+            block_shape=(x_block_size,),
+            order=(0,),
+        )
+        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        sigma = 1 / (1 + tl.math.fast_expf(-input.to(tl.float32)))
+        grad_input = grad_output * (sigma + input * sigma * (1 - sigma))
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))

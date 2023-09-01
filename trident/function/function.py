@@ -222,7 +222,7 @@ def silu(input):
 
     See SiLU for more details.
     """
-    return operation.SiLU.apply(input)
+    return operation.SiLU.apply(input.view(-1, input.shape[-1])).view(input.shape)
 
 
 def prelu(input, weight):
