@@ -48,6 +48,15 @@ class AdaptiveAvgPool2d(torch.nn.Module):
 
         return y if y.dim() == 4 else y.squeeze()
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"output_size={self.output_size}, backend=Trident"
+
     @staticmethod
     def __shape(x):
         if x.dim() == 3:
@@ -86,8 +95,10 @@ class BatchNorm1d(torch.nn.Module):
         """
         super().__init__()
 
+        self.num_features = num_features
         self.eps = eps
         self.momentum = momentum
+        self.affine = affine
         self.track_running_stats = track_running_stats
         self.device = device
         self.dtype = dtype
@@ -125,6 +136,22 @@ class BatchNorm1d(torch.nn.Module):
 
         return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{self.num_features}, "
+            f"eps={self.eps}, "
+            f"momentum={self.momentum}, "
+            f"affine={self.affine}, "
+            f"track_running_stats={self.track_running_stats}, "
+            f"backend=Trident"
+        )
+
 
 class Conv2d(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias=True):
@@ -140,6 +167,8 @@ class Conv2d(torch.nn.Module):
         super().__init__()
 
         self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
         self.weight = torch.empty(
             out_channels,
             in_channels,
@@ -161,6 +190,21 @@ class Conv2d(torch.nn.Module):
             an output (N, C, R, C) or (C, R, C)
         """
         return operation.Conv2d.apply(input, self.weight, self.bias)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{self.in_channels}, "
+            f"{self.out_channels}, "
+            f"kernel_size={self.kernel_size}, "
+            f"bias={self.bias is not None}, "
+            f"backend=Trident"
+        )
 
 
 class CosineSimilarity(torch.nn.Module):
@@ -190,9 +234,18 @@ class CosineSimilarity(torch.nn.Module):
 
         return function.cosine_similarity(x1, x2, self.dim, self.eps)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, eps={self.eps}, backend=Trident"
+
 
 class Dropout(torch.nn.Module):
-    def __init__(self, p=0.5):
+    def __init__(self, p: float = 0.5):
         """
         Applies Dropout to an input.
 
@@ -217,6 +270,15 @@ class Dropout(torch.nn.Module):
             an output is of the same shape as input
         """
         return operation.Dropout.apply(input, self.p) if self.training else input.clone()
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"p={self.p}, backend=Trident"
 
 
 class GEGLU(torch.nn.Module):
@@ -255,10 +317,28 @@ class GEGLU(torch.nn.Module):
         return function.geglu(input, self.weight, self.bias, use_accelerator)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         bound = math.sqrt(1 / self.in_features)
         util.uniform(self.weight, -bound, bound)
+
         if self.bias is not None:
             util.uniform(self.bias, -bound, bound)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"in_features={self.in_features}, "
+            f"out_features={self.out_features}, "
+            f"bias={self.bias is not None}, "
+            f"backend=Trident"
+        )
 
 
 class GELU(torch.nn.Module):
@@ -279,6 +359,15 @@ class GELU(torch.nn.Module):
             an output is of the same shape as input
         """
         return operation.GELU.apply(input)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"backend=Trident"
 
 
 class GroupNorm(torch.nn.Module):
@@ -334,9 +423,21 @@ class GroupNorm(torch.nn.Module):
         return function.group_norm(input, self.num_groups, self.weight, self.bias, self.eps)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         if self.affine:
             util.fill(self.weight, 1)
             util.zero(self.bias)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"{self.num_groups}, {self.num_channels}, eps={self.eps}, affine={self.affine}, backend=Trident"
 
 
 class InstanceNorm1d(torch.nn.Module):
@@ -412,6 +513,9 @@ class InstanceNorm1d(torch.nn.Module):
         return out.view(input.shape)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         if self.affine:
             util.fill(self.weight, 1)
             util.zero(self.bias)
@@ -419,6 +523,22 @@ class InstanceNorm1d(torch.nn.Module):
         if self.track_running_stats:
             self.running_mean.zero_()
             self.running_var.fill_(1)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{self.num_features}, "
+            f"eps={self.eps}, "
+            f"momentum={self.momentum}, "
+            f"affine={self.affine}, "
+            f"track_running_stats={self.track_running_stats}, "
+            f"backend=Trident"
+        )
 
 
 class InstanceNorm2d(torch.nn.Module):
@@ -494,6 +614,9 @@ class InstanceNorm2d(torch.nn.Module):
         return out.view(input.shape)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         if self.affine:
             util.fill(self.weight, 1)
             util.zero(self.bias)
@@ -501,6 +624,22 @@ class InstanceNorm2d(torch.nn.Module):
         if self.track_running_stats:
             self.running_mean.zero_()
             self.running_var.fill_(1)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{self.num_features}, "
+            f"eps={self.eps}, "
+            f"momentum={self.momentum}, "
+            f"affine={self.affine}, "
+            f"track_running_stats={self.track_running_stats}, "
+            f"backend=Trident"
+        )
 
 
 class LayerNorm(torch.nn.Module):
@@ -550,9 +689,26 @@ class LayerNorm(torch.nn.Module):
         return function.layer_norm(input, self.normalized_shape, self.weight, self.bias, self.eps)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         if self.elementwise_affine:
             util.fill(self.weight, 1)
             util.zero(self.bias)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{tuple(self.normalized_shape)},"
+            f" eps={self.eps},"
+            f" elementwise_affine={self.elementwise_affine},"
+            f" backend=Trident"
+        )
 
 
 class LeakyReLU(torch.nn.Module):
@@ -579,6 +735,15 @@ class LeakyReLU(torch.nn.Module):
         """
         return operation.LeakyReLU.apply(input, self.negative_slope)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"negative_slope={self.negative_slope}, backend=Trident"
+
 
 class Linear(torch.nn.Module):
     def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None):
@@ -593,6 +758,8 @@ class Linear(torch.nn.Module):
         super().__init__()
 
         factory_kwargs = {"device": device, "dtype": dtype}
+        self.in_features = in_features
+        self.out_features = out_features
         self.weight = torch.nn.Parameter(torch.empty(out_features, in_features, **factory_kwargs))
 
         if bias:
@@ -610,6 +777,20 @@ class Linear(torch.nn.Module):
             an output (*, out_features)
         """
         return function.linear(input, self.weight, self.bias, use_accelerator)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"in_features={self.in_features}, "
+            f"out_features={self.out_features}, "
+            f"bias={self.bias is not None}, "
+            f"backend=Trident"
+        )
 
 
 class Max(torch.nn.Module):
@@ -636,6 +817,15 @@ class Max(torch.nn.Module):
         """
         return function.max(input, self.dim)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, backend=Trident"
+
 
 class MaxPool2d(torch.nn.Module):
     def __init__(self, kernel_size):
@@ -660,6 +850,15 @@ class MaxPool2d(torch.nn.Module):
             an output (N, C, out_height, out_width)
         """
         return operation.MaxPool2d.apply(input, self.kernel_size)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"kernel_size={self.kernel_size}, backend=Trident"
 
 
 class Mean(torch.nn.Module):
@@ -686,6 +885,15 @@ class Mean(torch.nn.Module):
         """
         return function.mean(input, self.dim)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, backend=Trident"
+
 
 class ReLU(torch.nn.Module):
     def __init__(self):
@@ -706,6 +914,15 @@ class ReLU(torch.nn.Module):
         """
         return operation.ReLU.apply(input)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"backend=Trident"
+
 
 class PReLU(torch.nn.Module):
     def __init__(self, num_parameters=1, init=0.25, device=None, dtype=None):
@@ -717,7 +934,9 @@ class PReLU(torch.nn.Module):
             init: the initial value of weight
         """
         super().__init__()
+
         factory_kwargs = {"device": device, "dtype": dtype}
+        self.num_parameters = num_parameters
         self.weight = torch.nn.Parameter(torch.empty(num_parameters, **factory_kwargs).fill_(init))
 
     def forward(self, input):
@@ -731,6 +950,15 @@ class PReLU(torch.nn.Module):
             an output with the same dimension and shape as an input
         """
         return operation.PReLU.apply(input, self.weight)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"num_parameters={self.num_parameters}, backend=Trident"
 
 
 class RMSNorm(torch.nn.Module):
@@ -772,9 +1000,28 @@ class RMSNorm(torch.nn.Module):
         return function.rms_norm(input, self.p, self.weight, self.bias, self.eps)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         util.fill(self.weight, 1.0)
+
         if self.bias is not None:
             util.zero(self.bias)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{tuple(self.normalized_shape)}, "
+            f"p={self.p}, "
+            f"eps={self.eps}, "
+            f"bias={self.bias is not None}, "
+            f"backend=Trident"
+        )
 
 
 class ShiftGELU(torch.nn.Module):
@@ -805,7 +1052,19 @@ class ShiftGELU(torch.nn.Module):
         return function.shift_gelu(input, self.bias)
 
     def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
         util.uniform(self.bias, 0.0, 1.0)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"{self.num_features}, backend=Trident"
 
 
 class SiLU(torch.nn.Module):
@@ -826,6 +1085,15 @@ class SiLU(torch.nn.Module):
             an output with the same dimension and shape as an input
         """
         return operation.SiLU.apply(input)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"backend=Trident"
 
 
 class Softmax(torch.nn.Module):
@@ -852,6 +1120,15 @@ class Softmax(torch.nn.Module):
         """
         return function.softmax(input, self.dim)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, backend=Trident"
+
 
 class Sum(torch.nn.Module):
     def __init__(self, dim=None):
@@ -876,6 +1153,15 @@ class Sum(torch.nn.Module):
             the sum of all elements in an input
         """
         return function.sum(input, self.dim)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, backend=Trident"
 
 
 class Var(torch.nn.Module):
@@ -904,6 +1190,15 @@ class Var(torch.nn.Module):
         """
         return function.var(input, self.dim, self.correction)
 
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, correction={self.correction}, backend=Trident"
+
 
 class VarMean(torch.nn.Module):
     def __init__(self, dim: int = None, correction: int = 1):
@@ -930,3 +1225,12 @@ class VarMean(torch.nn.Module):
             the variance and mean along the specified dimension in an input
         """
         return function.var_mean(input, self.dim, self.correction)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, correction={self.correction}, backend=Trident"
