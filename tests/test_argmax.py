@@ -19,8 +19,8 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(10, 2000, 0), (2000, 10, 1)])
-def test_argmax(y_size, x_size, dim, device):
+@pytest.mark.parametrize("y_size, x_size, dim", [(1000, 4, 0), (4, 2000, 1)])
+def test_forward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
 
-    assert util.equal(torch.argmax(input, dim), trident.util.argmax(input, dim))
+    assert util.equal(torch.argmax(input, dim), trident.function.argmax(input, dim))

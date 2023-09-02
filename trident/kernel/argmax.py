@@ -22,22 +22,32 @@ class Argmax:
     @staticmethod
     @triton.jit
     def forward(
-        output_ptr,
-        input_ptr,
-        y_size,
-        x_size,
-        dim: tl.constexpr,
-        block_size: tl.constexpr,
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
-        maximum, output = language.max(input_ptr, y_size, x_size, offset, dim, block_size, dtype)
+        y_offset = tl.program_id(0)
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
-            shape=(y_size if dim == 0 else x_size,),
+            shape=(y_size,),
             strides=(1,),
-            offsets=(offset,),
+            offsets=(y_offset,),
             block_shape=(1,),
             order=(0,),
         )
-        tl.store(output_block_ptr, output)
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
+        input = tl.load(input_block_ptr, boundary_check=(1, 0), padding_option="zero")
+        output = tl.argmax(input, 1)
+        tl.store(output_block_ptr, output.to(dtype))

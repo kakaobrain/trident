@@ -30,30 +30,23 @@ class Argmax(torch.autograd.Function):
         pass
 
     @staticmethod
-    def __forward(input, dim):
+    def __forward(input: torch.Tensor, dim: torch.int32):
         factory_kwargs = {"device": input.device, "dtype": torch.int64}
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = x_size
-            size_along_dim = y_size
-        else:
-            output_size = y_size
-            size_along_dim = x_size
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
+        output = torch.empty(y_size, **factory_kwargs)
 
         def grid(meta):
-            return (output_size,)
-
-        output = torch.empty(output_size, **factory_kwargs)
+            return (y_size,)
 
         kernel.Argmax.forward[grid](
             output,
             input,
             y_size,
             x_size,
-            dim,
-            util.block_size(size_along_dim, input.element_size()),
-            util.dtype(input.dtype),
+            y_stride,
+            x_stride,
+            util.dtype(output.dtype),
+            triton.next_power_of_2(x_size),
         )
 
         return output
