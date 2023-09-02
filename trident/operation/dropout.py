@@ -15,7 +15,7 @@
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class Dropout(torch.autograd.Function):
@@ -25,45 +25,37 @@ class Dropout(torch.autograd.Function):
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        ctx.save_for_backward(output)
+        input, p = inputs
+        ctx.save_for_backward(input, output)
+        ctx.p = p
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        (grad_out,) = grad_outputs
-        (out,) = ctx.saved_tensors
-        return Dropout.__backward(grad_out, out)
+        (grad_output,) = grad_outputs
+        (input, output) = ctx.saved_tensors
+        return Dropout.__backward(grad_output, input, output, ctx.p)
 
     @staticmethod
-    def __forward(inp, p):
-        inp_sz = inp.numel()
+    def __forward(input: torch.Tensor, p: torch.float32):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        x_size = input.numel()
+        output = torch.empty(x_size, **factory_kwargs)
 
         def grid(meta):
-            return (triton.cdiv(inp_sz, meta["inp_bs"]),)
+            return (triton.cdiv(x_size, meta["x_block_size"]),)
 
-        out = torch.empty_like(inp)
-        kernel.Dropout.forward[grid](
-            inp,
-            inp_sz,
-            p,
-            torch.random.seed(),
-            out,
-            inp_bs=min(triton.next_power_of_2(inp_sz), 1024),
-        )
-        return out
+        kernel.Dropout.forward[grid](output, input, x_size, p, torch.random.seed(), util.dtype(output.dtype))
+
+        return output
 
     @staticmethod
-    def __backward(grad_out, out):
-        out_sz = out.numel()
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor, output: torch.Tensor, p: torch.float32):
+        x_size = input.numel()
+        grad_input = torch.empty_like(input)
 
         def grid(meta):
-            return (triton.cdiv(out_sz, meta["out_bs"]),)
+            return (triton.cdiv(x_size, meta["x_block_size"]),)
 
-        grad_inp = torch.empty_like(out)
-        kernel.Dropout.backward[grid](
-            grad_out,
-            out,
-            out_sz,
-            grad_inp,
-            out_bs=min(triton.next_power_of_2(out_sz), 1024),
-        )
-        return grad_inp, None, None
+        kernel.Dropout.backward[grid](grad_input, grad_output, output, x_size, p, util.dtype(grad_input.dtype))
+
+        return grad_input, None, None

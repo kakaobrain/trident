@@ -21,7 +21,7 @@ import trident
 
 @util.report("silu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 20})
 def bench_silu_forward(y_size, x_size, backend):
-    input = torch.randn((y_size, x_size), device="cuda")
+    input = torch.randn(y_size, x_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.silu(input))
@@ -31,8 +31,8 @@ def bench_silu_forward(y_size, x_size, backend):
 
 @util.report("silu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 20})
 def bench_silu_backward(y_size, x_size, backend):
-    input = torch.randn((y_size, x_size), device="cuda", requires_grad=True)
-    grad_output = torch.randn((y_size, x_size), device="cuda")
+    input = torch.randn(y_size, x_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(y_size, x_size, device="cuda")
 
     if backend == "torch":
         output = torch.nn.functional.silu(input)

@@ -19,30 +19,33 @@ import trident
 from tests import util
 
 
-def test_function(device):
-    inp = torch.randn(8, device=device)
-    p = 0.0
+@pytest.mark.parametrize("x_size, p", [(256, 0.0), (512, 1.0)])
+def test_forward(x_size, p, device):
+    input = torch.randn(x_size, device=device)
 
-    assert util.equal(torch.nn.functional.dropout(inp, p), trident.function.dropout(inp, p))
-
-
-def test_forward(device):
-    inp = torch.randn(16, device=device)
-    p = 1.0
-
-    assert util.equal(torch.nn.Dropout(p).forward(inp), trident.Dropout(p).forward(inp))
+    assert util.equal(torch.nn.functional.dropout(input, p), trident.function.dropout(input, p))
 
 
-@pytest.mark.parametrize("p", [0.0, 1.0])
-def test_backward(p, device):
-    inp = torch.randn(8, device=device)
-    tgt = torch.randn(8, device=device)
+@pytest.mark.parametrize("x_size, p", [(256, 0.0), (512, 1.0)])
+def test_backward(x_size, p, device):
+    input = torch.randn(x_size, device=device)
+    grad_output = torch.rand_like(input)
 
-    x = inp.clone()
-    a = inp.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = input.clone()
+        i.requires_grad = True
+        func(i, p).backward(grad_output, retain_graph=True)
+        return (i.grad,)
 
-    util.train(x, tgt, torch.nn.Dropout(p))
-    util.train(a, tgt, trident.Dropout(p))
+    (x,) = train(torch.nn.functional.dropout)
+    (a,) = train(trident.function.dropout)
 
-    assert util.equal(x.grad, a.grad)
+    assert util.equal(x, a)
+
+
+@pytest.mark.parametrize("x_size, p", [(16, 0.7)])
+def test_dropout(x_size, p, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(x_size, **factory_kwargs)
+
+    assert trident.Dropout(p).forward(input) is not None
