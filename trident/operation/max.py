@@ -14,8 +14,9 @@
 
 
 import torch
+import triton
 
-from trident import kernel, math, util
+from trident import kernel, util
 
 
 class Max(torch.autograd.Function):
@@ -27,72 +28,56 @@ class Max(torch.autograd.Function):
     @staticmethod
     def setup_context(ctx, inputs, output):
         input, dim = inputs
-        output, indices = output
-        ctx.save_for_backward(input, output, indices)
+        output, argmax = output
+        ctx.save_for_backward(input, output, argmax)
         ctx.dim = dim
 
     @staticmethod
     def backward(ctx, *grad_outputs):
         grad_output, grad_argmax = grad_outputs
         input, output, argmax = ctx.saved_tensors
-        return Max.__backward(grad_output, argmax, input, ctx.dim)
+        return Max.__backward(grad_output, input, argmax, ctx.dim)
 
     @staticmethod
-    def __forward(input, dim):
-        y_size, x_size = input.shape
-
-        if dim == 0:
-            output_size = x_size
-            size_along_dim = y_size
-        else:
-            output_size = y_size
-            size_along_dim = x_size
+    def __forward(input: torch.Tensor, dim: torch.int32):
+        factory_kwargs = {"device": input.device}
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
+        output = torch.empty(y_size, **factory_kwargs, dtype=input.dtype)
+        argmax = torch.empty(y_size, **factory_kwargs, dtype=torch.int64)
 
         def grid(meta):
-            return (output_size,)
-
-        output = torch.empty(output_size, device=input.device, dtype=input.dtype)
-        indices = torch.empty(output_size, device=input.device, dtype=torch.int64)
+            return (y_size,)
 
         kernel.Max.forward[grid](
             output,
-            indices,
+            argmax,
             input,
             y_size,
             x_size,
-            dim,
-            util.block_size(size_along_dim, input.element_size()),
-            util.dtype(input.dtype),
-            num_warps=4,
+            y_stride,
+            x_stride,
+            triton.next_power_of_2(x_size),
         )
 
-        return output, indices
+        return output, argmax
 
     @staticmethod
-    def __backward(grad_output, indices, input, dim):
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor, argmax: torch.Tensor, dim: torch.int32):
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
         grad_input = torch.zeros_like(input)
 
-        y_size, x_size = grad_input.shape
-
-        if dim == 0:
-            size_along_dim = y_size
-            grad_output_size = x_size
-        else:
-            size_along_dim = x_size
-            grad_output_size = y_size
-
         def grid(meta):
-            return (grad_output_size,)
+            return (y_size,)
 
         kernel.Max.backward[grid](
             grad_input,
             grad_output,
-            indices,
+            argmax,
             y_size,
             x_size,
-            dim,
-            util.block_size(size_along_dim, grad_input.element_size()),
-            util.dtype(input.dtype),
+            y_stride,
+            x_stride,
+            triton.next_power_of_2(x_size),
         )
 
         return grad_input, None, None

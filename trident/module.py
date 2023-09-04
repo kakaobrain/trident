@@ -811,7 +811,7 @@ class Linear(torch.nn.Module):
 
 
 class Max(torch.nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim: torch.int32):
         """
         Computes the max along the specified dimension in an input.
 
@@ -822,7 +822,7 @@ class Max(torch.nn.Module):
 
         self.dim = dim
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Computes the max along the specified dimension in an input.
 
