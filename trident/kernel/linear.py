@@ -27,8 +27,8 @@ def linear_configs():
                     config = triton.Config(
                         {
                             "m_block_size": m_block_size,
-                            "k_block_size": k_block_size,
                             "n_block_size": n_block_size,
+                            "k_block_size": k_block_size,
                         },
                         2 if k_block_size <= 64 else 4,
                         num_stages,
@@ -39,13 +39,13 @@ def linear_configs():
 
 def linear_configs_for_backward_bias():
     configs = []
-    for block_size in [32, 64, 128, 256]:
+    for m_block_size in [32, 64, 128, 256]:
         for num_stages in [2, 3]:
             config = triton.Config(
                 {
-                    "block_size": block_size,
+                    "m_block_size": m_block_size,
                 },
-                2 if block_size <= 64 else 4,
+                2 if m_block_size <= 64 else 4,
                 num_stages,
             )
             configs.append(config)
@@ -61,24 +61,28 @@ class Linear:
         input_ptr: tl.tensor,
         weight_ptr: tl.tensor,
         bias_ptr: tl.tensor,
-        m_size: int,
-        n_size: int,
-        k_size: int,
+        m_size: tl.int32,
+        n_size: tl.int32,
+        k_size: tl.int32,
         use_accelerator: tl.constexpr,
+        dtype: tl.constexpr,
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
-        dtype: tl.constexpr,
     ):
         pid = tl.program_id(0)
+        num_m_blocks = tl.cdiv(m_size, m_block_size)
         num_n_blocks = tl.cdiv(n_size, n_block_size)
-        m_block = pid // num_n_blocks
-        n_block = pid % num_n_blocks
+        num_blocks = num_m_blocks * num_n_blocks
+        batch = pid // num_blocks
+        block = pid % num_blocks
+        m_block = block // num_n_blocks
+        n_block = block % num_n_blocks
         m_offset = m_block * m_block_size
         n_offset = n_block * n_block_size
 
         output = language.Linear.forward(
-            input_ptr,
+            input_ptr + batch * m_size * k_size,
             weight_ptr,
             bias_ptr,
             m_size,
@@ -93,7 +97,7 @@ class Linear:
             dtype,
         )
         output_block_ptr = tl.make_block_ptr(
-            output_ptr,
+            output_ptr + batch * m_size * n_size,
             shape=(m_size, n_size),
             strides=(n_size, 1),
             offsets=(m_offset, n_offset),
@@ -109,24 +113,28 @@ class Linear:
         grad_input_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         weight_ptr: tl.tensor,
-        m_size: int,
-        n_size: int,
-        k_size: int,
+        m_size: tl.int32,
+        n_size: tl.int32,
+        k_size: tl.int32,
         use_accelerator: tl.constexpr,
+        dtype: tl.constexpr,
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
-        dtype: tl.constexpr,
     ):
         pid = tl.program_id(0)
+        num_m_blocks = tl.cdiv(m_size, m_block_size)
         num_k_blocks = tl.cdiv(k_size, k_block_size)
-        m_block = pid // num_k_blocks
-        k_block = pid % num_k_blocks
+        num_blocks = num_m_blocks * num_k_blocks
+        batch = pid // num_blocks
+        block = pid % num_blocks
+        m_block = block // num_k_blocks
+        k_block = block % num_k_blocks
         m_offset = m_block * m_block_size
         k_offset = k_block * k_block_size
 
         grad_input = language.Linear.backward(
-            grad_output_ptr,
+            grad_output_ptr + batch * m_size * n_size,
             weight_ptr,
             m_size,
             n_size,
@@ -140,7 +148,7 @@ class Linear:
             dtype,
         )
         grad_input_block_ptr = tl.make_block_ptr(
-            grad_input_ptr,
+            grad_input_ptr + batch * m_size * k_size,
             shape=(m_size, k_size),
             strides=(k_size, 1),
             offsets=(m_offset, k_offset),
@@ -153,28 +161,32 @@ class Linear:
     @triton.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def backward_weight(
-        grad_weight_ptr: tl.tensor,
+        grad_weight_staging_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         input_ptr: tl.tensor,
-        m_size: int,
-        n_size: int,
-        k_size: int,
+        m_size: tl.int32,
+        n_size: tl.int32,
+        k_size: tl.int32,
         use_accelerator: tl.constexpr,
+        dtype: tl.constexpr,
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
-        dtype: tl.constexpr,
     ):
         pid = tl.program_id(0)
+        num_n_blocks = tl.cdiv(n_size, n_block_size)
         num_k_blocks = tl.cdiv(k_size, k_block_size)
-        n_block = pid // num_k_blocks
-        k_block = pid % num_k_blocks
+        num_blocks = num_n_blocks * num_k_blocks
+        batch = pid // num_blocks
+        block = pid % num_blocks
+        n_block = block // num_k_blocks
+        k_block = block % num_k_blocks
         n_offset = n_block * n_block_size
         k_offset = k_block * k_block_size
 
         grad_weight = language.Linear.backward_weight(
-            grad_output_ptr,
-            input_ptr,
+            grad_output_ptr + batch * m_size * n_size,
+            input_ptr + batch * m_size * k_size,
             m_size,
             n_size,
             k_size,
@@ -186,30 +198,39 @@ class Linear:
             k_block_size,
             dtype,
         )
-        grad_weight_block_ptr = tl.make_block_ptr(
-            grad_weight_ptr,
+        grad_weight_staging_block_ptr = tl.make_block_ptr(
+            grad_weight_staging_ptr + batch * n_size * k_size,
             shape=(n_size, k_size),
             strides=(k_size, 1),
             offsets=(n_offset, k_offset),
             block_shape=(n_block_size, k_block_size),
             order=(1, 0),
         )
-        tl.store(grad_weight_block_ptr, grad_weight, boundary_check=(0, 1))
+        tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
 
     @staticmethod
     @triton.autotune(configs=linear_configs_for_backward_bias(), key=["m_size", "n_size"])
     @triton.jit
     def backward_bias(
-        grad_bias_ptr: tl.tensor,
+        grad_bias_staging_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
-        m_size: int,
-        n_size: int,
-        block_size: tl.constexpr,
+        m_size: tl.int32,
+        n_size: tl.int32,
         dtype: tl.constexpr,
+        m_block_size: tl.constexpr,
     ):
-        n_offset = tl.program_id(0)
-        grad_bias = language.Linear.backward_bias(grad_output_ptr, m_size, n_size, n_offset, block_size, dtype)
-        grad_bias_block_ptr = tl.make_block_ptr(
-            grad_bias_ptr, shape=(n_size,), strides=(1,), offsets=(n_offset,), block_shape=(1,), order=(0,)
+        pid = tl.program_id(0)
+        batch = pid // n_size
+        n_offset = pid % n_size
+        grad_bias = language.Linear.backward_bias(
+            grad_output_ptr + batch * m_size * n_size, m_size, n_size, n_offset, m_block_size, dtype
         )
-        tl.store(grad_bias_block_ptr, grad_bias)
+        grad_bias_staging_block_ptr = tl.make_block_ptr(
+            grad_bias_staging_ptr + batch * n_size,
+            shape=(n_size,),
+            strides=(1,),
+            offsets=(n_offset,),
+            block_shape=(1,),
+            order=(0,),
+        )
+        tl.store(grad_bias_staging_block_ptr, grad_bias)
