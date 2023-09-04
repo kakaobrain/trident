@@ -71,7 +71,10 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
 @pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
 def test_linear(m_size, n_size, k_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(m_size, k_size, **factory_kwargs)
+    input = torch.randn(m_size, k_size, **factory_kwargs, requires_grad=True)
+    weight = torch.randn(n_size, k_size, **factory_kwargs, requires_grad=True)
+    bias = torch.randn(n_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(m_size, n_size, **factory_kwargs)
 
     operation = trident.Linear(m_size, n_size, **factory_kwargs)
     output = operation.forward(input)
@@ -80,3 +83,9 @@ def test_linear(m_size, n_size, k_size, device, dtype):
     operation = trident.Linear(m_size, n_size, False, **factory_kwargs)
     output = operation.forward(input)
     assert output is not None and output.dtype == dtype
+
+    trident.function.linear(input, weight, bias).backward(grad_output, retain_graph=True)
+
+    assert input.grad is not None and input.grad.dtype == dtype
+    assert weight.grad is not None and weight.grad.dtype == dtype
+    assert bias.grad is not None and bias.grad.dtype == dtype
