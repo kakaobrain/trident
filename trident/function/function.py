@@ -28,6 +28,13 @@ def adaptive_avg_pool2d(input, output_size):
     return operation.AdaptiveAvgPool2d.apply(input, output_size)
 
 
+def argmax(input: torch.Tensor, dim: torch.int32):
+    """
+    Returns the indices of the maximum value of all elements in an input.
+    """
+    return operation.Argmax.apply(input, dim)
+
+
 def batch_norm(input, running_mean=None, running_var=None, eps=1e-05, training=False):
     """
     Applies Batch Normalization for last certain number of dimensions.
@@ -82,7 +89,7 @@ def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, 
     return output
 
 
-def gelu(input, approximate="none"):
+def gelu(input: torch.Tensor):
     """
     Applies the Gaussian Error Linear Units to an input.
 

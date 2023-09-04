@@ -19,10 +19,6 @@ import triton.language as tl
 from trident import math, module, operation
 
 
-def argmax(input, dim):
-    return operation.Argmax.apply(input, dim)
-
-
 def fill(inp, val):
     with torch.no_grad():
         return inp.fill_(val)

@@ -348,7 +348,7 @@ class GELU(torch.nn.Module):
         """
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies the Gaussian Error Linear Units to an input.
 
@@ -358,7 +358,7 @@ class GELU(torch.nn.Module):
         Returns:
             an output is of the same shape as input
         """
-        return operation.GELU.apply(input)
+        return function.gelu(input)
 
     def extra_repr(self):
         """

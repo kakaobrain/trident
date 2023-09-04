@@ -36,25 +36,25 @@ class GELU(torch.autograd.Function):
         return GELU.__backward(grad_output, input)
 
     @staticmethod
-    def __forward(input):
+    def __forward(input: torch.Tensor):
         x_size = input.numel()
         output = torch.empty_like(input)
 
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
-        kernel.GELU.forward[grid](output, input, x_size, dtype=util.dtype(input.dtype))
+        kernel.GELU.forward[grid](output, input, x_size, util.dtype(output.dtype))
 
         return output
 
     @staticmethod
-    def __backward(grad_output, input):
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor):
         x_size = input.numel()
         grad_input = torch.empty_like(input)
 
         def grid(meta):
             return [triton.cdiv(x_size, meta["x_block_size"])]
 
-        kernel.GELU.backward[grid](grad_input, grad_output, input, x_size, dtype=util.dtype(input.dtype))
+        kernel.GELU.backward[grid](grad_input, grad_output, input, x_size, util.dtype(grad_input.dtype))
 
         return grad_input
