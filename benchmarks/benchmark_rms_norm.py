@@ -42,9 +42,10 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
 @util.report(
     "rms norm forward", ["num_batches"], [8 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
 )
-def bench_rms_norm_forward(num_batches, y_size, x_size, p, backend):
-    input = torch.randn(num_batches * y_size, x_size, device="cuda")
-    weight = torch.randn(x_size, device="cuda")
+def bench_rms_norm_forward(num_batches, y_size, x_size, p, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(num_batches * y_size, x_size, **factory_kwargs)
+    weight = torch.randn(x_size, **factory_kwargs)
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: rms_norm(input, p, weight))
@@ -55,10 +56,11 @@ def bench_rms_norm_forward(num_batches, y_size, x_size, p, backend):
 @util.report(
     "rms norm backward", ["num_batches"], [8 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
 )
-def bench_rms_norm_backward(num_batches, y_size, x_size, p, backend):
-    input = torch.randn(num_batches * y_size, x_size, device="cuda", requires_grad=True)
-    weight = torch.randn(x_size, device="cuda", requires_grad=True)
-    grad_output = torch.randn(num_batches * y_size, x_size, device="cuda")
+def bench_rms_norm_backward(num_batches, y_size, x_size, p, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(num_batches * y_size, x_size, **factory_kwargs, requires_grad=True)
+    weight = torch.randn(x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(num_batches * y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
         output = rms_norm(input, p, weight)
@@ -68,8 +70,8 @@ def bench_rms_norm_backward(num_batches, y_size, x_size, p, backend):
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_rms_norm_forward.run(print_data=True, show_plots=show_plots)
+        bench_rms_norm_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_rms_norm_backward.run(print_data=True, show_plots=show_plots)
+        bench_rms_norm_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)

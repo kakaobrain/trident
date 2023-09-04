@@ -12,7 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import torch
 import triton
+
+
+def dtype(input: str):
+    if input == "float32":
+        return torch.float32
+    elif input == "float16":
+        return torch.float16
+    elif input == "bfloat16":
+        return torch.bfloat16
+    else:
+        raise ValueError(f"Unable to convert the given input: '{input}'.")
 
 
 def make_benchmark(title, x_names, x_vals, args):

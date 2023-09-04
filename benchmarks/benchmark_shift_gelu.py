@@ -24,9 +24,10 @@ def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
 
 
 @util.report("shift gelu forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
-def bench_shift_gelu_forward(num_batches, y_size, x_size, backend):
-    input = torch.randn(num_batches, y_size, x_size, device="cuda")
-    bias = torch.randn(x_size, device="cuda")
+def bench_shift_gelu_forward(num_batches, y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
+    bias = torch.randn(x_size, **factory_kwargs)
 
     if backend == "torch":
         return triton.testing.do_bench(lambda: shift_gelu(bias, input))
@@ -35,10 +36,11 @@ def bench_shift_gelu_forward(num_batches, y_size, x_size, backend):
 
 
 @util.report("shift gelu backward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
-def bench_shift_gelu_backward(num_batches, y_size, x_size, backend):
-    input = torch.randn(num_batches, y_size, x_size, device="cuda", requires_grad=True)
-    bias = torch.randn(x_size, device="cuda")
-    grad_output = torch.randn(num_batches, y_size, x_size, device="cuda")
+def bench_shift_gelu_backward(num_batches, y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs, requires_grad=True)
+    bias = torch.randn(x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
         output = shift_gelu(input, bias)
@@ -48,8 +50,8 @@ def bench_shift_gelu_backward(num_batches, y_size, x_size, backend):
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_shift_gelu_forward.run(print_data=True, show_plots=show_plots)
+        bench_shift_gelu_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_shift_gelu_backward.run(print_data=True, show_plots=show_plots)
+        bench_shift_gelu_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)

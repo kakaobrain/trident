@@ -23,10 +23,10 @@ from trident import kernel, util
 class BatchNorm(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
-        input, weight, bias, eps, running_mean, running_var = args
+        input, running_mean, running_var, weight, bias, eps = args
 
         util.push_trace("BatchNorm.__forward")
-        output = BatchNorm.__forward(input, weight, bias, eps, running_mean, running_var)
+        output = BatchNorm.__forward(input, running_mean, running_var, weight, bias, eps)
         util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias)
@@ -40,10 +40,10 @@ class BatchNorm(torch.autograd.Function):
         grad_input, grad_weight, grad_bias = BatchNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
         util.pop_trace()
 
-        return grad_input, grad_weight, grad_bias, None, None, None
+        return grad_input, None, None, grad_weight, grad_bias, None
 
     @staticmethod
-    def __forward(inp, wgt, bis, eps, running_mean, running_var):
+    def __forward(inp, running_mean, running_var, wgt, bis, eps):
         bt_sz, vec_sz = inp.shape
 
         def grid(meta):

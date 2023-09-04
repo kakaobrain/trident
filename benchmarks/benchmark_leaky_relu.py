@@ -20,8 +20,8 @@ import trident
 
 
 @util.report("leaky relu forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 64})
-def bench_leaky_relu_forward(y_size, x_size, backend):
-    input = torch.randn(y_size, x_size, device="cuda")
+def bench_leaky_relu_forward(y_size, x_size, dtype, backend):
+    input = torch.randn(y_size, x_size, device="cuda", dtype=dtype)
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.leaky_relu(input))
@@ -42,8 +42,8 @@ def bench_leaky_relu_backward(y_size, x_size, backend):
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots)
+        bench_leaky_relu_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
         bench_leaky_relu_backward.run(print_data=True, show_plots=show_plots)

@@ -23,7 +23,7 @@ from trident import function, operation, util
 class BatchNorm1d(torch.nn.Module):
     def __init__(
         self,
-        num_features: Tuple[int, ...],
+        num_features: int,
         eps: float = 1e-05,
         momentum: float = 0.1,
         affine: bool = True,
@@ -83,7 +83,7 @@ class BatchNorm1d(torch.nn.Module):
             self.running_mean = input.mean(axis=0) * self.momentum + self.running_mean * (1 - self.momentum)
             self.running_var = input.var(axis=0) * self.momentum + self.running_var * (1 - self.momentum)
 
-        return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps, None, None)
+        return operation.BatchNorm.apply(input, None, None, self.weight, self.bias, self.eps)
 
     def extra_repr(self):
         """

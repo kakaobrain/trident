@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import math
+from typing import Optional
 
 import torch
 
@@ -28,10 +30,12 @@ def argmax(input: torch.Tensor, dim: int):
 
 def batch_norm(
     input: torch.Tensor,
-    running_mean: torch.Tensor = None,
-    running_var: torch.Tensor = None,
-    eps: float = 1e-05,
+    running_mean: Optional[torch.Tensor],
+    running_var: Optional[torch.Tensor],
+    weight: Optional[torch.Tensor] = None,
+    bias: Optional[torch.Tensor] = None,
     training: bool = False,
+    eps: float = 1e-05,
 ):
     """
     Applies Batch Normalization for last certain number of dimensions.
@@ -43,7 +47,7 @@ def batch_norm(
     else:
         assert running_mean is not None and running_var is not None
 
-    return operation.BatchNorm.apply(input, None, None, eps, running_mean, running_var)
+    return operation.BatchNorm.apply(input, running_mean, running_var, weight, bias, eps)
 
 
 def cosine_similarity(x1: torch.Tensor, x2: torch.Tensor, dim: int = 1, eps: float = 1e-08):
@@ -101,14 +105,14 @@ def group_norm(input, num_groups, weight=None, bias=None, eps=1e-05):
 
 
 def instance_norm(
-    input,
-    running_mean=None,
-    running_var=None,
-    weight=None,
-    bias=None,
-    use_input_stats=True,
-    momentum=0.1,
-    eps=1e-05,
+    input: torch.Tensor,
+    running_mean: Optional[torch.Tensor] = None,
+    running_var: Optional[torch.Tensor] = None,
+    weight: Optional[torch.Tensor] = None,
+    bias: Optional[torch.Tensor] = None,
+    use_input_stats: bool = True,
+    momentum: float = 0.1,
+    eps: float = 1e-05,
 ):
     """
     Applies Instance Normalization for each channel in each data sample in a batch.
