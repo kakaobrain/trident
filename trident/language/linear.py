@@ -105,7 +105,7 @@ class Linear:
             block_shape=(n_block_size, k_block_size),
             order=(1, 0),
         )
-        grad_input = tl.zeros((m_block_size, k_block_size), dtype)
+        grad_input = tl.zeros((m_block_size, k_block_size), tl.float32)
 
         for n_offset in range(0, n_size, n_block_size):
             grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
@@ -114,7 +114,7 @@ class Linear:
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
             weight_block_ptr = tl.advance(weight_block_ptr, (n_block_size, 0))
 
-        return grad_input
+        return grad_input.to(dtype)
 
     @staticmethod
     @triton.jit
@@ -148,7 +148,7 @@ class Linear:
             block_shape=(m_block_size, k_block_size),
             order=(1, 0),
         )
-        grad_weight = tl.zeros((n_block_size, k_block_size), dtype)
+        grad_weight = tl.zeros((n_block_size, k_block_size), tl.float32)
 
         for m_offset in range(0, m_size, m_block_size):
             grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
@@ -157,7 +157,7 @@ class Linear:
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
             input_block_ptr = tl.advance(input_block_ptr, (m_block_size, 0))
 
-        return grad_weight
+        return grad_weight.to(dtype)
 
     @staticmethod
     @triton.jit
@@ -184,4 +184,4 @@ class Linear:
             grad_bias += grad_output
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
 
-        return tl.sum(grad_bias, 1)
+        return tl.sum(grad_bias, 1).to(dtype)
