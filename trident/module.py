@@ -282,7 +282,15 @@ class Dropout(torch.nn.Module):
 
 
 class GEGLU(torch.nn.Module):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        use_accelerator: bool = False,
+        device=None,
+        dtype=None,
+    ):
         """
         Applies Linear Transformation to an input.
 
@@ -303,18 +311,18 @@ class GEGLU(torch.nn.Module):
         else:
             self.register_parameter("bias", None)
 
+        self.use_accelerator = use_accelerator
         self.reset_parameters()
 
-    def forward(self, input: torch.Tensor, use_accelerator: bool = False):
+    def forward(self, input: torch.Tensor):
         """
         Args:
             input: an input (*, in_features)
-            use_accelerator: whether to use acceleration
 
         Returns:
             an output (*, out_features)
         """
-        return function.geglu(input, self.weight, self.bias, use_accelerator)
+        return function.geglu(input, self.weight, self.bias, self.use_accelerator)
 
     def reset_parameters(self):
         """
@@ -746,7 +754,15 @@ class LeakyReLU(torch.nn.Module):
 
 
 class Linear(torch.nn.Module):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        use_accelerator: bool = False,
+        device=None,
+        dtype=None,
+    ):
         """
         Applies Linear Transformation to an input.
 
@@ -767,16 +783,17 @@ class Linear(torch.nn.Module):
         else:
             self.register_parameter("bias", None)
 
-    def forward(self, input: torch.Tensor, use_accelerator: bool = False):
+        self.use_accelerator = use_accelerator
+
+    def forward(self, input: torch.Tensor):
         """
         Args:
             input: an input (*, in_features)
-            use_accelerator: whether to use acceleration
 
         Returns:
             an output (*, out_features)
         """
-        return function.linear(input, self.weight, self.bias, use_accelerator)
+        return function.linear(input, self.weight, self.bias, self.use_accelerator)
 
     def extra_repr(self):
         """
