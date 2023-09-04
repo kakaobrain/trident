@@ -80,7 +80,9 @@ def test_geglu(m_size, n_size, k_size, device, dtype):
     input = torch.randn(m_size, k_size, **factory_kwargs)
 
     operation = trident.GEGLU(m_size, n_size, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.GEGLU(m_size, n_size, False, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype

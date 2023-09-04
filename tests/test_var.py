@@ -48,4 +48,5 @@ def test_mean(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    assert trident.Var(dim).forward(input) is not None
+    output = trident.Var(dim).forward(input)
+    assert output is not None and output.dtype == dtype

@@ -62,3 +62,12 @@ def test_backward(num_vec, vec_sz, afn, device):
     if afn:
         assert util.equal(lyr0.weight.grad, lyr1.weight.grad)
         assert util.equal(lyr0.bias.grad, lyr1.bias.grad)
+
+
+@pytest.mark.parametrize("y_size, x_size, affine", [(3, 20, True)])
+def test_batch_norm(y_size, x_size, affine, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    output = trident.BatchNorm1d(x_size, affine=affine, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype

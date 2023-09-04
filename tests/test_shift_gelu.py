@@ -56,4 +56,5 @@ def test_shift_gelu(num_batches, y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
 
-    assert trident.ShiftGELU(x_size, **factory_kwargs).forward(input) is not None
+    output = trident.ShiftGELU(x_size, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype

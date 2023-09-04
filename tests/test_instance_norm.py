@@ -105,16 +105,20 @@ def test_instance_norm1d(num_channels, length, device, dtype):
     input = torch.randn(num_channels, length, **factory_kwargs)
 
     operation = trident.InstanceNorm1d(num_channels, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm1d(num_channels, affine=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm1d(num_channels, track_running_stats=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm1d(num_channels, affine=False, track_running_stats=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
 
 @pytest.mark.parametrize("num_batches, num_channels, height, width", [(1, 1, 64, 64)])
@@ -123,13 +127,17 @@ def test_instance_norm2d(num_batches, num_channels, height, width, device, dtype
     input = torch.randn(num_batches, num_channels, height, width, **factory_kwargs)
 
     operation = trident.InstanceNorm2d(num_channels, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm2d(num_channels, affine=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm2d(num_channels, track_running_stats=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.InstanceNorm2d(num_channels, affine=False, track_running_stats=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype

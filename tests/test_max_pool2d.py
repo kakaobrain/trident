@@ -19,21 +19,30 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("knl_sz", [2, 3, 4, 5, 6, 7, 8])
-def test_function(knl_sz, device):
-    inp = torch.randn(2, 3, 128, 128, device=device)
+@pytest.mark.parametrize("kernel_size", [2, 3, 4, 5, 6, 7, 8])
+def test_function(kernel_size, device):
+    input = torch.randn(2, 3, 128, 128, device=device)
 
     assert util.equal(
-        torch.nn.functional.max_pool2d(inp, knl_sz),
-        trident.function.max_pool2d(inp, knl_sz),
+        torch.nn.functional.max_pool2d(input, kernel_size),
+        trident.function.max_pool2d(input, kernel_size),
     )
 
 
-@pytest.mark.parametrize("knl_sz", [32, 64, 96, 128])
-def test_forward(knl_sz, device):
-    inp = torch.randn(10, 7, 256, 256, device=device)
+@pytest.mark.parametrize("kernel_size", [32, 64, 96, 128])
+def test_forward(kernel_size, device):
+    input = torch.randn(10, 7, 256, 256, device=device)
 
     assert util.equal(
-        torch.nn.MaxPool2d(knl_sz).forward(inp),
-        trident.MaxPool2d(knl_sz).forward(inp),
+        torch.nn.MaxPool2d(kernel_size).forward(input),
+        trident.MaxPool2d(kernel_size).forward(input),
     )
+
+
+@pytest.mark.parametrize("kernel_size", [32])
+def test_max_pool2d(kernel_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(2, 3, 128, 128, **factory_kwargs)
+
+    output = trident.MaxPool2d(kernel_size).forward(input)
+    assert output is not None and output.dtype == dtype

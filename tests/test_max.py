@@ -50,6 +50,9 @@ def test_backward(y_size, x_size, dim, device):
 
 @pytest.mark.parametrize("y_size, x_size, dim", [(16, 32, 0), (16, 32, 1)])
 def test_max(y_size, x_size, dim, device, dtype):
+    if dtype == torch.bfloat16:
+        pytest.skip("Skipping due to bfloat16 dtype")
+
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 

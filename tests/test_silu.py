@@ -48,4 +48,5 @@ def test_silu(y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
-    assert trident.SiLU().forward(input) is not None
+    output = trident.SiLU().forward(input)
+    assert output is not None and output.dtype == dtype

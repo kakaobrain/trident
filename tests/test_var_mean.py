@@ -55,5 +55,5 @@ def test_var_mean(y_size, x_size, dim, device, dtype):
 
     (x, y) = trident.VarMean(dim).forward(input)
 
-    assert x is not None
-    assert y is not None
+    assert x is not None and x.dtype == dtype
+    assert y is not None and y.dtype == dtype
