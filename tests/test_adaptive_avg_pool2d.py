@@ -19,17 +19,29 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("tgt_sz", [2, 4, 8])
-def test_function(tgt_sz, device):
-    inp = torch.randn(4, 4, 128, 128, device=device)
+@pytest.mark.parametrize("target_size", [2, 4, 8])
+def test_function(target_size, device):
+    input = torch.randn(4, 4, 128, 128, device=device)
 
     assert util.equal(
-        torch.nn.functional.adaptive_avg_pool2d(inp, tgt_sz), trident.function.adaptive_avg_pool2d(inp, tgt_sz)
+        torch.nn.functional.adaptive_avg_pool2d(input, target_size),
+        trident.function.adaptive_avg_pool2d(input, target_size),
     )
 
 
-@pytest.mark.parametrize("tgt_sz", [2, 4, 8])
-def test_forward(tgt_sz, device):
-    inp = torch.randn(2, 256, 256, device=device)
+@pytest.mark.parametrize("target_size", [2, 4, 8])
+def test_forward(target_size, device):
+    input = torch.randn(2, 256, 256, device=device)
 
-    assert util.equal(torch.nn.AdaptiveAvgPool2d(tgt_sz).forward(inp), trident.AdaptiveAvgPool2d(tgt_sz).forward(inp))
+    assert util.equal(
+        torch.nn.AdaptiveAvgPool2d(target_size).forward(input), trident.AdaptiveAvgPool2d(target_size).forward(input)
+    )
+
+
+@pytest.mark.parametrize("target_size", [4])
+def test_adaptive_avg_pool2d(target_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(2, 256, 256, **factory_kwargs)
+
+    output = trident.AdaptiveAvgPool2d(target_size).forward(input)
+    assert output is not None and output.dtype == dtype

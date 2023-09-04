@@ -44,3 +44,12 @@ def test_backward(y_size, x_size, device):
 
     assert util.equal(x.grad, a.grad)
     assert util.equal(y.weight.grad, b.weight.grad)
+
+
+@pytest.mark.parametrize("y_size, x_size", [(1, 100)])
+def test_prelu(y_size, x_size, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    output = trident.PReLU(x_size, 0.3, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype

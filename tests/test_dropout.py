@@ -48,4 +48,5 @@ def test_dropout(x_size, p, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(x_size, **factory_kwargs)
 
-    assert trident.Dropout(p).forward(input) is not None
+    output = trident.Dropout(p).forward(input)
+    assert output is not None and output.dtype == dtype

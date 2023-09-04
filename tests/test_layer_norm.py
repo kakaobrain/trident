@@ -117,5 +117,8 @@ def test_layer_norm(y_size, x_size, device, dtype):
     input = torch.randn(y_size, x_size, **factory_kwargs)
     normalized_shape = (input.shape[-1],)
 
-    assert trident.LayerNorm(normalized_shape, **factory_kwargs).forward(input) is not None
-    assert trident.LayerNorm(normalized_shape, elementwise_affine=False, **factory_kwargs).forward(input) is not None
+    output = trident.LayerNorm(normalized_shape, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype
+
+    output = trident.LayerNorm(normalized_shape, elementwise_affine=False, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype

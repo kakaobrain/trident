@@ -16,7 +16,7 @@ import pytest
 import torch
 
 
-@pytest.fixture(scope="session", params=[torch.float32, torch.float16])
+@pytest.fixture(scope="session", params=[torch.float32, torch.float16, torch.bfloat16])
 def dtype(request):
     return request.param
 

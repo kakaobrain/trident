@@ -91,7 +91,7 @@ class PReLU:
             order=(1, 0),
         )
 
-        tl.store(output_block_ptr, output, boundary_check=(0, 1))
+        tl.store(output_block_ptr, output.to(input.dtype), boundary_check=(0, 1))
 
     @staticmethod
     @triton.autotune(

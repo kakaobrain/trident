@@ -99,7 +99,9 @@ def test_group_norm(num_batches, y_size, x_size, num_groups, device, dtype):
     input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
 
     operation = trident.GroupNorm(num_groups, y_size, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype
 
     operation = trident.GroupNorm(num_groups, y_size, affine=True, **factory_kwargs)
-    assert operation.forward(input) is not None
+    output = operation.forward(input)
+    assert output is not None and output.dtype == dtype

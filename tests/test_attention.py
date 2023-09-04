@@ -55,3 +55,15 @@ def test_backward(is_causal, embedding_size, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
     assert util.equal(z, c)
+
+
+@pytest.mark.parametrize("is_causal, embedding_size", [(True, 16)])
+def test_attention(is_causal, embedding_size, device, dtype):
+    num_batches, num_heads, sequence_size = 6, 9, 1024
+    factory_kwargs = {"device": device, "dtype": dtype}
+    query = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+    key = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+    value = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+
+    output = trident.function.scaled_dot_product_attention(query, key, value, is_causal=is_causal)
+    assert output is not None and output.dtype == dtype

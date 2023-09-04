@@ -93,7 +93,11 @@ def test_rms_norm(y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn((y_size, x_size), **factory_kwargs)
 
-    assert trident.RMSNorm(x_size, **factory_kwargs).forward(input) is not None
-    assert trident.RMSNorm(x_size, 0.5, **factory_kwargs).forward(input) is not None
-    assert trident.RMSNorm(x_size, bias=True, **factory_kwargs).forward(input) is not None
-    assert trident.RMSNorm(x_size, 0.5, bias=True, **factory_kwargs).forward(input) is not None
+    output = trident.RMSNorm(x_size, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype
+    output = trident.RMSNorm(x_size, 0.5, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype
+    output = trident.RMSNorm(x_size, bias=True, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype
+    output = trident.RMSNorm(x_size, 0.5, bias=True, **factory_kwargs).forward(input)
+    assert output is not None and output.dtype == dtype

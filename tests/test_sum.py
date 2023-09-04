@@ -43,6 +43,15 @@ def test_backward(y_size, x_size, dim, device):
     assert util.equal(x, a)
 
 
+@pytest.mark.parametrize("y_size, x_size, dim", [(1, 16, 0)])
+def test_sum(y_size, x_size, dim, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs)
+
+    output = trident.Sum(dim).forward(input)
+    assert output is not None and output.dtype == dtype
+
+
 @pytest.mark.parametrize("dim", [0, 1])
 def test_sum_issue1(dim, device):
     factory_kwargs = {"device": device, "dtype": torch.float16}
