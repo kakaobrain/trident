@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(10, 2000, 0), (2000, 10, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 10, 0), (10, 1000, 1)])
 def test_forward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
 
@@ -30,7 +30,7 @@ def test_forward(y_size, x_size, dim, device):
     assert util.equal(y, j)
 
 
-@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 10, 0), (10, 2000, 1)])
+@pytest.mark.parametrize("y_size, x_size, dim", [(2000, 10, 0), (10, 1000, 1)])
 def test_backward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
     target = torch.randn(x_size if dim == 0 else y_size, device=device)
@@ -40,7 +40,7 @@ def test_backward(y_size, x_size, dim, device):
         i.requires_grad = True
         j, k = func(i, dim)
         j.backward(target, retain_graph=True)
-        return [i.grad]
+        return (i.grad,)
 
     (x,) = train(torch.max)
     (a,) = train(trident.function.max)

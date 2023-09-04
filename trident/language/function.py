@@ -75,57 +75,6 @@ def make_group_msk(blk, grp_sz, off, h):
 
 
 @triton.jit
-def max(
-    input_ptr,
-    y_size,
-    x_size,
-    offset,
-    dim: tl.constexpr,
-    block_size: tl.constexpr,
-    dtype: tl.constexpr,
-):
-    if dim == 0:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(x_size, y_size),
-            strides=(1, x_size),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = y_size
-    else:
-        input_block_ptr = tl.make_block_ptr(
-            input_ptr,
-            shape=(y_size, x_size),
-            strides=(x_size, 1),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
-        size_along_dim = x_size
-
-    output = tl.full((1,), -float("inf"), dtype)
-    index = tl.zeros((1,), tl.int32)
-
-    for block_offset in range(0, size_along_dim, block_size):
-        input = tl.load(input_block_ptr, boundary_check=(1,))
-        condition = tl.arange(0, block_size) + block_offset < size_along_dim
-        input = tl.where(condition, input, -float("inf"))
-        position = tl.argmax(input, 1) + block_offset
-        shift = position * x_size + offset if dim == 0 else position + offset * x_size
-        peak = tl.load(input_ptr + shift)
-
-        if peak > output:
-            output = peak
-            index = position
-
-        input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
-
-    return output, index.to(tl.int64)
-
-
-@triton.jit
 def norm(x, mean, std):
     return (x - mean) / std
 

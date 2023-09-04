@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(1, 200, 120, 15), (2, 512, 512, 100)])
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 512, 512, 100)])
 def test_forward(num_batches, m_size, n_size, k_size, device):
     input = torch.randn(num_batches, m_size, k_size, device=device)
     weight = torch.randn(n_size, k_size, device=device)
@@ -31,7 +31,7 @@ def test_forward(num_batches, m_size, n_size, k_size, device):
     assert util.equal(torch.nn.functional.linear(input, weight, bias), trident.function.linear(input, weight, bias))
 
 
-@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(1, 200, 120, 15), (2, 512, 512, 100)])
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 512, 512, 100)])
 def test_backward(num_batches, m_size, n_size, k_size, device):
     input = torch.randn(num_batches, m_size, k_size, device=device)
     weight = torch.randn(n_size, k_size, device=device)

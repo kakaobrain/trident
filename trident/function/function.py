@@ -183,7 +183,7 @@ def max_pool2d(input, kernel_size):
     return operation.MaxPool2d.apply(input, kernel_size)
 
 
-def max(input, dim):
+def max(input: torch.Tensor, dim: torch.int32):
     """
     Returns the max along the specified dimension in an input.
 
