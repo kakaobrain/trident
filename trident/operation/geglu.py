@@ -27,93 +27,122 @@ class GEGLU(torch.autograd.Function):
     @staticmethod
     def setup_context(ctx, inputs, output):
         input, weight, bias, use_accelerator = inputs
-        _, linear = output
-        ctx.save_for_backward(input, weight, bias, linear)
+        _, state_gate = output
+        ctx.save_for_backward(input, weight, bias, state_gate)
         ctx.use_accelerator = False
 
     @staticmethod
     def backward(ctx, *grad_outputs):
         grad_output, _ = grad_outputs
-        linear, input, weight, bias = ctx.saved_tensors
-        return GEGLU.__backward(grad_output, linear, input, weight, bias, ctx.use_accelerator)
+        input, weight, bias, state_gate = ctx.saved_tensors
+        return GEGLU.__backward(grad_output, input, weight, bias, state_gate, ctx.use_accelerator)
 
     @staticmethod
     def __forward(input, weight, bias, use_accelerator):
+        if input.dim() == 2:
+            num_batches = 1
+            m_size, k_size = input.shape
+        else:
+            num_batches, m_size, k_size = input.shape
+
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
-        m_size, k_size = input.shape
         n_size, _ = weight.shape
-        output = torch.empty((m_size, n_size), **factory_kwargs)
-        linear = torch.empty((m_size, n_size), **factory_kwargs)
+        x_size = n_size // 2
+        output = torch.empty(num_batches, m_size, x_size, **factory_kwargs)
+        state_gate = torch.empty(num_batches, m_size, n_size, **factory_kwargs)
 
         def grid(meta):
-            return (triton.cdiv(m_size, meta["m_block_size"]) * triton.cdiv(n_size, meta["n_block_size"]),)
+            num_m_blocks = triton.cdiv(m_size, meta["m_block_size"])
+            num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
+            return (num_batches * num_m_blocks * num_x_blocks,)
 
         kernel.GEGLU.forward[grid](
             output,
-            linear,
+            state_gate,
             input,
             weight,
             bias,
             m_size,
             n_size,
             k_size,
+            x_size,
             use_accelerator,
-            dtype=util.dtype(input.dtype),
+            util.dtype(input.dtype),
         )
 
-        return output, linear
+        return output, state_gate
 
     @staticmethod
-    def __backward(grad_output, input, weight, bias, linear, use_accelerator):
-        m_size, k_size = input.shape
+    def __backward(grad_output, input, weight, bias, state_gate, use_accelerator):
+        if input.dim() == 2:
+            num_batches = 1
+            m_size, k_size = input.shape
+        else:
+            num_batches, m_size, k_size = input.shape
+
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
         n_size, _ = weight.shape
+        x_size = n_size // 2
+        grad_state_gate = torch.empty_like(state_gate)
         grad_input = torch.empty_like(input)
-        grad_weight = torch.empty_like(weight)
+        grad_weight_staging = torch.empty(num_batches, n_size, k_size, **factory_kwargs)
 
         def grid(meta):
-            return (triton.cdiv(m_size, meta["m_block_size"]) * triton.cdiv(k_size, meta["k_block_size"]),)
+            return (num_batches * m_size,)
 
         kernel.GEGLU.backward[grid](
-            grad_input,
-            grad_output,
-            weight,
-            linear,
-            m_size,
-            n_size,
-            k_size,
-            use_accelerator,
-            dtype=util.dtype(input.dtype),
+            grad_state_gate, grad_output, state_gate, m_size, n_size, x_size, triton.next_power_of_2(x_size)
         )
 
         def grid(meta):
-            return (triton.cdiv(n_size, meta["n_block_size"]) * triton.cdiv(k_size, meta["k_block_size"]),)
+            num_m_blocks = triton.cdiv(m_size, meta["m_block_size"])
+            num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
+            return (num_batches * num_m_blocks * num_k_blocks,)
 
-        kernel.GEGLU.backward_weight[grid](
-            grad_weight,
-            grad_output,
-            input,
-            linear,
+        kernel.Linear.backward[grid](
+            grad_input,
+            grad_state_gate,
+            weight,
             m_size,
             n_size,
             k_size,
             use_accelerator,
-            dtype=util.dtype(input.dtype),
+            util.dtype(grad_input.dtype),
         )
 
+        def grid(meta):
+            num_n_blocks = triton.cdiv(n_size, meta["n_block_size"])
+            num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
+            return (num_batches * num_n_blocks * num_k_blocks,)
+
+        kernel.Linear.backward_weight[grid](
+            grad_weight_staging,
+            grad_state_gate,
+            input,
+            m_size,
+            n_size,
+            k_size,
+            use_accelerator,
+            util.dtype(grad_weight_staging.dtype),
+        )
+
+        grad_weight = torch.sum(grad_weight_staging, 0)
+
         if bias is not None:
-            grad_bias = torch.empty_like(bias)
+            grad_bias_staging = torch.empty(num_batches, n_size, **factory_kwargs)
 
             def grid(meta):
-                return (n_size,)
+                return (num_batches * n_size,)
 
-            kernel.GEGLU.backward_bias[grid](
-                grad_bias,
-                grad_output,
-                linear,
+            kernel.Linear.backward_bias[grid](
+                grad_bias_staging,
+                grad_state_gate,
                 m_size,
                 n_size,
-                dtype=util.dtype(input.dtype),
+                util.dtype(grad_bias_staging.dtype),
             )
+
+            grad_bias = torch.sum(grad_bias_staging, 0)
         else:
             grad_bias = None
 
