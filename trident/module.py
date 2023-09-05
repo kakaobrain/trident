@@ -451,11 +451,11 @@ class GroupNorm(torch.nn.Module):
 class InstanceNorm1d(torch.nn.Module):
     def __init__(
         self,
-        num_features,
-        eps=1e-05,
-        momentum=0.1,
-        affine=False,
-        track_running_stats=False,
+        num_features: int,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
+        affine: bool = False,
+        track_running_stats: bool = False,
         device=None,
         dtype=None,
     ):
@@ -492,7 +492,7 @@ class InstanceNorm1d(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Instance Normalization to an input.
 
@@ -502,13 +502,8 @@ class InstanceNorm1d(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        if input.dim() == 2:
-            inp = input.view(1, input.shape[0], input.shape[1])
-        else:
-            inp = input
-
-        out = function.instance_norm(
-            inp,
+        return function.instance_norm(
+            input if input.dim() == 3 else input.view(-1, *input.shape),
             self.running_mean,
             self.running_var,
             self.weight,
@@ -516,9 +511,7 @@ class InstanceNorm1d(torch.nn.Module):
             not self.track_running_stats,
             self.momentum,
             self.eps,
-        )
-
-        return out.view(input.shape)
+        ).view(input.shape)
 
     def reset_parameters(self):
         """

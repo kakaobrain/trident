@@ -12,165 +12,141 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import torch
 import triton
 
-from trident import function, kernel, util
+from trident import kernel, util
 
 
 class InstanceNorm(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        (
-            inp,
-            run_mean,
-            run_var,
-            wgt,
-            bis,
-            use_input_stats,
-            momentum,
-            eps,
-        ) = args
-
-        if use_input_stats:
-            InstanceNorm.__optimize(inp, run_mean, run_var, momentum)
-            run_mean = run_var = None
-
-        return InstanceNorm.__forward(
-            inp,
-            run_mean,
-            run_var,
-            wgt,
-            bis,
-            eps,
-        )
+        input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps = args
+        return InstanceNorm.__forward(input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        (
-            inp,
-            run_mean,
-            run_var,
-            wgt,
-            bis,
-            use_input_stats,
-            momentum,
-            eps,
-        ) = inputs
-
-        ctx.save_for_backward(inp, wgt, bis)
+        input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps = inputs
+        _, mean, var = output
+        ctx.save_for_backward(input, running_mean, running_var, weight, mean, var, weight, bias)
+        ctx.use_input_stats = use_input_stats
         ctx.eps = eps
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return InstanceNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
+        input, running_mean, running_var, weight, mean, var, weight, bias = ctx.saved_tensors
+        grad_output, _, _ = grad_outputs
+        return InstanceNorm.__backward(
+            grad_output, input, running_mean, running_var, mean, var, weight, bias, ctx.use_input_stats, ctx.eps
+        )
 
     @staticmethod
-    def __forward(inp, run_mean, run_var, wgt, bis, eps):
-        assert inp.is_contiguous()
-
-        num_bt, num_ch, vec_sz = inp.shape
-        out = torch.empty_like(inp)
+    def __forward(
+        input: torch.Tensor,
+        running_mean: torch.Tensor,
+        running_var: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+        use_input_stats: torch.bool,
+        momentum: torch.float32,
+        eps: torch.float32,
+    ):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        num_batches, y_size, x_size = input.shape
+        output = torch.empty_like(input)
+        mean = torch.empty(num_batches, y_size, **factory_kwargs)
+        var = torch.empty(num_batches, y_size, **factory_kwargs)
 
         def grid(meta):
-            return [num_bt * num_ch]
+            return (num_batches * y_size,)
 
         kernel.InstanceNorm.forward[grid](
-            inp,
-            num_ch,
-            vec_sz,
-            run_mean,
-            run_var,
-            wgt,
-            bis,
+            output,
+            mean,
+            var,
+            input,
+            y_size,
+            x_size,
+            running_mean,
+            running_var,
+            weight,
+            bias,
+            1 if use_input_stats else 0,
             eps,
-            out,
-            util.block_size(vec_sz, inp.element_size()),
-            util.dtype(inp.dtype),
-            num_warps=util.num_warps(vec_sz, inp.element_size(), 4),
+            util.dtype(input.dtype),
+            triton.next_power_of_2(x_size),
         )
 
-        return out
+        if use_input_stats and running_mean is not None and running_var is not None:
+
+            def grid(meta):
+                return (y_size,)
+
+            kernel.InstanceNorm.forward_running_mean_running_var[grid](
+                mean, var, running_mean, running_var, num_batches, y_size, momentum, triton.next_power_of_2(num_batches)
+            )
+
+        return output, mean, var
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, eps):
-        num_bt, num_ch, vec_sz = inp.shape
-        grad_inp = torch.empty_like(inp)
+    def __backward(
+        grad_output: torch.Tensor,
+        input: torch.Tensor,
+        running_mean: torch.Tensor,
+        running_var: torch.Tensor,
+        mean: torch.Tensor,
+        var: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+        use_input_stats: torch.bool,
+        eps: torch.float,
+    ):
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        num_batches, y_size, x_size = input.shape
+        grad_input = torch.empty_like(input)
 
-        if wgt is not None:
-            ctor_args = {"device": inp.device, "dtype": inp.dtype}
-            stg_grad_wgt = torch.zeros(num_bt, num_ch, **ctor_args)
+        if weight is not None:
+            grad_weight_staging = torch.zeros(num_batches, y_size, **factory_kwargs)
         else:
-            stg_grad_wgt = None
+            grad_weight_staging = None
 
-        if bis is not None:
-            ctor_args = {"device": inp.device, "dtype": inp.dtype}
-            stg_grad_bis = torch.zeros(num_bt, num_ch, **ctor_args)
+        if bias is not None:
+            grad_bias_staging = torch.zeros(num_batches, y_size, **factory_kwargs)
         else:
-            stg_grad_bis = None
+            grad_bias_staging = None
 
         def grid(meta):
-            return [num_bt * num_ch]
+            return (num_batches * y_size,)
+
+        print(running_var)
 
         kernel.InstanceNorm.backward[grid](
-            grad_out,
-            inp,
-            grad_inp,
-            num_ch,
-            vec_sz,
-            wgt,
-            stg_grad_wgt,
-            stg_grad_bis,
+            grad_input,
+            grad_weight_staging,
+            grad_bias_staging,
+            grad_output,
+            input,
+            y_size,
+            x_size,
+            running_mean,
+            running_var,
+            mean,
+            var,
+            weight,
+            1 if use_input_stats else 0,
             eps,
-            blk_sz=triton.next_power_of_2(vec_sz),
+            util.dtype(grad_input.dtype),
+            triton.next_power_of_2(x_size),
         )
 
-        if wgt is None:
-            grad_wgt = None
+        if grad_weight_staging is not None:
+            grad_weight = torch.sum(grad_weight_staging, 0)
         else:
-            grad_wgt = function.sum(stg_grad_wgt, 0)
+            grad_weight = None
 
-        if bis is None:
-            grad_bis = None
+        if grad_bias_staging is not None:
+            grad_bias = torch.sum(grad_bias_staging, 0)
         else:
-            grad_bis = function.sum(stg_grad_bis, 0)
+            grad_bias = None
 
-        return grad_inp, None, None, grad_wgt, grad_bis, None, None, None, None
-
-    @staticmethod
-    def __optimize(inp, run_mean, run_var, momentum):
-        if run_mean is None or run_var is None:
-            return
-
-        num_bt, num_ch, vec_sz = inp.shape
-        mean = torch.zeros_like(run_mean)
-        var = torch.zeros_like(run_var)
-
-        def grid(meta):
-            return [num_bt * num_ch]
-
-        kernel.InstanceNorm.mean_var[grid](
-            inp,
-            num_bt,
-            num_ch,
-            vec_sz,
-            mean,
-            var,
-            util.block_size(vec_sz, inp.element_size()),
-            util.dtype(inp.dtype),
-        )
-
-        def grid(meta):
-            return [1]
-
-        kernel.InstanceNorm.optimize[grid](
-            mean,
-            run_mean,
-            var,
-            run_var,
-            num_ch,
-            momentum,
-            triton.next_power_of_2(num_ch),
-        )
+        return grad_input, None, None, grad_weight, grad_bias, None, None, None, None
