@@ -20,14 +20,15 @@ from tests import util
 
 
 def geglu(input, weight, bias: torch.Tensor = None):
-    return torch.nn.functional.gelu(torch.nn.functional.linear(input, weight, bias))
+    state, gate = torch.nn.functional.linear(input, weight, bias).chunk(2, -1)
+    return state * torch.nn.functional.gelu(gate)
 
 
 # @pytest.mark.skip
-@pytest.mark.parametrize("m_size, n_size, k_size", [(64, 32, 64)])
-def test_forward(m_size, n_size, k_size, device):
-    input = torch.randn((m_size, k_size), device=device)
-    weight = torch.randn((n_size, k_size), device=device)
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
+def test_forward(num_batches, m_size, n_size, k_size, device):
+    input = torch.randn(m_size, k_size, device=device)
+    weight = torch.randn(n_size, k_size, device=device)
 
     assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
 
@@ -36,18 +37,19 @@ def test_forward(m_size, n_size, k_size, device):
     assert util.equal(geglu(input, weight, bias), trident.function.geglu(input, weight, bias))
 
 
-# @pytest.mark.skip
-@pytest.mark.parametrize("m_size, n_size, k_size", [(16, 32, 16)])
-def test_backward(m_size, n_size, k_size, device):
-    input = torch.randn((m_size, k_size), device=device)
-    weight = torch.randn((n_size, k_size), device=device)
-    target = torch.randn((m_size, n_size), device=device)
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
+def test_backward(num_batches, m_size, n_size, k_size, device):
+    factory_kwargs = {"device": device}
+    x_size = n_size // 2
+    input = torch.randn(num_batches, m_size, k_size, **factory_kwargs)
+    weight = torch.randn(n_size, k_size, **factory_kwargs)
+    grad_output = torch.randn(num_batches, m_size, x_size, **factory_kwargs)
 
     def train(func):
         i = input.clone()
         j = weight.clone()
         i.requires_grad = j.requires_grad = True
-        func(i, j).backward(target, retain_graph=True)
+        func(i, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
 
     (x, y) = train(geglu)
@@ -63,7 +65,7 @@ def test_backward(m_size, n_size, k_size, device):
         j = weight.clone()
         k = bias.clone()
         i.requires_grad = j.requires_grad = k.requires_grad = True
-        func(i, j, k).backward(target, retain_graph=True)
+        func(i, j, k).backward(grad_output, retain_graph=True)
         return i.grad, j.grad, k.grad
 
     (x, y, z) = train(geglu)
@@ -74,15 +76,17 @@ def test_backward(m_size, n_size, k_size, device):
     assert util.equal(z, c)
 
 
-@pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
-def test_geglu(m_size, n_size, k_size, device, dtype):
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 64, 64, 128)])
+def test_geglu(num_batches, m_size, n_size, k_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(m_size, k_size, **factory_kwargs)
+    input = torch.randn(num_batches, m_size, k_size, **factory_kwargs)
 
-    operation = trident.GEGLU(m_size, n_size, **factory_kwargs)
-    output = operation.forward(input)
-    assert output is not None and output.dtype == dtype
+    output = trident.GEGLU(m_size, n_size, **factory_kwargs).forward(input)
 
-    operation = trident.GEGLU(m_size, n_size, False, **factory_kwargs)
-    output = operation.forward(input)
-    assert output is not None and output.dtype == dtype
+    assert output is not None
+    assert output.dtype == dtype
+
+    output = trident.GEGLU(m_size, n_size, False, **factory_kwargs).forward(input)
+
+    assert output is not None
+    assert output.dtype == dtype

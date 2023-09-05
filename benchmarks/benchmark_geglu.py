@@ -19,15 +19,16 @@ import util
 import trident
 
 
-def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None):
-    return torch.nn.functional.gelu(torch.nn.functional.linear(input, weight, bias))
+def geglu(input, weight, bias: torch.Tensor = None):
+    hidden_state, gate = torch.nn.functional.linear(input, weight, bias).chunk(2, -1)
+    return hidden_state * torch.nn.functional.gelu(gate)
 
 
-@util.report("geglu forward", ["m_size", "n_size", "k_size"], [64 * i for i in range(1, 21)])
-def bench_geglu_forward(m_size, n_size, k_size, backend):
-    input = torch.randn((m_size, k_size), device="cuda")
-    weight = torch.randn((n_size, k_size), device="cuda")
-    bias = torch.randn((n_size,), device="cuda")
+@util.report("geglu forward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 11)], {"num_batches": 16})
+def bench_geglu_forward(num_batches, m_size, n_size, k_size, backend):
+    input = torch.randn(num_batches, m_size, k_size, device="cuda")
+    weight = torch.randn(n_size, k_size, device="cuda")
+    bias = torch.randn(n_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: geglu(input, weight, bias))
@@ -37,12 +38,12 @@ def bench_geglu_forward(m_size, n_size, k_size, backend):
         )
 
 
-@util.report("linear backward", ["m_size", "n_size", "k_size"], [64 * i for i in range(1, 21)])
-def bench_geglu_backward(m_size, n_size, k_size, backend):
-    input = torch.randn((m_size, k_size), device="cuda", requires_grad=True)
-    weight = torch.randn((n_size, k_size), device="cuda")
-    bias = torch.randn((n_size,), device="cuda")
-    grad_output = torch.randn((m_size, n_size), device="cuda")
+@util.report("linear backward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 11)], {"num_batches": 16})
+def bench_geglu_backward(num_batches, m_size, n_size, k_size, backend):
+    input = torch.randn(num_batches, m_size, k_size, device="cuda", requires_grad=True)
+    weight = torch.randn(n_size, k_size, device="cuda", requires_grad=True)
+    bias = torch.randn(n_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(num_batches, m_size, n_size // 2, device="cuda")
 
     if backend == "torch":
         output = geglu(input, weight, bias)

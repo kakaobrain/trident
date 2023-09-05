@@ -20,7 +20,7 @@ class GELU:
     @staticmethod
     @triton.jit
     def forward(input: tl.tensor):
-        return 0.5 * input * (1 + tl.math.tanh(0.797884560802865 * (input + 0.044715 * input * input * input)))
+        return 0.5 * input * (1 + tl.math.tanh(input * 0.7978845608028654 * (1 + 0.044715 * input * input)))
 
     @staticmethod
     @triton.jit
