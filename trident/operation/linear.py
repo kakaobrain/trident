@@ -56,6 +56,11 @@ class Linear(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(0),
+            input.stride(1),
+            input.stride(2),
+            weight.stride(0),
+            weight.stride(1),
             use_accelerator,
             util.dtype(input.dtype),
         )
@@ -82,6 +87,10 @@ class Linear(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(1),
+            input.stride(2),
+            weight.stride(0),
+            weight.stride(1),
             use_accelerator,
             util.dtype(grad_input.dtype),
         )
@@ -98,6 +107,9 @@ class Linear(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(0),
+            input.stride(1),
+            input.stride(2),
             use_accelerator,
             util.dtype(grad_weight_staging.dtype),
         )

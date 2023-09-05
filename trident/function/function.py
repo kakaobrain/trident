@@ -85,8 +85,12 @@ def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, 
 
     See GEGLU for details.
     """
-    output, _ = operation.GEGLU.apply(input, weight, bias, use_accelerator)
-    return output
+    if input.dim() == 2:
+        output, _ = operation.GEGLU.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
+        return output.view(output.shape[1:3])
+    else:
+        output, _ = operation.GEGLU.apply(input, weight, bias, use_accelerator)
+        return output
 
 
 def gelu(input: torch.Tensor):

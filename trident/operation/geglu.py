@@ -39,11 +39,7 @@ class GEGLU(torch.autograd.Function):
 
     @staticmethod
     def __forward(input, weight, bias, use_accelerator):
-        if input.dim() == 2:
-            num_batches = 1
-            m_size, k_size = input.shape
-        else:
-            num_batches, m_size, k_size = input.shape
+        num_batches, m_size, k_size = input.shape
 
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         n_size, _ = weight.shape
@@ -66,6 +62,11 @@ class GEGLU(torch.autograd.Function):
             n_size,
             k_size,
             x_size,
+            input.stride(0),
+            input.stride(1),
+            input.stride(2),
+            weight.stride(0),
+            weight.stride(1),
             use_accelerator,
             util.dtype(input.dtype),
         )
@@ -74,11 +75,7 @@ class GEGLU(torch.autograd.Function):
 
     @staticmethod
     def __backward(grad_output, input, weight, bias, state_gate, use_accelerator):
-        if input.dim() == 2:
-            num_batches = 1
-            m_size, k_size = input.shape
-        else:
-            num_batches, m_size, k_size = input.shape
+        num_batches, m_size, k_size = input.shape
 
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         n_size, _ = weight.shape
@@ -106,6 +103,10 @@ class GEGLU(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(1),
+            input.stride(2),
+            weight.stride(0),
+            weight.stride(1),
             use_accelerator,
             util.dtype(grad_input.dtype),
         )
@@ -122,6 +123,9 @@ class GEGLU(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(0),
+            input.stride(1),
+            input.stride(2),
             use_accelerator,
             util.dtype(grad_weight_staging.dtype),
         )

@@ -104,6 +104,11 @@ def uniform(input: torch.Tensor, a: float = 0.0, b: float = 1.0):
         return torch.nn.init.uniform(input, a, b)
 
 
+def calculate_fan_in_and_fan_out(input: torch.Tensor):
+    with torch.no_grad():
+        return torch.nn.init._calculate_fan_in_and_fan_out(input)
+
+
 def zero(inp):
     with torch.no_grad():
         return inp.zero_()

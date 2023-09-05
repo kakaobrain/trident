@@ -30,6 +30,11 @@ def test_forward(num_batches, m_size, n_size, k_size, device):
 
     assert util.equal(torch.nn.functional.linear(input, weight, bias), trident.function.linear(input, weight, bias))
 
+    input = input.permute(0, 2, 1)
+    weight = weight.permute(1, 0)
+
+    assert util.equal(torch.nn.functional.linear(input, weight), trident.function.linear(input, weight))
+
 
 @pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 512, 512, 100)])
 def test_backward(num_batches, m_size, n_size, k_size, device):
@@ -43,6 +48,15 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
         i.requires_grad = j.requires_grad = True
         func(i, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
+
+    (x, y) = train(torch.nn.functional.linear)
+    (a, b) = train(trident.function.linear)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+
+    input = input.permute(0, 2, 1).reshape(num_batches, m_size, k_size)
+    weight = weight.permute(1, 0).reshape(n_size, k_size)
 
     (x, y) = train(torch.nn.functional.linear)
     (a, b) = train(trident.function.linear)
