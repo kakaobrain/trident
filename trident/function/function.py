@@ -28,7 +28,7 @@ def adaptive_avg_pool2d(input, output_size):
     return operation.AdaptiveAvgPool2d.apply(input, output_size)
 
 
-def argmax(input: torch.Tensor, dim: torch.int32):
+def argmax(input: torch.Tensor, dim: int):
     """
     Returns the indices of the maximum value of all elements in an input.
     """
@@ -125,7 +125,7 @@ def instance_norm(
 
     See InstanceNorm2d for details.
     """
-    return operation.InstanceNorm.apply(
+    output, _, _ = operation.InstanceNorm.apply(
         input,
         running_mean,
         running_var,
@@ -135,6 +135,7 @@ def instance_norm(
         momentum,
         eps,
     )
+    return output
 
 
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
@@ -183,7 +184,7 @@ def max_pool2d(input, kernel_size):
     return operation.MaxPool2d.apply(input, kernel_size)
 
 
-def max(input: torch.Tensor, dim: torch.int32):
+def max(input: torch.Tensor, dim: int):
     """
     Returns the max along the specified dimension in an input.
 

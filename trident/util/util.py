@@ -91,14 +91,6 @@ def optimize_model(model):
         optimize_model(child)
 
 
-def num_warps(num_elem, elem_sz, corr=1):
-    shm_sz = shared_memory_size_per_block()
-    blk_sz = block_size(num_elem, elem_sz)
-    blk_byte_sz = blk_sz * elem_sz
-
-    return math.clamp(math.prev_pow2(shm_sz // blk_byte_sz) * corr, 4, 32)
-
-
 def uniform(input: torch.Tensor, a: float = 0.0, b: float = 1.0):
     with torch.no_grad():
         return torch.nn.init.uniform(input, a, b)
