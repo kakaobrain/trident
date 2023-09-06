@@ -713,7 +713,7 @@ class LayerNorm(torch.nn.Module):
 
 
 class LeakyReLU(torch.nn.Module):
-    def __init__(self, negative_slope=1e-2):
+    def __init__(self, negative_slope: float = 1e-2):
         """
         Applies Leaky ReLU to an input.
 
@@ -724,7 +724,7 @@ class LeakyReLU(torch.nn.Module):
 
         self.negative_slope = negative_slope
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Leaky ReLU to an input.
 
@@ -734,7 +734,7 @@ class LeakyReLU(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        return operation.LeakyReLU.apply(input, self.negative_slope)
+        return function.leaky_relu(input, self.negative_slope)
 
     def extra_repr(self):
         """

@@ -37,10 +37,6 @@ def dtype(input):
         raise ValueError(f"Unable to convert the given input: '{input}'.")
 
 
-def shared_memory_size_per_block():
-    return 64 * 1024
-
-
 def size_and_stride(input: torch.Tensor, dim: int):
     if dim == 0:
         x_size, y_size = input.shape

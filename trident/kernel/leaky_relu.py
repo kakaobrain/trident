@@ -18,53 +18,61 @@ import triton.language as tl
 from trident import language
 
 
+def leaky_relu_configs():
+    configs = []
+    for x_block_size in [256, 512, 1024, 2048]:
+        for num_stages in [4, 5]:
+            config = triton.Config({"x_block_size": x_block_size}, 2 if x_block_size <= 512 else 4, num_stages)
+            configs.append(config)
+    return configs
+
+
 class LeakyReLU:
     @staticmethod
+    @triton.autotune(leaky_relu_configs(), ["x_size"])
     @triton.jit
     def forward(
-        x_ptr,
-        x_stride,
-        y_ptr,
-        y_stride,
-        a,
-        size_1,
-        block_size: tl.constexpr,
+        output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        x_size: tl.int32,
+        negative_slope: tl.float32,
+        dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        i = tl.program_id(0)
-        j = tl.program_id(1)
-
-        block = tl.arange(0, block_size) + j * block_size
-        mask = block < size_1
-
-        x_ptr += i * x_stride + block
-        y_ptr += i * y_stride + block
-
-        x = tl.load(x_ptr, mask, 0.0)
-        y = language.leaky_relu(x, a)
-
-        tl.store(y_ptr, y, mask)
+        x_offset = tl.program_id(0) * x_block_size
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        output = language.math.LeakyReLU.forward(input, negative_slope)
+        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
+    @triton.autotune(leaky_relu_configs(), ["x_size"])
     @triton.jit
     def backward(
-        x_ptr,
-        x_stride,
-        d_ptr,
-        d_stride,
-        a,
-        size,
-        block_size: tl.constexpr,
+        grad_input_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        input_ptr: tl.tensor,
+        x_size: tl.int32,
+        negative_slope: tl.float32,
+        dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        i = tl.program_id(0)
-        j = tl.program_id(1)
-
-        block = tl.arange(0, block_size) + j * block_size
-        mask = block < size
-
-        x_ptr += i * x_stride + block
-        d_ptr += i * d_stride + block
-
-        x = tl.load(x_ptr, mask, 0.0)
-        d = tl.where(x > 0, 1, a)
-
-        tl.store(d_ptr, d, mask)
+        x_offset = tl.program_id(0) * x_block_size
+        grad_input_block_ptr = tl.make_block_ptr(
+            grad_input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr, shape=(x_size,), strides=(1,), offsets=(x_offset,), block_shape=(x_block_size,), order=(0,)
+        )
+        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
+        input = tl.load(input_block_ptr, boundary_check=(0,))
+        grad_input = language.math.LeakyReLU.backward(grad_output, input, negative_slope)
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))
