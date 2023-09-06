@@ -80,7 +80,7 @@ class PReLU:
 
         input = tl.load(input_block_ptr, boundary_check=(0, 1))
         weight = tl.load(weight_block_ptr, boundary_check=(0,))
-        output = language.leaky_relu(input, weight)
+        output = language.math.LeakyReLU.forward(input, weight)
 
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
@@ -163,9 +163,7 @@ class PReLU:
         input = tl.load(input_block_ptr, boundary_check=(0, 1))
         weight = tl.load(weight_block_ptr, boundary_check=(0,))
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1))
-
-        grad_input = tl.where(input > 0, 1, weight)
-        grad_weight = tl.where(input > 0, 0, input)
-
-        tl.store(grad_input_block_ptr, grad_input * grad_output, boundary_check=(0, 1))
-        tl.store(grad_weight_block_ptr, grad_weight * grad_output, boundary_check=(0, 1))
+        grad_input = language.math.LeakyReLU.backward(grad_output, input, weight)
+        grad_weight = grad_output * tl.where(input > 0, 0, input)
+        tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
+        tl.store(grad_weight_block_ptr, grad_weight, boundary_check=(0, 1))

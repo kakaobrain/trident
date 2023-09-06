@@ -105,8 +105,3 @@ def std(var, eps=1e-05):
 @triton.jit
 def relu(x):
     return tl.where(x > 0, x, 0)
-
-
-@triton.jit
-def leaky_relu(x, a):
-    return tl.where(x > 0, x, 0) + a * tl.where(x > 0, 0, x)

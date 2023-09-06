@@ -153,7 +153,7 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
     return output
 
 
-def leaky_relu(input, negative_slope=0.01):
+def leaky_relu(input: torch.Tensor, negative_slope: float = 0.01):
     """
     Applies Leaky ReLU to an input.
 
