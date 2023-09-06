@@ -39,14 +39,6 @@ def distance(x, dim):
 
 
 @triton.jit
-def exp(x):
-    if x.dtype is tl.float32 or x.dtype is tl.float64:
-        return tl.exp(x)
-    else:
-        return tl.exp(x.to(tl.float32))
-
-
-@triton.jit
 def make_conv2d_blk(ch_st, w_st, ch_bs, h_bs, w_bs):
     blk = tl.arange(0, w_bs)[:, None] + (tl.arange(0, h_bs) * w_st)[None, :]
     return blk[:, :, None] + (tl.arange(0, ch_bs) * ch_st)[None, None, :]
@@ -75,11 +67,6 @@ def make_group_msk(blk, grp_sz, off, h):
 
 
 @triton.jit
-def norm(x, mean, std):
-    return (x - mean) / std
-
-
-@triton.jit
 def pow2(x):
     return x * x
 
@@ -90,18 +77,5 @@ def row(idx, num_row, num_col):
 
 
 @triton.jit
-def sigmoid(x, dtype):
-    if dtype is tl.float32 or dtype is tl.float64:
-        return tl.sigmoid(x)
-    else:
-        return tl.sigmoid(x.to(tl.float32))
-
-
-@triton.jit
 def std(var, eps=1e-05):
     return tl.sqrt(var + eps)
-
-
-@triton.jit
-def relu(x):
-    return tl.where(x > 0, x, 0)
