@@ -27,7 +27,7 @@ def geglu(input, weight, bias: torch.Tensor = None):
 # @pytest.mark.skip
 @pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
 def test_forward(num_batches, m_size, n_size, k_size, device):
-    input = torch.randn(m_size, k_size, device=device)
+    input = torch.randn(num_batches, m_size, k_size, device=device)
     weight = torch.randn(n_size, k_size, device=device)
 
     assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
@@ -35,6 +35,11 @@ def test_forward(num_batches, m_size, n_size, k_size, device):
     bias = torch.randn(n_size, device=device)
 
     assert util.equal(geglu(input, weight, bias), trident.function.geglu(input, weight, bias))
+
+    input = input.permute(0, 2, 1)
+    weight = weight.permute(1, 0)
+
+    assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
 
 
 @pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
@@ -51,6 +56,15 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
         i.requires_grad = j.requires_grad = True
         func(i, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
+
+    (x, y) = train(geglu)
+    (a, b) = train(trident.function.geglu)
+
+    assert util.equal(x, a)
+    assert util.equal(y, b)
+
+    input = input.permute(0, 2, 1).reshape(num_batches, m_size, k_size)
+    weight = weight.permute(1, 0).reshape(n_size, k_size)
 
     (x, y) = train(geglu)
     (a, b) = train(trident.function.geglu)

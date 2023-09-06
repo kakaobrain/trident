@@ -20,7 +20,7 @@ from trident import language
 
 def linear_configs():
     configs = []
-    for m_block_size in [32, 64]:
+    for m_block_size in [16, 32, 64]:
         for n_block_size in [32, 64]:
             for k_block_size in [32, 64, 128, 256]:
                 for num_stages in [2, 3]:
@@ -64,6 +64,11 @@ class Linear:
         m_size: tl.int32,
         n_size: tl.int32,
         k_size: tl.int32,
+        input_batch_stride: tl.int32,
+        input_m_stride: tl.int32,
+        input_k_stride: tl.int32,
+        weight_n_stride: tl.int32,
+        weight_k_stride: tl.int32,
         use_accelerator: tl.constexpr,
         dtype: tl.constexpr,
         m_block_size: tl.constexpr,
@@ -82,12 +87,16 @@ class Linear:
         n_offset = n_block * n_block_size
 
         output = language.Linear.forward(
-            input_ptr + batch * m_size * k_size,
+            input_ptr + batch * input_batch_stride,
             weight_ptr,
             bias_ptr,
             m_size,
             n_size,
             k_size,
+            input_m_stride,
+            input_k_stride,
+            weight_n_stride,
+            weight_k_stride,
             m_offset,
             n_offset,
             use_accelerator,
@@ -116,6 +125,10 @@ class Linear:
         m_size: tl.int32,
         n_size: tl.int32,
         k_size: tl.int32,
+        input_m_stride: tl.int32,
+        input_k_stride: tl.int32,
+        weight_n_stride: tl.int32,
+        weight_k_stride: tl.int32,
         use_accelerator: tl.constexpr,
         dtype: tl.constexpr,
         m_block_size: tl.constexpr,
@@ -139,6 +152,8 @@ class Linear:
             m_size,
             n_size,
             k_size,
+            weight_n_stride,
+            weight_k_stride,
             m_offset,
             k_offset,
             use_accelerator,
@@ -150,7 +165,7 @@ class Linear:
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr + batch * m_size * k_size,
             shape=(m_size, k_size),
-            strides=(k_size, 1),
+            strides=(input_m_stride, input_k_stride),
             offsets=(m_offset, k_offset),
             block_shape=(m_block_size, k_block_size),
             order=(1, 0),
@@ -167,6 +182,9 @@ class Linear:
         m_size: tl.int32,
         n_size: tl.int32,
         k_size: tl.int32,
+        input_batch_stride: tl.int32,
+        input_m_stride: tl.int32,
+        input_k_stride: tl.int32,
         use_accelerator: tl.constexpr,
         dtype: tl.constexpr,
         m_block_size: tl.constexpr,
@@ -186,10 +204,12 @@ class Linear:
 
         grad_weight = language.Linear.backward_weight(
             grad_output_ptr + batch * m_size * n_size,
-            input_ptr + batch * m_size * k_size,
+            input_ptr + batch * input_batch_stride,
             m_size,
             n_size,
             k_size,
+            input_m_stride,
+            input_k_stride,
             n_offset,
             k_offset,
             use_accelerator,

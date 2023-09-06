@@ -777,6 +777,7 @@ class Linear(torch.nn.Module):
             self.register_parameter("bias", None)
 
         self.use_accelerator = use_accelerator
+        self.reset_parameters()
 
     def forward(self, input: torch.Tensor):
         """
@@ -801,6 +802,13 @@ class Linear(torch.nn.Module):
             f"bias={self.bias is not None}, "
             f"backend=Trident"
         )
+
+    def reset_parameters(self):
+        torch.nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = util.calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            util.uniform(self.bias, -bound, bound)
 
 
 class Max(torch.nn.Module):
