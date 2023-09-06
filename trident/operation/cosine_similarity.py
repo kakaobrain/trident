@@ -20,11 +20,25 @@ from trident import kernel, util
 
 class CosineSimilarity(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x1, x2, dim, eps):
-        return CosineSimilarity.__forward(ctx, x1, x2, dim, eps)
+    def forward(*args, **kwargs):
+        x1, x2, dim, eps = args
+        return CosineSimilarity.__forward(x1, x2, dim, eps)
 
     @staticmethod
-    def __forward(ctx, x1, x2, dim, eps):
+    def setup_context(ctx, inputs, output):
+        x1, x2, dim, eps = inputs
+        _, denominator, numerator = output
+        ctx.save_for_backward(x1, x2, denominator, numerator)
+        ctx.dim = dim
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        grad_output = grad_outputs[0]
+        x1, x2, denominator, numerator = ctx.saved_tensors
+        return CosineSimilarity.__backward(grad_output, x1, x2, denominator, numerator, ctx.dim)
+
+    @staticmethod
+    def __forward(x1: torch.Tensor, x2: torch.Tensor, dim: torch.int32, eps: torch.float32):
         assert x1.is_contiguous() and x2.is_contiguous() and x1.shape == x2.shape
 
         factory_kwargs = {"device": x1.device, "dtype": x1.dtype}
@@ -61,18 +75,10 @@ class CosineSimilarity(torch.autograd.Function):
             eps,
             size_along_dim,
             dim,
-            util.block_size(size_along_dim, x1.element_size()),
             util.dtype(x1.dtype),
         )
 
-        ctx.save_for_backward(x1, x2, denominator, numerator)
-        ctx.dim = dim
-
-        return output
-
-    @staticmethod
-    def backward(ctx, *grad_outputs):
-        return CosineSimilarity.__backward(grad_outputs[0], *ctx.saved_tensors, ctx.dim)
+        return output, denominator, numerator
 
     @staticmethod
     def __backward(grad_output, x1, x2, denominator, numerator, dim):
@@ -107,7 +113,6 @@ class CosineSimilarity(torch.autograd.Function):
             x_size,
             size_along_dim,
             dim,
-            util.block_size(size_along_dim, x1.element_size()),
             util.dtype(x1.dtype),
         )
 

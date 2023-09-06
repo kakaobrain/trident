@@ -54,13 +54,6 @@ def size_and_stride(input: torch.Tensor, dim: int):
     return y_size, x_size, y_stride, x_stride
 
 
-def block_size(num_element, element_size, correction=1):
-    return min(
-        triton.next_power_of_2(num_element),
-        shared_memory_size_per_block() // (element_size * correction),
-    )
-
-
 def optimize_module(mod):
     opt_mod = None
 
