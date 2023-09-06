@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
+from typing import Any, Tuple
 
 import torch
 import triton
@@ -22,8 +22,46 @@ from trident import kernel, util
 
 class Attention(torch.autograd.Function):
     @staticmethod
-    def forward(
-        ctx: Any,
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        query, key, value, is_causal, softmax_scale, use_accelerator = args
+        output, log_sum_exp, grid = Attention.__forward(query, key, value, is_causal, softmax_scale, use_accelerator)
+
+        ctx.save_for_backward(query, key, value, output, log_sum_exp)
+        ctx.grid = grid
+        ctx.softmax_scale = softmax_scale
+        ctx.embedding_size = key.shape[-1]
+        ctx.is_causal = is_causal
+        ctx.use_accelerator = use_accelerator
+
+        return output
+
+    @staticmethod
+    def backward(ctx: Any, *grad_outputs: Any):
+        (grad_output,) = grad_outputs
+
+        query, key, value, output, log_sum_exp = ctx.saved_tensors
+        grid = ctx.grid
+        softmax_scale = ctx.softmax_scale
+        embedding_size = ctx.embedding_size
+        is_causal = ctx.is_causal
+        use_accelerator = ctx.use_accelerator
+
+        return Attention.__backward(
+            grad_output,
+            query,
+            key,
+            value,
+            output,
+            log_sum_exp,
+            grid,
+            softmax_scale,
+            embedding_size,
+            is_causal,
+            use_accelerator,
+        )
+
+    @staticmethod
+    def __forward(
         query: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
@@ -69,18 +107,23 @@ class Attention(torch.autograd.Function):
             num_warps=num_warps,
         )
 
-        ctx.save_for_backward(query, key, value, output, log_sum_exp)
-        ctx.grid = grid
-        ctx.softmax_scale = softmax_scale
-        ctx.embedding_size = key.shape[-1]
-        ctx.is_causal = is_causal
-        ctx.use_accelerator = use_accelerator
-        return output
+        return output, log_sum_exp, grid
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor):
+    def __backward(
+        grad_output: torch.Tensor,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        output: torch.Tensor,
+        log_sum_exp: torch.Tensor,
+        grid: Tuple,
+        softmax_scale: float,
+        embedding_size,
+        is_causal: bool,
+        use_accelerator: bool,
+    ):
         block_size = 64
-        query, key, value, output, log_sum_exp = ctx.saved_tensors
         grad_output = grad_output.contiguous()
         grad_query = torch.zeros_like(query)
         grad_key = torch.empty_like(key)
@@ -98,7 +141,7 @@ class Attention(torch.autograd.Function):
             y_stride=x_size,
         )
 
-        kernel.Attention.backward[(ctx.grid[1],)](
+        kernel.Attention.backward[(grid[1],)](
             grad_query,
             grad_key,
             grad_value,
@@ -116,13 +159,13 @@ class Attention(torch.autograd.Function):
             key.stride(3),
             query.shape[1],
             query.shape[2],
-            ctx.grid[0],
-            ctx.softmax_scale,
+            grid[0],
+            softmax_scale,
             m_block_size=block_size,
             n_block_size=block_size,
-            embedding_size=ctx.embedding_size,
-            is_causal=ctx.is_causal,
-            use_accelerator=ctx.use_accelerator,
+            embedding_size=embedding_size,
+            is_causal=is_causal,
+            use_accelerator=use_accelerator,
             dtype=util.dtype(query.dtype),
             num_warps=8,
         )

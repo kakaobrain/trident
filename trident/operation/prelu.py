@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,8 +22,11 @@ from trident import kernel, util
 
 class PReLU(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight = args
+
+        ctx.save_for_backward(input, weight)
+
         return PReLU.__forward(input, weight)
 
     @staticmethod
@@ -43,11 +48,6 @@ class PReLU(torch.autograd.Function):
         )
 
         return output
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, weight = inputs
-        ctx.save_for_backward(input, weight)
 
     @staticmethod
     def backward(ctx, *grad_outputs):

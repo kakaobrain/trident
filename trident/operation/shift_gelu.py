@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,19 +22,16 @@ from trident import kernel, util
 
 class ShiftGELU(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        (input, bias) = args
-        return ShiftGELU.__forward(input, bias)
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, bias = args
+        output, shift = ShiftGELU.__forward(input, bias)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, bias = inputs
-        _, shift = output
         ctx.save_for_backward(input, shift)
 
+        return output
+
     @staticmethod
-    def backward(ctx, *grad_outputs):
-        grad_output, _ = grad_outputs
+    def backward(ctx, grad_output):
         input, shift = ctx.saved_tensors
         return ShiftGELU.__backward(grad_output, input, shift)
 

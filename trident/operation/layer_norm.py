@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+from typing import Any
 
 import torch
 import triton
@@ -22,20 +23,18 @@ from trident import function, kernel, util
 
 class LayerNorm(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, normalized_shape, weight, bias, eps = args
-        return LayerNorm.__forward(input, normalized_shape, weight, bias, eps)
+        output, rstd, mean = LayerNorm.__forward(input, normalized_shape, weight, bias, eps)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, normalized_shape, weight, bias, eps = inputs
-        output, rstd, mean = output
         ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.normalized_shape = normalized_shape
 
+        return output
+
     @staticmethod
     def backward(ctx, *grad_outputs):
-        grad_output, _, _ = grad_outputs
+        (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
         return LayerNorm.__backward(grad_output, input, ctx.normalized_shape, weight, bias, rstd, mean)
 

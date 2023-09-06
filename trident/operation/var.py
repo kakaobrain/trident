@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
 
 import torch
 import triton
@@ -21,16 +22,14 @@ from trident import kernel, math, util
 
 class Var(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim, correction = args
-        return Var.__forward(input, dim, correction)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, dim, correction = inputs
         ctx.save_for_backward(input)
         ctx.dim = dim
         ctx.correction = correction
+
+        return Var.__forward(input, dim, correction)
 
     @staticmethod
     def backward(ctx, *grad_outputs):

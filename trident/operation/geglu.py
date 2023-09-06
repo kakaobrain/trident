@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,20 +22,18 @@ from trident import kernel, util
 
 class GEGLU(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight, bias, use_accelerator = args
-        return GEGLU.__forward(input, weight, bias, use_accelerator)
+        output, state_gate = GEGLU.__forward(input, weight, bias, use_accelerator)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, weight, bias, use_accelerator = inputs
-        _, state_gate = output
         ctx.save_for_backward(input, weight, bias, state_gate)
         ctx.use_accelerator = False
 
+        return output
+
     @staticmethod
     def backward(ctx, *grad_outputs):
-        grad_output, _ = grad_outputs
+        (grad_output,) = grad_outputs
         input, weight, bias, state_gate = ctx.saved_tensors
         return GEGLU.__backward(grad_output, input, weight, bias, state_gate, ctx.use_accelerator)
 

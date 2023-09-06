@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 
 from trident import kernel, util
@@ -19,15 +21,14 @@ from trident import kernel, util
 
 class Softmax(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
-        return Softmax.__forward(input, dim)
+        output = Softmax.__forward(input, dim)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, dim = inputs
         ctx.save_for_backward(output)
         ctx.dim = dim
+
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):

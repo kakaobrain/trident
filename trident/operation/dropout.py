@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,14 +22,14 @@ from trident import kernel, util
 
 class Dropout(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return Dropout.__forward(*args, **kwargs)
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, p = args
+        output = Dropout.__forward(input, p)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, p = inputs
         ctx.save_for_backward(input, output)
         ctx.p = p
+
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,16 +22,14 @@ from trident import kernel, util
 
 class CosineSimilarity(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         x1, x2, dim, eps = args
-        return CosineSimilarity.__forward(x1, x2, dim, eps)
+        output, denominator, numerator = CosineSimilarity.__forward(x1, x2, dim, eps)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        x1, x2, dim, eps = inputs
-        _, denominator, numerator = output
         ctx.save_for_backward(x1, x2, denominator, numerator)
         ctx.dim = dim
+
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):

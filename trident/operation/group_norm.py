@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,20 +22,18 @@ from trident import function, kernel, util
 
 class GroupNorm(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, num_groups, weight, bias, eps = args
-        return GroupNorm.__forward(input, num_groups, weight, bias, eps)
+        output, rstd, mean = GroupNorm.__forward(input, num_groups, weight, bias, eps)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, num_groups, weight, bias, eps = inputs
-        _, rstd, mean = output
         ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.num_groups = num_groups
 
+        return output
+
     @staticmethod
     def backward(ctx, *grad_outputs):
-        grad_output, _, _ = grad_outputs
+        (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
         return GroupNorm.__backward(grad_output, input, weight, bias, rstd, mean, ctx.num_groups)
 

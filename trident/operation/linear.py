@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,15 +22,14 @@ from trident import kernel, util
 
 class Linear(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight, bias, use_accelerator = args
-        return Linear.__forward(input, weight, bias, use_accelerator)
+        output = Linear.__forward(input, weight, bias, use_accelerator)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, weight, bias, use_accelerator = inputs
         ctx.save_for_backward(input, weight, bias, output)
         ctx.use_accelerator = use_accelerator
+
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,22 +22,22 @@ from trident import kernel, util
 
 class InstanceNorm(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps = args
-        return InstanceNorm.__forward(input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps)
+        output, mean, var = InstanceNorm.__forward(
+            input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps
+        )
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, running_mean, running_var, weight, bias, use_input_stats, momentum, eps = inputs
-        _, mean, var = output
         ctx.save_for_backward(input, running_mean, running_var, weight, mean, var, weight, bias)
         ctx.use_input_stats = use_input_stats
         ctx.eps = eps
 
+        return output
+
     @staticmethod
     def backward(ctx, *grad_outputs):
         input, running_mean, running_var, weight, mean, var, weight, bias = ctx.saved_tensors
-        grad_output, _, _ = grad_outputs
+        (grad_output,) = grad_outputs
         return InstanceNorm.__backward(
             grad_output, input, running_mean, running_var, mean, var, weight, bias, ctx.use_input_stats, ctx.eps
         )
