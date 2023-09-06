@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,21 +22,19 @@ from trident import function, kernel, util
 
 class RMSNorm(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, p, weight, bias, eps = args
-        return RMSNorm.__forward(input, p, weight, bias, eps)
+        output, rms = RMSNorm.__forward(input, p, weight, bias, eps)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, p, weight, bias, eps = inputs
-        output, rms = output
         ctx.save_for_backward(input, rms, weight, bias)
         ctx.p = p
         ctx.eps = eps
 
+        return output
+
     @staticmethod
     def backward(ctx, *grad_outputs):
-        grad_output, _ = grad_outputs
+        (grad_output,) = grad_outputs
         input, rms, weight, bias = ctx.saved_tensors
         return RMSNorm.__backward(grad_output, input, ctx.p, rms, weight, bias, ctx.eps)
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,12 +22,9 @@ from trident import kernel, math
 
 class MaxPool2d(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return MaxPool2d.__forward(*args)
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        pass
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, kernel_size = args
+        return MaxPool2d.__forward(input, kernel_size)
 
     @staticmethod
     def __forward(inp, knl_sz):

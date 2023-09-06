@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,13 +22,11 @@ from trident import kernel, util
 
 class SiLU(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return SiLU.__forward(*args, **kwargs)
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        (input,) = inputs
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        (input,) = args
         ctx.save_for_backward(input)
+
+        return SiLU.__forward(input)
 
     @staticmethod
     def backward(ctx, *grad_outputs):

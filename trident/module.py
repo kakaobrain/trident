@@ -134,7 +134,7 @@ class BatchNorm1d(torch.nn.Module):
             self.running_mean = input.mean(axis=0) * self.momentum + self.running_mean * (1 - self.momentum)
             self.running_var = input.var(axis=0) * self.momentum + self.running_var * (1 - self.momentum)
 
-        return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps)
+        return operation.BatchNorm.apply(input, self.weight, self.bias, self.eps, None, None)
 
     def extra_repr(self):
         """

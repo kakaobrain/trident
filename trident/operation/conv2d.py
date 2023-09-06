@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,12 +22,9 @@ from trident import kernel
 
 class Conv2d(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return Conv2d.__forward(*args)
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        pass
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, weight, bias = args
+        return Conv2d.__forward(input, weight, bias)
 
     @staticmethod
     def __forward(inp, wgt, bis):

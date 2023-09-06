@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,15 +22,13 @@ from trident import kernel, util
 
 class LeakyReLU(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, negative_slope = args
-        return LeakyReLU.__forward(input, negative_slope)
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, negative_slope = inputs
         ctx.save_for_backward(input)
         ctx.negative_slope = negative_slope
+
+        return LeakyReLU.__forward(input, negative_slope)
 
     @staticmethod
     def backward(ctx, *grad_outputs):

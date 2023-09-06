@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,14 +22,9 @@ from trident import kernel, util
 
 class Argmax(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
-
         return Argmax.__forward(input, dim)
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        pass
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: torch.int32):

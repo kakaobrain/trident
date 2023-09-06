@@ -64,8 +64,7 @@ def cosine_similarity(x1: torch.Tensor, x2: torch.Tensor, dim: int = 1, eps: flo
 
     See cosine similarity for detail.
     """
-    output, _, _ = operation.CosineSimilarity.apply(x1, x2, dim, eps)
-    return output
+    return operation.CosineSimilarity.apply(x1, x2, dim, eps)
 
 
 def dropout(input, p=0.5, training=True):
@@ -87,11 +86,10 @@ def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, 
     See GEGLU for details.
     """
     if input.dim() == 2:
-        output, _ = operation.GEGLU.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
+        output = operation.GEGLU.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
         return output.view(output.shape[1:3])
     else:
-        output, _ = operation.GEGLU.apply(input, weight, bias, use_accelerator)
-        return output
+        return operation.GEGLU.apply(input, weight, bias, use_accelerator)
 
 
 def gelu(input: torch.Tensor):
@@ -109,10 +107,9 @@ def group_norm(input, num_groups, weight=None, bias=None, eps=1e-05):
 
     See GroupNorm for details.
     """
-    output, _, _ = operation.GroupNorm.apply(
+    return operation.GroupNorm.apply(
         input.view(input.shape[0], input.shape[1], -1), num_groups, weight, bias, eps
-    )
-    return output.view(input.shape)
+    ).view(input.shape)
 
 
 def instance_norm(
@@ -130,7 +127,7 @@ def instance_norm(
 
     See InstanceNorm2d for details.
     """
-    output, _, _ = operation.InstanceNorm.apply(
+    return operation.InstanceNorm.apply(
         input,
         running_mean,
         running_var,
@@ -140,7 +137,6 @@ def instance_norm(
         momentum,
         eps,
     )
-    return output
 
 
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
@@ -149,8 +145,7 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
 
     See LayerNorm for details.
     """
-    output, _, _ = operation.LayerNorm.apply(input, normalized_shape, weight, bias, eps)
-    return output
+    return operation.LayerNorm.apply(input, normalized_shape, weight, bias, eps)
 
 
 def leaky_relu(input: torch.Tensor, negative_slope: float = 0.01):
@@ -222,8 +217,7 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
 
     See RMSNorm for details.
     """
-    output, _ = operation.RMSNorm.apply(input.view(-1, input.shape[-1]), p, weight, bias, eps)
-    return output.view(input.shape)
+    return operation.RMSNorm.apply(input.view(-1, input.shape[-1]), p, weight, bias, eps).view(input.shape)
 
 
 def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
@@ -232,8 +226,7 @@ def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
 
     See ShiftGELU for details.
     """
-    output, _ = operation.ShiftGELU.apply(input.view(-1, input.shape[-1]), bias)
-    return output.view(input.shape)
+    return operation.ShiftGELU.apply(input.view(-1, input.shape[-1]), bias).view(input.shape)
 
 
 def silu(input):

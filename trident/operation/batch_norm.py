@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 import triton
 
@@ -20,21 +22,20 @@ from trident import kernel
 
 class BatchNorm(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return BatchNorm.__forward(*args, **kwargs)
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, weight, bias, eps, running_mean, running_var = args
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        inp, wgt, bis, eps, *_ = inputs
-        ctx.save_for_backward(inp, wgt, bis)
+        ctx.save_for_backward(input, weight, bias)
         ctx.eps = eps
+
+        return BatchNorm.__forward(input, weight, bias, eps, running_mean, running_var)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
         return BatchNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
 
     @staticmethod
-    def __forward(inp, wgt, bis, eps, running_mean=None, running_var=None):
+    def __forward(inp, wgt, bis, eps, running_mean, running_var):
         bt_sz, vec_sz = inp.shape
 
         def grid(meta):

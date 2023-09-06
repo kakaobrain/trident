@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import torch
 
 from trident import kernel
@@ -19,9 +21,12 @@ from trident import kernel
 
 class AdaptiveAvgPool2d(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
         x, output_size = args
+        return AdaptiveAvgPool2d.__forward(x, output_size)
 
+    @staticmethod
+    def __forward(x: torch.Tensor, output_size: int):
         assert x.is_cuda and x.is_contiguous()
 
         num_batches, num_channels, num_rows, num_cols = x.shape
@@ -61,7 +66,3 @@ class AdaptiveAvgPool2d(torch.autograd.Function):
         )
 
         return y
-
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        pass

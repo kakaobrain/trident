@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
 
 import torch
 import triton
@@ -21,14 +22,13 @@ from trident import kernel, math, util
 
 class Mean(torch.autograd.Function):
     @staticmethod
-    def forward(*args, **kwargs):
-        return Mean.__forward(*args, **kwargs)
+    def forward(ctx: Any, *args: Any, **kwargs: Any):
+        input, dim = args
 
-    @staticmethod
-    def setup_context(ctx, inputs, output):
-        input, dim = inputs
         ctx.save_for_backward(input)
         ctx.dim = dim
+
+        return Mean.__forward(input, dim)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
