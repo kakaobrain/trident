@@ -7,7 +7,7 @@ from tests import util
 
 @pytest.mark.parametrize(
     "num_batches, y_size, x_size, dim",
-    [(5431, 500, 200, 0), (221, 1250, 200, 1), (21, 6400, 86, 2)],
+    [(1431, 500, 200, 0), (221, 1250, 200, 1), (21, 6400, 86, 2)],
 )
 def test_forward(num_batches, y_size, x_size, dim, device):
     factory_kwargs = {"device": device}

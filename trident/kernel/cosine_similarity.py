@@ -18,8 +18,18 @@ import triton.language as tl
 from trident import language
 
 
+def cosine_similarity_configs():
+    configs = []
+    for block_size in [256, 512, 1024, 2048]:
+        for num_stages in [4, 5]:
+            config = triton.Config({"block_size": block_size}, 2 if block_size <= 512 else 4, num_stages)
+            configs.append(config)
+    return configs
+
+
 class CosineSimilarity:
     @staticmethod
+    @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def forward(
         output_ptr,
@@ -33,8 +43,8 @@ class CosineSimilarity:
         eps,
         size_along_dim,
         dim: tl.constexpr,
-        block_size: tl.constexpr,
         dtype: tl.constexpr,
+        block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
         projected_x_size = y_size if dim == 2 else x_size
@@ -192,6 +202,7 @@ class CosineSimilarity:
         tl.store(numerator_block_ptr, numerator.to(dtype))
 
     @staticmethod
+    @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def backward(
         grad_x1_ptr,
@@ -206,8 +217,8 @@ class CosineSimilarity:
         x_size,
         size_along_dim,
         dim: tl.constexpr,
-        block_size: tl.constexpr,
         dtype: tl.constexpr,
+        block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
         projected_x_size = y_size if dim == 2 else x_size
