@@ -17,7 +17,7 @@ from typing import Any
 import torch
 import triton
 
-from trident import kernel, math
+from trident import kernel
 
 
 class MaxPool2d(torch.autograd.Function):
@@ -39,11 +39,7 @@ class MaxPool2d(torch.autograd.Function):
         assert out.is_contiguous()
 
         grid = lambda meta: (inp_bt * inp_ch * out_h * triton.cdiv(out_w, meta["grp_sz"]),)
-        grp_sz = math.clamp(
-            128 // triton.next_power_of_2(knl_sz),
-            1,
-            triton.next_power_of_2(out_w),
-        )
+        grp_sz = max(1, min(triton.next_power_of_2(out_w), 128 // triton.next_power_of_2(knl_sz)))
 
         kernel.MaxPool2d.forward[grid](
             inp,

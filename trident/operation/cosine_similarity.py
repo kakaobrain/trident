@@ -15,7 +15,6 @@
 from typing import Any
 
 import torch
-import triton
 
 from trident import kernel, util
 

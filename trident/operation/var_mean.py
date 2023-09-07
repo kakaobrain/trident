@@ -17,7 +17,7 @@ from typing import Any
 import torch
 import triton
 
-from trident import kernel, math, util
+from trident import kernel, util
 
 
 class VarMean(torch.autograd.Function):

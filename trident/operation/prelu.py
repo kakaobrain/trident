@@ -17,7 +17,7 @@ from typing import Any
 import torch
 import triton
 
-from trident import kernel, util
+from trident import kernel
 
 
 class PReLU(torch.autograd.Function):

@@ -15,8 +15,6 @@
 import triton
 import triton.language as tl
 
-from trident import language
-
 
 @triton.jit
 def combine_welford(m2_a, mean_a, count_a, m2_b, mean_b, count_b):
