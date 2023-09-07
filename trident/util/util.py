@@ -37,16 +37,31 @@ def dtype(input):
 
 
 def size_and_stride(input: torch.Tensor, dim: int):
-    if dim == 0:
-        x_size, y_size = input.shape
-        y_stride = input.stride(1)
-        x_stride = input.stride(0)
-    else:
-        y_size, x_size = input.shape
-        y_stride = input.stride(0)
-        x_stride = input.stride(1)
+    if input.dim() == 2:
+        if dim == 0:
+            x_size, y_size = input.shape
+            y_stride = input.stride(1)
+            x_stride = input.stride(0)
+        else:
+            y_size, x_size = input.shape
+            y_stride = input.stride(0)
+            x_stride = input.stride(1)
 
-    return y_size, x_size, y_stride, x_stride
+        return y_size, x_size, y_stride, x_stride
+    elif input.dim() == 3:
+        if dim == 0:
+            z_size, y_size, x_size = input.shape[0], input.shape[1], input.shape[2]
+            z_stride, y_stride, x_stride = input.stride(0), input.stride(1), input.stride(2)
+        elif dim == 1:
+            z_size, y_size, x_size = input.shape[1], input.shape[0], input.shape[2]
+            z_stride, y_stride, x_stride = input.stride(1), input.stride(0), input.stride(2)
+        else:
+            z_size, y_size, x_size = input.shape[2], input.shape[0], input.shape[1]
+            z_stride, y_stride, x_stride = input.stride(2), input.stride(0), input.stride(1)
+
+        return z_size, y_size, x_size, z_stride, y_stride, x_stride
+    else:
+        raise ValueError(f"{dim} is not supported.")
 
 
 def optimize_module(mod):

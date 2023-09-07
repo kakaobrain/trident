@@ -32,148 +32,69 @@ class CosineSimilarity:
     @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def forward(
-        output_ptr,
-        denominator_ptr,
-        numerator_ptr,
-        x1_ptr,
-        x2_ptr,
-        num_batches,
-        y_size,
-        x_size,
-        eps,
-        size_along_dim,
-        dim: tl.constexpr,
+        output_ptr: tl.tensor,
+        denominator_ptr: tl.tensor,
+        numerator_ptr: tl.tensor,
+        x1_ptr: tl.tensor,
+        x2_ptr: tl.tensor,
+        z_size: tl.int32,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        z_stride: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
+        eps: tl.float32,
+        size_along_dim: tl.int32,
+        output_y_size: tl.int32,
+        output_x_size: tl.int32,
         dtype: tl.constexpr,
         block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
-        projected_x_size = y_size if dim == 2 else x_size
-        i = pid // projected_x_size
-        j = pid % projected_x_size
 
-        if dim == language.dim[0]:
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            output_block_ptr = tl.make_block_ptr(
-                output_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-        elif dim == language.dim[1]:
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            output_block_ptr = tl.make_block_ptr(
-                output_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-        else:
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            output_block_ptr = tl.make_block_ptr(
-                output_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
+        num_output_y = pid // output_x_size
+        num_output_x = pid % output_x_size
+
+        x1_block_ptr = tl.make_block_ptr(
+            x1_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        x2_block_ptr = tl.make_block_ptr(
+            x2_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
+        denominator_block_ptr = tl.make_block_ptr(
+            denominator_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
+        numerator_block_ptr = tl.make_block_ptr(
+            numerator_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
 
         denominator_accumulation1 = tl.zeros((block_size, 1, 1), tl.float32)
         denominator_accumulation2 = tl.zeros((block_size, 1, 1), tl.float32)
@@ -205,201 +126,88 @@ class CosineSimilarity:
     @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def backward(
-        grad_x1_ptr,
-        grad_x2_ptr,
-        grad_output_ptr,
-        denominator_ptr,
-        numerator_ptr,
-        x1_ptr,
-        x2_ptr,
-        num_batches,
-        y_size,
-        x_size,
-        size_along_dim,
-        dim: tl.constexpr,
+        grad_x1_ptr: tl.tensor,
+        grad_x2_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        denominator_ptr: tl.tensor,
+        numerator_ptr: tl.tensor,
+        x1_ptr: tl.tensor,
+        x2_ptr: tl.tensor,
+        z_size: tl.int32,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        z_stride: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
+        size_along_dim: tl.int32,
+        output_y_size: tl.int32,
+        output_x_size: tl.int32,
         dtype: tl.constexpr,
         block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
-        projected_x_size = y_size if dim == 2 else x_size
-        i = pid // projected_x_size
-        j = pid % projected_x_size
+        num_output_y = pid // output_x_size
+        num_output_x = pid % output_x_size
 
-        if dim == language.dim[0]:
-            grad_x1_block_ptr = tl.make_block_ptr(
-                grad_x1_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            grad_x2_block_ptr = tl.make_block_ptr(
-                grad_x2_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            grad_output_block_ptr = tl.make_block_ptr(
-                grad_output_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(num_batches, y_size, x_size),
-                strides=(y_size * x_size, x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(2, 1, 0),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-        elif dim == language.dim[1]:
-            grad_x1_block_ptr = tl.make_block_ptr(
-                grad_x1_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            grad_x2_block_ptr = tl.make_block_ptr(
-                grad_x2_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            grad_output_block_ptr = tl.make_block_ptr(
-                grad_output_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(y_size, num_batches, x_size),
-                strides=(x_size, y_size * x_size, 1),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(1, 2, 0),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(num_batches, x_size),
-                strides=(x_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-        else:
-            grad_x1_block_ptr = tl.make_block_ptr(
-                grad_x1_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            grad_x2_block_ptr = tl.make_block_ptr(
-                grad_x2_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            grad_output_block_ptr = tl.make_block_ptr(
-                grad_output_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            x1_block_ptr = tl.make_block_ptr(
-                x1_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            x2_block_ptr = tl.make_block_ptr(
-                x2_ptr,
-                shape=(x_size, num_batches, y_size),
-                strides=(1, y_size * x_size, x_size),
-                offsets=(0, i, j),
-                block_shape=(block_size, 1, 1),
-                order=(0, 2, 1),
-            )
-            denominator_block_ptr = tl.make_block_ptr(
-                denominator_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
-            numerator_block_ptr = tl.make_block_ptr(
-                numerator_ptr,
-                shape=(num_batches, y_size),
-                strides=(y_size, 1),
-                offsets=(i, j),
-                block_shape=(1, 1),
-                order=(1, 0),
-            )
+        grad_x1_block_ptr = tl.make_block_ptr(
+            grad_x1_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        grad_x2_block_ptr = tl.make_block_ptr(
+            grad_x2_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
+        x1_block_ptr = tl.make_block_ptr(
+            x1_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        x2_block_ptr = tl.make_block_ptr(
+            x2_ptr,
+            shape=(z_size, y_size, x_size),
+            strides=(z_stride, y_stride, x_stride),
+            offsets=(0, num_output_y, num_output_x),
+            block_shape=(block_size, 1, 1),
+            order=(2, 1, 0),
+        )
+        denominator_block_ptr = tl.make_block_ptr(
+            denominator_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
+        numerator_block_ptr = tl.make_block_ptr(
+            numerator_ptr,
+            shape=(output_y_size, output_x_size),
+            strides=(output_x_size, 1),
+            offsets=(num_output_y, num_output_x),
+            block_shape=(1, 1),
+            order=(1, 0),
+        )
 
         for _ in range(0, size_along_dim, block_size):
             x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
-
             x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
 
             denominator = tl.load(denominator_block_ptr)
