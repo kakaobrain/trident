@@ -920,7 +920,7 @@ class ReLU(torch.nn.Module):
         """
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Leaky ReLU to an input.
 
@@ -930,7 +930,7 @@ class ReLU(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        return operation.ReLU.apply(input)
+        return function.relu(input)
 
     def extra_repr(self):
         """

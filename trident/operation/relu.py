@@ -15,50 +15,46 @@
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class ReLU(torch.autograd.Function):
     @staticmethod
     def forward(*args, **kwargs):
-        (x,) = args
-
-        assert x.is_cuda and x.is_contiguous()
-
-        block_size = min(triton.next_power_of_2(x.shape[1]), 1 << 14)
-        y = torch.empty_like(x)
-
-        assert y.is_cuda and y.is_contiguous()
-
-        grid = lambda meta: (
-            x.shape[0],
-            triton.cdiv(x.shape[1], meta["block_size"]),
-        )
-        kernel.ReLU.forward[grid](x, y, x.stride(0), x.shape[1], block_size=block_size)
-
-        return y
+        (input,) = args
+        return ReLU.__forward(input)
 
     @staticmethod
     def setup_context(ctx, inputs, output):
-        (x,) = inputs
-
-        ctx.save_for_backward(x)
+        (input,) = inputs
+        ctx.save_for_backward(input)
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        (x,) = ctx.saved_tensors
+        grad_output = grad_outputs[0]
+        (input,) = ctx.saved_tensors
+        return ReLU.__backward(grad_output, input)
 
-        assert x.is_cuda and x.is_contiguous()
+    @staticmethod
+    def __forward(input: torch.Tensor):
+        x_size = input.numel()
+        output = torch.empty_like(input)
 
-        block_size = min(triton.next_power_of_2(x.shape[1]), 1 << 14)
-        dx = torch.empty_like(x)
+        def grid(meta):
+            return (triton.cdiv(x_size, meta["x_block_size"]),)
 
-        assert dx.is_cuda and dx.is_contiguous()
+        kernel.ReLU.forward[grid](output, input, x_size, util.dtype(output.dtype))
 
-        grid = lambda meta: (
-            x.shape[0],
-            triton.cdiv(x.shape[1], meta["block_size"]),
-        )
-        kernel.ReLU.backward[grid](dx, x, x.stride(0), x.shape[1], block_size=block_size)
+        return output
 
-        return grad_outputs[0] * dx, None
+    @staticmethod
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor):
+        x_size = input.numel()
+        grad_input = torch.empty_like(input)
+
+        def grid(meta):
+            return [triton.cdiv(x_size, meta["x_block_size"])]
+
+        kernel.ReLU.backward[grid](grad_input, grad_output, input, x_size, util.dtype(grad_input.dtype))
+
+        return grad_input
