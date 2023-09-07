@@ -17,7 +17,7 @@ import functools
 import torch
 import triton
 
-from trident import function, kernel, util
+from trident import kernel, util
 
 
 class LayerNorm(torch.autograd.Function):

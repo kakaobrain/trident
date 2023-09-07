@@ -24,7 +24,6 @@ def geglu(input, weight, bias: torch.Tensor = None):
     return state * torch.nn.functional.gelu(gate)
 
 
-# @pytest.mark.skip
 @pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
 def test_forward(num_batches, m_size, n_size, k_size, device):
     input = torch.randn(num_batches, m_size, k_size, device=device)

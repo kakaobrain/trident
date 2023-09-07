@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import torch
-import triton
 
 from trident import kernel, util
 

@@ -15,8 +15,6 @@
 import triton
 import triton.language as tl
 
-from trident import language
-
 
 def silu_configs():
     configs = []

@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import torch
-import triton
 import triton.language as tl
 
-from trident import math, module, operation
+from trident import module
 
 
 def fill(inp, val):

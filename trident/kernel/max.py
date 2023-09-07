@@ -15,8 +15,6 @@
 import triton
 import triton.language as tl
 
-from trident import language
-
 
 class Max:
     @staticmethod
