@@ -32,7 +32,7 @@ class Dropout(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (input, output) = ctx.saved_tensors
         return Dropout.__backward(grad_output, input, output, ctx.p)

@@ -50,7 +50,7 @@ class PReLU(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         return PReLU.__backward(grad_outputs[0], *ctx.saved_tensors)
 
     @staticmethod

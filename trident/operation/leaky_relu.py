@@ -31,7 +31,7 @@ class LeakyReLU(torch.autograd.Function):
         return LeakyReLU.__forward(input, negative_slope)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         (input,) = ctx.saved_tensors
         return LeakyReLU.__backward(grad_output, input, ctx.negative_slope)

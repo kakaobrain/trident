@@ -32,7 +32,7 @@ class Max(torch.autograd.Function):
         return output, argmax
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         grad_output, grad_argmax = grad_outputs
         input, output, argmax = ctx.saved_tensors
         return Max.__backward(grad_output, input, argmax, ctx.dim)

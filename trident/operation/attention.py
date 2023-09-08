@@ -132,13 +132,7 @@ class Attention(torch.autograd.Function):
 
         num_batches, num_heads, y_size, x_size = output.shape
         kernel.Softmax.backward_delta[(num_batches * num_heads * y_size,)](
-            delta,
-            output,
-            grad_output,
-            x_size=x_size,
-            y_size=num_batches * num_heads * y_size,
-            x_stride=1,
-            y_stride=x_size,
+            delta, output, grad_output, num_batches * num_heads * y_size, x_size, x_size, 1, util.dtype(delta.dtype)
         )
 
         kernel.Attention.backward[(grid[1],)](

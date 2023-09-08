@@ -31,7 +31,7 @@ class CosineSimilarity(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         x1, x2, denominator, numerator = ctx.saved_tensors
         return CosineSimilarity.__backward(grad_output, x1, x2, denominator, numerator, ctx.dim)

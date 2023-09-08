@@ -33,7 +33,7 @@ class LayerNorm(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
         return LayerNorm.__backward(grad_output, input, ctx.normalized_shape, weight, bias, rstd, mean)

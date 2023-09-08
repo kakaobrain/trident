@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+from typing import Tuple
 
 import torch
 
@@ -73,11 +74,11 @@ class AdaptiveAvgPool2d(torch.nn.Module):
 class BatchNorm1d(torch.nn.Module):
     def __init__(
         self,
-        num_features,
-        eps=1e-05,
-        momentum=0.1,
-        affine=True,
-        track_running_stats=True,
+        num_features: Tuple[int, ...],
+        eps: float = 1e-05,
+        momentum: float = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
         device=None,
         dtype=None,
     ):
@@ -95,17 +96,16 @@ class BatchNorm1d(torch.nn.Module):
         """
         super().__init__()
 
+        factory_kwargs = {"device": device, "dtype": dtype}
         self.num_features = num_features
         self.eps = eps
         self.momentum = momentum
         self.affine = affine
         self.track_running_stats = track_running_stats
-        self.device = device
-        self.dtype = dtype
 
         if affine:
-            self.weight = torch.nn.Parameter(torch.empty(num_features, device=device, dtype=dtype).fill_(1))
-            self.bias = torch.nn.Parameter(torch.zeros(num_features, device=device, dtype=dtype))
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs).fill_(1))
+            self.bias = torch.nn.Parameter(torch.zeros(num_features, **factory_kwargs))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
@@ -117,7 +117,7 @@ class BatchNorm1d(torch.nn.Module):
             self.register_parameter("running_mean", None)
             self.register_parameter("running_var", None)
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Batch Normalization to an input.
 
@@ -220,7 +220,7 @@ class CosineSimilarity(torch.nn.Module):
         self.dim = dim
         self.eps = eps
 
-    def forward(self, x1, x2):
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor):
         """
         Applies Cosine similarity to inputs.
 
@@ -259,7 +259,7 @@ class Dropout(torch.nn.Module):
 
         self.p = p
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Dropout to an input.
 
@@ -381,10 +381,10 @@ class GELU(torch.nn.Module):
 class GroupNorm(torch.nn.Module):
     def __init__(
         self,
-        num_groups,
-        num_channels,
-        eps=1e-05,
-        affine=True,
+        num_groups: int,
+        num_channels: int,
+        eps: float = 1e-05,
+        affine: bool = True,
         device=None,
         dtype=None,
     ):
@@ -418,7 +418,7 @@ class GroupNorm(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Group Normalization to an input.
 
@@ -545,11 +545,11 @@ class InstanceNorm1d(torch.nn.Module):
 class InstanceNorm2d(torch.nn.Module):
     def __init__(
         self,
-        num_features,
-        eps=1e-5,
-        momentum=0.1,
-        affine=False,
-        track_running_stats=False,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float = 0.1,
+        affine: bool = False,
+        track_running_stats: bool = False,
         device=None,
         dtype=None,
     ):
@@ -586,7 +586,7 @@ class InstanceNorm2d(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Instance Normalization to an input.
 
@@ -646,9 +646,9 @@ class InstanceNorm2d(torch.nn.Module):
 class LayerNorm(torch.nn.Module):
     def __init__(
         self,
-        normalized_shape,
-        eps=1e-05,
-        elementwise_affine=True,
+        normalized_shape: Tuple[int, ...],
+        eps: float = 1e-05,
+        elementwise_affine: bool = True,
         device=None,
         dtype=None,
     ):
@@ -677,7 +677,7 @@ class LayerNorm(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Layer Normalization to an input.
 
@@ -880,7 +880,7 @@ class MaxPool2d(torch.nn.Module):
 
 
 class Mean(torch.nn.Module):
-    def __init__(self, dim=None):
+    def __init__(self, dim: int = None):
         """
         Computes the mean along the specified dimension in an input.
 
@@ -891,7 +891,7 @@ class Mean(torch.nn.Module):
 
         self.dim = dim
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Computes the mean along the specified dimension in an input.
 
@@ -980,7 +980,15 @@ class PReLU(torch.nn.Module):
 
 
 class RMSNorm(torch.nn.Module):
-    def __init__(self, normalized_shape, p=-1.0, eps=1e-05, bias=False, device=None, dtype=None):
+    def __init__(
+        self,
+        normalized_shape: Tuple[int, ...],
+        p: float = -1.0,
+        eps: float = 1e-05,
+        bias: bool = False,
+        device=None,
+        dtype=None,
+    ):
         """
         Applies Root Mean Square Layer Normalization to an input.
 
@@ -1005,7 +1013,7 @@ class RMSNorm(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies Root Mean Square Layer Normalization to an input.
 
@@ -1043,7 +1051,7 @@ class RMSNorm(torch.nn.Module):
 
 
 class ShiftGELU(torch.nn.Module):
-    def __init__(self, num_features: torch.int, device=None, dtype=None):
+    def __init__(self, num_features: int, device=None, dtype=None):
         """
         Applies shift and the Gaussian Error Linear Units to an input.
 
@@ -1057,7 +1065,7 @@ class ShiftGELU(torch.nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies shift and the Gaussian Error Linear Units to an input.
 
@@ -1092,7 +1100,7 @@ class SiLU(torch.nn.Module):
         """
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Applies the Sigmoid Linear Unit to an input.
 
@@ -1149,7 +1157,7 @@ class Softmax(torch.nn.Module):
 
 
 class Sum(torch.nn.Module):
-    def __init__(self, dim=None):
+    def __init__(self, dim: int = None):
         """
         Computes the sum along the specified dimension in an input.
 
@@ -1160,7 +1168,7 @@ class Sum(torch.nn.Module):
 
         self.dim = dim
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Computes the sum along the specified dimension in an input.
 
@@ -1183,7 +1191,7 @@ class Sum(torch.nn.Module):
 
 
 class Var(torch.nn.Module):
-    def __init__(self, dim=None, correction=1):
+    def __init__(self, dim: int = None, correction: int = 1):
         """
         Computes the variance along the specified dimension in an input.
 
@@ -1196,7 +1204,7 @@ class Var(torch.nn.Module):
         self.dim = dim
         self.correction = correction
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         """
         Computes the variance along the specified dimension in an input.
 

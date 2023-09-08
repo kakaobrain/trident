@@ -15,6 +15,7 @@
 from typing import Any
 
 import torch
+import triton
 
 from trident import kernel, util
 
@@ -31,62 +32,65 @@ class Softmax(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (output,) = ctx.saved_tensors
         return Softmax.__backward(grad_output, output, ctx.dim)
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: int):
-        y_size, x_size = input.shape
+        y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
         output = torch.empty_like(input)
 
         def grid(meta):
-            return (x_size if dim == 0 else y_size,)
+            return (y_size,)
 
         kernel.Softmax.forward[grid](
             output,
             input,
             y_size,
             x_size,
-            dim,
-            dtype=util.dtype(input.dtype),
+            y_stride,
+            x_stride,
+            util.dtype(output.dtype),
         )
 
         return output
 
     @staticmethod
-    def __backward(grad_output: torch.Tensor, output: torch.Tensor, dim: int):
-        factory_kwargs = {"device": grad_output.device}
+    def __backward(grad_output: torch.Tensor, output: torch.Tensor, dim: torch.int32):
+        factory_kwargs = {"device": output.device, "dtype": output.dtype}
         y_size, x_size, y_stride, x_stride = util.size_and_stride(output, dim)
+        delta = torch.empty(y_size, **factory_kwargs)
+        grad_input = torch.empty_like(output)
 
         def grid(meta):
             return (y_size,)
-
-        delta = torch.empty(x_size, **factory_kwargs)
 
         kernel.Softmax.backward_delta[grid](
             delta,
             grad_output,
             output,
-            x_size,
             y_size,
-            x_stride,
+            x_size,
             y_stride,
+            x_stride,
+            util.dtype(delta.dtype),
         )
 
-        grad_input = torch.empty_like(output)
+        def grid(meta):
+            return (y_size,)
 
         kernel.Softmax.backward[grid](
             grad_input,
             grad_output,
             output,
             delta,
-            x_size,
             y_size,
-            x_stride,
+            x_size,
             y_stride,
-            dtype=util.dtype(output.dtype),
+            x_stride,
+            util.dtype(output.dtype),
         )
 
         return grad_input, None

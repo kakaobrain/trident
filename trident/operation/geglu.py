@@ -32,7 +32,7 @@ class GEGLU(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, state_gate = ctx.saved_tensors
         return GEGLU.__backward(grad_output, input, weight, bias, state_gate, ctx.use_accelerator)

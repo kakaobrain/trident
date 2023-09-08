@@ -32,7 +32,7 @@ class Var(torch.autograd.Function):
         return Var.__forward(input, dim, correction)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (input,) = ctx.saved_tensors
         (grad_output,) = grad_outputs
         return Var.__backward(grad_output, input, ctx.dim, ctx.correction)

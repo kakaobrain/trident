@@ -29,7 +29,7 @@ class SiLU(torch.autograd.Function):
         return SiLU.__forward(input)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (input,) = ctx.saved_tensors
         return SiLU.__backward(grad_output, input)
