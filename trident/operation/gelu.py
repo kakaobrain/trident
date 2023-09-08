@@ -30,7 +30,7 @@ class GELU(torch.autograd.Function):
         return GELU.__forward(input)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (input,) = ctx.saved_tensors
         return GELU.__backward(grad_output, input)

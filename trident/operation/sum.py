@@ -30,7 +30,7 @@ class Sum(torch.autograd.Function):
         return Sum.__forward(input, dim)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (input,) = ctx.saved_tensors
         (grad_output,) = grad_outputs
         return Sum.__backward(grad_output, input, ctx.dim)

@@ -35,7 +35,13 @@ def argmax(input: torch.Tensor, dim: int):
     return operation.Argmax.apply(input, dim)
 
 
-def batch_norm(input, running_mean=None, running_var=None, eps=1e-05, training=False):
+def batch_norm(
+    input: torch.Tensor,
+    running_mean: torch.Tensor = None,
+    running_var: torch.Tensor = None,
+    eps: float = 1e-05,
+    training: bool = False,
+):
     """
     Applies Batch Normalization for last certain number of dimensions.
 

@@ -33,7 +33,7 @@ class VarMean(torch.autograd.Function):
         return output, mean
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (input, mean) = ctx.saved_tensors
         (grad_output, _) = grad_outputs
         return VarMean.__backward(grad_output, input, mean, ctx.dim, ctx.correction)

@@ -20,226 +20,184 @@ from trident import language
 
 def softmax_configs():
     configs = []
-    for num_warps in [4, 8, 16]:
-        for block_size in [128, 256, 512, 1024, 2048]:
-            config = triton.Config(
-                {"block_size": block_size},
-                num_warps=num_warps,
-            )
-            configs.append(config)
+    for x_block_size in [256, 512, 1024, 2048]:
+        for num_warps in [4, 8, 16]:
+            configs.append(triton.Config({"x_block_size": x_block_size}, num_warps=num_warps))
     return configs
 
 
 class Softmax:
     @staticmethod
-    @triton.autotune(
-        configs=softmax_configs(),
-        key=["y_size", "x_size", "dim"],
-    )
+    @triton.autotune(softmax_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        dim: tl.constexpr,
-        block_size: tl.constexpr,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
+        y_offset = tl.program_id(0)
 
-        if dim == 0:
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(x_size, y_size),
-                strides=(1, x_size),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(0, 1),
-            )
-            size_along_dim = y_size
-        else:
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-            size_along_dim = x_size
-
-        max = tl.full((1, block_size), -float("inf"), tl.float32)
-        sum = tl.zeros((1, block_size), tl.float32)
-
-        for block_offset in range(0, size_along_dim, block_size):
-            input = tl.load(input_block_ptr, boundary_check=(1,)).to(tl.float32)
-            condition = tl.arange(0, block_size) + block_offset < size_along_dim
-            input = tl.where(condition, input, -float("inf"))
-            peak = tl.maximum(max, input)
-            peak = tl.where(condition, peak, 0)
-            sum = sum * tl.exp(max - peak) + tl.exp(input - peak)
-            max = peak
-            input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
-
-        max, sum = tl.reduce((max, sum), 1, language.combine_softmax)
-
-        if dim == 0:
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(x_size, y_size),
-                strides=(1, x_size),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(0, 1),
-            )
-            output_block_ptr = tl.make_block_ptr(
-                output_ptr,
-                shape=(x_size, y_size),
-                strides=(1, x_size),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(0, 1),
-            )
-        else:
-            input_block_ptr = tl.make_block_ptr(
-                input_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-            output_block_ptr = tl.make_block_ptr(
-                output_ptr,
-                shape=(y_size, x_size),
-                strides=(x_size, 1),
-                offsets=(offset, 0),
-                block_shape=(1, block_size),
-                order=(1, 0),
-            )
-
-        for _ in range(0, size_along_dim, block_size):
-            input = tl.load(input_block_ptr, boundary_check=(1,)).to(tl.float32)
-            output = tl.exp(input - max) / sum
-            tl.store(output_block_ptr, output.to(dtype), boundary_check=(1,))
-            input_block_ptr = tl.advance(input_block_ptr, (0, block_size))
-            output_block_ptr = tl.advance(output_block_ptr, (0, block_size))
-
-    @staticmethod
-    @triton.autotune(
-        configs=softmax_configs(),
-        key=["y_size", "x_size"],
-    )
-    @triton.jit
-    def backward_delta(
-        delta_ptr: tl.tensor,
-        grad_output_ptr: tl.tensor,
-        output_ptr: tl.tensor,
-        x_size: int,
-        y_size: int,
-        x_stride: int,
-        y_stride: int,
-        block_size: tl.constexpr,
-    ):
-        offset = tl.program_id(0)
-
-        delta_block_ptr = tl.make_block_ptr(
-            delta_ptr,
-            shape=(y_size,),
-            strides=(1,),
-            offsets=(offset,),
-            block_shape=(1,),
-            order=(0,),
-        )
-        grad_output_block_ptr = tl.make_block_ptr(
-            grad_output_ptr,
-            shape=(y_size, x_size),
-            strides=(y_stride, x_stride),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
-            order=(1, 0),
-        )
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
             order=(1, 0),
         )
 
-        delta = tl.zeros((1, block_size), tl.float32)
+        max = tl.full((1, x_block_size), -float("inf"), tl.float32)
+        sum = tl.zeros((1, x_block_size), tl.float32)
 
-        for _ in range(0, x_size, block_size):
-            output = tl.load(output_block_ptr, boundary_check=(1,), padding_option="zero").to(tl.float32)
-            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero").to(tl.float32)
-            delta += output * grad_output
-            output_block_ptr = tl.advance(output_block_ptr, (0, block_size))
-            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))
+        for x_offset in range(0, x_size, x_block_size):
+            input = tl.load(input_block_ptr, boundary_check=(1,))
+            condition = tl.arange(0, x_block_size) + x_offset < x_size
+            input = tl.where(condition, input, -float("inf"))
+            peak = tl.where(condition, tl.maximum(max, input), 0)
+            sum = sum * tl.math.fast_expf(max - peak) + tl.math.fast_expf(input - peak)
+            max = peak
+            input_block_ptr = tl.advance(input_block_ptr, (0, x_block_size))
 
-        tl.store(delta_block_ptr, tl.sum(delta, 1))
+        max, sum = tl.reduce((max, sum), 1, language.combine_softmax)
+
+        input_block_ptr = tl.make_block_ptr(
+            input_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
+
+        for x_offset in range(0, x_size, x_block_size):
+            input = tl.load(input_block_ptr, boundary_check=(1,))
+            output = tl.math.fast_expf(input - max) / sum
+            tl.store(output_block_ptr, output.to(dtype), boundary_check=(1,))
+            output_block_ptr = tl.advance(output_block_ptr, (0, x_block_size))
+            input_block_ptr = tl.advance(input_block_ptr, (0, x_block_size))
 
     @staticmethod
-    @triton.autotune(
-        configs=softmax_configs(),
-        key=["y_size", "x_size"],
-    )
+    @triton.autotune(softmax_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         output_ptr: tl.tensor,
         delta_ptr: tl.tensor,
-        x_size: int,
-        y_size: int,
-        x_stride: int,
-        y_stride: int,
-        block_size: tl.constexpr,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
-        offset = tl.program_id(0)
+        y_offset = tl.program_id(0)
 
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
             order=(1, 0),
         )
         grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
             order=(1, 0),
         )
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
             strides=(y_stride, x_stride),
-            offsets=(offset, 0),
-            block_shape=(1, block_size),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
             order=(1, 0),
         )
         delta_block_ptr = tl.make_block_ptr(
             delta_ptr,
             shape=(y_size,),
             strides=(1,),
-            offsets=(offset,),
+            offsets=(y_offset,),
             block_shape=(1,),
             order=(0,),
         )
 
-        grad_input = tl.zeros((1, block_size), tl.float32)
-        for block_offset in range(0, x_size, block_size):
-            output = tl.load(output_block_ptr, boundary_check=(1,), padding_option="zero").to(tl.float32)
-            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero").to(tl.float32)
-            delta = tl.load(delta_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
+        for x_offset in range(0, x_size, x_block_size):
+            output = tl.load(output_block_ptr, boundary_check=(1,))
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,))
+            delta = tl.load(delta_block_ptr, boundary_check=(0,))
             grad_input = output * (grad_output - delta)
             tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))
-            output_block_ptr = tl.advance(output_block_ptr, (0, block_size))
-            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, block_size))
-            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, block_size))
+            grad_input_block_ptr = tl.advance(grad_input_block_ptr, (0, x_block_size))
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, x_block_size))
+            output_block_ptr = tl.advance(output_block_ptr, (0, x_block_size))
+
+    @staticmethod
+    @triton.autotune(softmax_configs(), ["x_size"])
+    @triton.jit
+    def backward_delta(
+        delta_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        output_ptr: tl.tensor,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
+        dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
+    ):
+        y_offset = tl.program_id(0)
+
+        delta_block_ptr = tl.make_block_ptr(
+            delta_ptr,
+            shape=(y_size,),
+            strides=(1,),
+            offsets=(y_offset,),
+            block_shape=(1,),
+            order=(0,),
+        )
+        grad_output_block_ptr = tl.make_block_ptr(
+            grad_output_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
+        output_block_ptr = tl.make_block_ptr(
+            output_ptr,
+            shape=(y_size, x_size),
+            strides=(y_stride, x_stride),
+            offsets=(y_offset, 0),
+            block_shape=(1, x_block_size),
+            order=(1, 0),
+        )
+
+        delta = tl.zeros((1, x_block_size), dtype)
+
+        for _ in range(0, x_size, x_block_size):
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+            output = tl.load(output_block_ptr, boundary_check=(1,))
+            delta += grad_output * output
+            output_block_ptr = tl.advance(output_block_ptr, (0, x_block_size))
+            grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, x_block_size))
+
+        delta = tl.sum(delta, 1)
+        tl.store(delta_block_ptr, delta)

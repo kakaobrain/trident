@@ -32,7 +32,7 @@ class Linear(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, output = ctx.saved_tensors
         return Linear.__backward(grad_output, output, input, weight, bias, ctx.use_accelerator)

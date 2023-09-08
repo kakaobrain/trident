@@ -32,7 +32,7 @@ class GroupNorm(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
         return GroupNorm.__backward(grad_output, input, weight, bias, rstd, mean, ctx.num_groups)

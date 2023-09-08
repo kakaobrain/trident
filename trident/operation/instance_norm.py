@@ -35,7 +35,7 @@ class InstanceNorm(torch.autograd.Function):
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         input, running_mean, running_var, weight, mean, var, weight, bias = ctx.saved_tensors
         (grad_output,) = grad_outputs
         return InstanceNorm.__backward(

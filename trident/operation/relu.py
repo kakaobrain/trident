@@ -30,7 +30,7 @@ class ReLU(torch.autograd.Function):
         return ReLU.__forward(input)
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         (input,) = ctx.saved_tensors
         return ReLU.__backward(grad_output, input)
