@@ -41,26 +41,15 @@ class CosineSimilarity(torch.autograd.Function):
         assert x1.is_contiguous() and x2.is_contiguous() and x1.shape == x2.shape
 
         factory_kwargs = {"device": x1.device, "dtype": x1.dtype}
-        num_batches, y_size, x_size = x1.shape
 
-        if dim == 0:
-            grid_size = y_size * x_size
-            size_along_dim = num_batches
-            output = torch.empty(y_size, x_size, **factory_kwargs)
-        elif dim == 1:
-            grid_size = num_batches * x_size
-            size_along_dim = y_size
-            output = torch.empty(num_batches, x_size, **factory_kwargs)
-        else:
-            grid_size = num_batches * y_size
-            size_along_dim = x_size
-            output = torch.empty(num_batches, y_size, **factory_kwargs)
-
-        denominator = output.clone()
-        numerator = output.clone()
+        z_size, y_size, x_size, z_stride, y_stride, x_stride = util.size_and_stride(x1, dim)
+        output_y_size, output_x_size, size_along_dim = CosineSimilarity.__output_size_and_size_along_dim(x1, dim)
+        output = torch.empty(output_y_size, output_x_size, **factory_kwargs)
+        denominator = torch.empty_like(output)
+        numerator = torch.empty_like(output)
 
         def grid(meta):
-            return (grid_size,)
+            return (output_y_size * output_x_size,)
 
         kernel.CosineSimilarity.forward[grid](
             output,
@@ -68,12 +57,16 @@ class CosineSimilarity(torch.autograd.Function):
             numerator,
             x1,
             x2,
-            num_batches,
+            z_size,
             y_size,
             x_size,
+            z_stride,
+            y_stride,
+            x_stride,
             eps,
             size_along_dim,
-            dim,
+            output_y_size,
+            output_x_size,
             util.dtype(x1.dtype),
         )
 
@@ -81,23 +74,14 @@ class CosineSimilarity(torch.autograd.Function):
 
     @staticmethod
     def __backward(grad_output, x1, x2, denominator, numerator, dim):
-        num_batches, y_size, x_size = x1.shape
-
         grad_x1 = torch.empty_like(x1)
         grad_x2 = torch.empty_like(x2)
 
-        if dim == 0:
-            grid_size = y_size * x_size
-            size_along_dim = num_batches
-        elif dim == 1:
-            grid_size = num_batches * x_size
-            size_along_dim = y_size
-        else:
-            grid_size = num_batches * y_size
-            size_along_dim = x_size
+        z_size, y_size, x_size, z_stride, y_stride, x_stride = util.size_and_stride(x1, dim)
+        output_y_size, output_x_size, size_along_dim = CosineSimilarity.__output_size_and_size_along_dim(x1, dim)
 
         def grid(meta):
-            return (grid_size,)
+            return (output_y_size * output_x_size,)
 
         kernel.CosineSimilarity.backward[grid](
             grad_x1,
@@ -107,12 +91,32 @@ class CosineSimilarity(torch.autograd.Function):
             numerator,
             x1,
             x2,
-            num_batches,
+            z_size,
             y_size,
             x_size,
+            z_stride,
+            y_stride,
+            x_stride,
             size_along_dim,
-            dim,
+            output_y_size,
+            output_x_size,
             util.dtype(x1.dtype),
         )
 
         return grad_x1, grad_x2, None, None
+
+    @staticmethod
+    def __output_size_and_size_along_dim(input: torch.Tensor, dim: int):
+        z_size, y_size, x_size = input.shape
+
+        if dim == 0:
+            output_y_size, output_x_size = y_size, x_size
+            size_along_dim = z_size
+        elif dim == 1:
+            output_y_size, output_x_size = z_size, x_size
+            size_along_dim = y_size
+        else:
+            output_y_size, output_x_size = z_size, y_size
+            size_along_dim = x_size
+
+        return output_y_size, output_x_size, size_along_dim

@@ -23,41 +23,33 @@ import trident
     "cosine similarity forward",
     ["x_size"],
     [256 * i for i in range(1, 21)],
-    {"num_batches": 16, "y_size": 16},
+    {"z_size": 16, "y_size": 16},
 )
-def bench_cosine_similarity_forward(num_batches, y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-
-    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
-    other = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
+def bench_cosine_similarity_forward(z_size, y_size, x_size, backend):
+    x1 = torch.randn(z_size, y_size, x_size, device="cuda")
+    x2 = torch.randn(z_size, y_size, x_size, device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.cosine_similarity(input, other, 2))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.cosine_similarity(x1, x2, 2))
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.cosine_similarity(input, other, 2))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.cosine_similarity(x1, x2, 2))
 
 
 @util.report(
     "cosine similarity backward",
     ["x_size"],
     [256 * i for i in range(1, 21)],
-    {"num_batches": 16, "y_size": 16},
+    {"z_size": 16, "y_size": 16},
 )
-def bench_cosine_similarity_backward(num_batches, y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-
-    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
-    other = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
-
-    input.requires_grad = other.requires_grad = True
+def bench_cosine_similarity_backward(z_size, y_size, x_size, backend):
+    x1 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)
+    x2 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(z_size, y_size, device="cuda")
 
     if backend == "torch":
-        operation = torch.nn.CosineSimilarity(2)
+        output = torch.nn.functional.cosine_similarity(x1, x2, 2)
     else:
-        operation = trident.CosineSimilarity(2)
-
-    output = operation.forward(input, other)
-    grad_output = torch.ones_like(output)
+        output = trident.function.cosine_similarity(x1, x2, 2)
 
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
