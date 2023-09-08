@@ -73,13 +73,13 @@ class GroupNorm:
             block_shape=(1,),
             order=(0,),
         )
-        input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
-        mean = tl.sum(tl.view(input, (1, y_block_size * x_block_size)), 1) / num_elements
+        input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+        mean = tl.sum(tl.view(input / num_elements, (1, y_block_size * x_block_size)), 1)
         y_condition = tl.arange(0, y_block_size) < group_size
         x_condition = tl.arange(0, x_block_size) < x_size
         condition = y_condition[:, None] & x_condition[None, :]
         centered_mean = tl.where(condition, input - mean, 0)
-        var = tl.sum(tl.view(centered_mean * centered_mean, (1, y_block_size * x_block_size)), 1) / num_elements
+        var = tl.sum(tl.view(centered_mean * centered_mean / num_elements, (1, y_block_size * x_block_size)), 1)
         rstd = tl.math.rsqrt(var + eps)
         output = centered_mean * rstd
 
