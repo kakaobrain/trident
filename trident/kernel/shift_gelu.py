@@ -44,8 +44,9 @@ class ShiftGELU:
         pid = tl.program_id(0)
         num_x_blocks = tl.cdiv(x_size, x_block_size)
         y_offset = pid // num_x_blocks
-        xid = pid % num_x_blocks
-        x_offset = xid * x_block_size
+        x = pid % num_x_blocks
+        x_offset = x * x_block_size
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
@@ -78,6 +79,7 @@ class ShiftGELU:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+
         input = tl.load(input_block_ptr, boundary_check=(1,))
         bias = tl.load(bias_block_ptr, boundary_check=(1,))
         shift = input + bias
@@ -100,8 +102,9 @@ class ShiftGELU:
         pid = tl.program_id(0)
         num_x_blocks = tl.cdiv(x_size, x_block_size)
         y_offset = pid // num_x_blocks
-        xid = pid % num_x_blocks
-        x_offset = xid * x_block_size
+        x = pid % num_x_blocks
+        x_offset = x * x_block_size
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
@@ -126,6 +129,7 @@ class ShiftGELU:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,))
         shift = tl.load(shift_block_ptr, boundary_check=(1,))
         grad_input = language.math.GELU.backward(grad_output, shift)

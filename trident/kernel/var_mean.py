@@ -35,10 +35,10 @@ class VarMean:
         output_ptr: tl.tensor,
         mean_ptr: tl.tensor,
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
@@ -81,10 +81,10 @@ class VarMean:
         grad_input_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         mean_ptr: tl.tensor,
         correction: tl.constexpr,
         dtype: tl.constexpr,
@@ -93,8 +93,8 @@ class VarMean:
         pid = tl.program_id(0)
         num_x_blocks = tl.cdiv(x_size, x_block_size)
         y_offset = pid // num_x_blocks
-        xid = pid % num_x_blocks
-        x_offset = xid * x_block_size
+        x = pid % num_x_blocks
+        x_offset = x * x_block_size
 
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
