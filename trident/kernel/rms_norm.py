@@ -35,6 +35,7 @@ class RMSNorm:
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
@@ -70,7 +71,7 @@ class RMSNorm:
 
         input = tl.load(input_block_ptr, boundary_check=(1,))
         partial_input = tl.where(tl.arange(0, x_block_size) < partial_size, input, 0)
-        rms = tl.math.sqrt(tl.sum(partial_input * partial_input, 1) / partial_size)
+        rms = tl.math.sqrt(tl.sum(partial_input * partial_input / partial_size, 1))
         norm = input / (rms + eps)
         weight = tl.load(weight_block_ptr, boundary_check=(0,))
         output = norm * weight
@@ -109,6 +110,7 @@ class RMSNorm:
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
