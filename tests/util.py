@@ -15,8 +15,8 @@
 import torch
 
 
-def equal(a, b):
-    return torch.allclose(a, b, rtol=0, atol=1e-02)
+def equal(input: torch.Tensor, other: torch.Tensor, eps: float = 1e-02):
+    return torch.allclose(input, other, rtol=0, atol=eps)
 
 
 def train(inp, tgt, mod, act=None, crit=torch.nn.MSELoss()):
