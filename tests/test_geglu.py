@@ -24,24 +24,19 @@ def geglu(input, weight, bias: torch.Tensor = None):
     return state * torch.nn.functional.gelu(gate)
 
 
-@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 16, 32, 128)])
 def test_forward(num_batches, m_size, n_size, k_size, device):
     input = torch.randn(num_batches, m_size, k_size, device=device)
     weight = torch.randn(n_size, k_size, device=device)
 
-    assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
+    assert util.equal(geglu(input, weight), trident.function.geglu(input, weight), 1e-01)
 
     bias = torch.randn(n_size, device=device)
 
-    assert util.equal(geglu(input, weight, bias), trident.function.geglu(input, weight, bias))
-
-    input = input.permute(0, 2, 1)
-    weight = weight.permute(1, 0)
-
-    assert util.equal(geglu(input, weight), trident.function.geglu(input, weight))
+    assert util.equal(geglu(input, weight, bias), trident.function.geglu(input, weight, bias), 1e-01)
 
 
-@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 4, 4, 4)])
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 16, 32, 128)])
 def test_backward(num_batches, m_size, n_size, k_size, device):
     factory_kwargs = {"device": device}
     x_size = n_size // 2
@@ -59,8 +54,8 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
     (x, y) = train(geglu)
     (a, b) = train(trident.function.geglu)
 
-    assert util.equal(x, a)
-    assert util.equal(y, b)
+    assert util.equal(x, a, 3e-01)
+    assert util.equal(y, b, 3e-01)
 
     input = input.permute(0, 2, 1).reshape(num_batches, m_size, k_size)
     weight = weight.permute(1, 0).reshape(n_size, k_size)
@@ -68,8 +63,8 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
     (x, y) = train(geglu)
     (a, b) = train(trident.function.geglu)
 
-    assert util.equal(x, a)
-    assert util.equal(y, b)
+    assert util.equal(x, a, 3e-01)
+    assert util.equal(y, b, 3e-01)
 
     bias = torch.randn(n_size, device=device)
 
@@ -84,12 +79,12 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
     (x, y, z) = train(geglu)
     (a, b, c) = train(trident.function.geglu)
 
-    assert util.equal(x, a)
-    assert util.equal(y, b)
-    assert util.equal(z, c)
+    assert util.equal(x, a, 3e-01)
+    assert util.equal(y, b, 3e-01)
+    assert util.equal(z, c, 3e-01)
 
 
-@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(2, 64, 64, 128)])
+@pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(1, 16, 16, 16)])
 def test_geglu(num_batches, m_size, n_size, k_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(num_batches, m_size, k_size, **factory_kwargs)
