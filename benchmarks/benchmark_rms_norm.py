@@ -40,10 +40,10 @@ def rms_norm(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Te
 
 
 @util.report(
-    "rms norm forward", ["num_batches"], [10 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
+    "rms norm forward", ["num_batches"], [8 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
 )
 def bench_rms_norm_forward(num_batches, y_size, x_size, p, backend):
-    input = torch.randn((num_batches * y_size, x_size), device="cuda")
+    input = torch.randn(num_batches * y_size, x_size, device="cuda")
     weight = torch.randn(x_size, device="cuda")
 
     if backend == "torch":
@@ -53,13 +53,12 @@ def bench_rms_norm_forward(num_batches, y_size, x_size, p, backend):
 
 
 @util.report(
-    "rms norm backward", ["num_batches"], [10 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
+    "rms norm backward", ["num_batches"], [8 * i for i in range(1, 21)], {"y_size": 2048, "x_size": 2048, "p": 1.0}
 )
 def bench_rms_norm_backward(num_batches, y_size, x_size, p, backend):
-    factory_kwargs = {"device": "cuda", "requires_grad": True}
-    input = torch.randn((num_batches * y_size, x_size), **factory_kwargs)
-    weight = torch.randn(x_size, **factory_kwargs)
-    grad_output = torch.randn((num_batches * y_size, x_size), **factory_kwargs)
+    input = torch.randn(num_batches * y_size, x_size, device="cuda", requires_grad=True)
+    weight = torch.randn(x_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(num_batches * y_size, x_size, device="cuda")
 
     if backend == "torch":
         output = rms_norm(input, p, weight)

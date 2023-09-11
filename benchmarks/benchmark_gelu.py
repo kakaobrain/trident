@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("gelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"num_batches": 64})
+@util.report("gelu forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 64})
 def bench_gelu_forward(num_batches, x_size, backend):
     input = torch.randn((num_batches, x_size), device="cuda")
 
@@ -29,7 +29,7 @@ def bench_gelu_forward(num_batches, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.gelu(input))
 
 
-@util.report("gelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"num_batches": 64})
+@util.report("gelu forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 64})
 def bench_gelu_backward(num_batches, x_size, backend):
     input = torch.randn((num_batches, x_size), device="cuda", requires_grad=True)
     grad_output = torch.randn((num_batches, x_size), device="cuda")

@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("prelu forward", ["y_size"], [256 * i for i in range(1, 11)], {"num_batches": 64, "x_size": 512})
+@util.report("prelu forward", ["y_size"], [128 * i for i in range(1, 21)], {"num_batches": 64, "x_size": 512})
 def bench_prelu_forward(num_batches, y_size, x_size, backend):
     input = torch.randn(num_batches, y_size, x_size, device="cuda")
     weight = torch.randn(y_size, device="cuda")
@@ -30,7 +30,7 @@ def bench_prelu_forward(num_batches, y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.prelu(input, weight))
 
 
-@util.report("prelu backward", ["y_size"], [256 * i for i in range(1, 11)], {"num_batches": 64, "x_size": 512})
+@util.report("prelu backward", ["y_size"], [128 * i for i in range(1, 21)], {"num_batches": 64, "x_size": 512})
 def bench_prelu_backward(num_batches, y_size, x_size, backend):
     input = torch.randn(num_batches, y_size, x_size, device="cuda", requires_grad=True)
     weight = torch.randn(y_size, device="cuda", requires_grad=True)

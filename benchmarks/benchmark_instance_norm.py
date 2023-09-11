@@ -21,21 +21,39 @@ import trident
 
 @util.report(
     "instance norm forward",
-    ["vec_sz"],
-    [256 * i for i in range(1, 21)],
-    {"num_bt": 32, "num_ch": 64},
+    ["x_size"],
+    [128 * i for i in range(1, 21)],
+    {"num_batches": 64, "y_size": 32},
 )
-def bench_instance_norm_forward(num_bt, num_ch, vec_sz, backend):
-    inp = torch.randn(num_bt, num_ch, vec_sz, device="cuda")
+def bench_instance_norm_forward(num_batches, y_size, x_size, backend):
+    input = torch.randn(num_batches, y_size, x_size, device="cuda")
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.instance_norm(inp))
+        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.instance_norm(input))
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.instance_norm(inp))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.instance_norm(input))
+
+
+@util.report(
+    "instance norm backward",
+    ["x_size"],
+    [128 * i for i in range(1, 21)],
+    {"num_batches": 64, "y_size": 32},
+)
+def bench_instance_norm_backward(num_batches, y_size, x_size, backend):
+    input = torch.randn(num_batches, y_size, x_size, device="cuda", requires_grad=True)
+    grad_output = torch.rand_like(input)
+
+    if backend == "torch":
+        output = torch.nn.functional.instance_norm(input)
+    else:
+        output = trident.function.instance_norm(input)
+
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):
     if mode == "forward":
         bench_instance_norm_forward.run(print_data=True, show_plots=show_plots)
     else:
-        raise NotImplementedError("The backward isn't implemented.")
+        bench_instance_norm_backward.run(print_data=True, show_plots=show_plots)

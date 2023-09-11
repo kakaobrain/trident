@@ -56,14 +56,14 @@ def bench_attention_backward(sequence_size, backend):
         **factory_kwargs,
         requires_grad=True,
     )
-    target = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
+    grad_output = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
 
     if backend == "torch":
         output = torch.nn.functional.scaled_dot_product_attention(query, key, value)
     else:
         output = trident.function.scaled_dot_product_attention(query, key, value, use_accelerator=True)
 
-    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

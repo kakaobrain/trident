@@ -33,13 +33,13 @@ def test_forward(y_size, x_size, dim, device):
 @pytest.mark.parametrize("y_size, x_size, dim", [(2000, 10, 0), (10, 1000, 1)])
 def test_backward(y_size, x_size, dim, device):
     input = torch.randn(y_size, x_size, device=device)
-    target = torch.randn(x_size if dim == 0 else y_size, device=device)
+    grad_output = torch.randn(x_size if dim == 0 else y_size, device=device)
 
     def train(func):
         i = input.clone()
         i.requires_grad = True
         j, k = func(i, dim)
-        j.backward(target, retain_graph=True)
+        j.backward(grad_output, retain_graph=True)
         return (i.grad,)
 
     (x,) = train(torch.max)

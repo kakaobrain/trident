@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("dropout forward", ["x_size"], [256 * i for i in range(1, 21)], {"p": 0.5})
+@util.report("dropout forward", ["x_size"], [128 * i for i in range(1, 21)], {"p": 0.5})
 def bench_dropout_forward(x_size, p, backend):
     input = torch.randn(x_size, device="cuda")
 
@@ -29,7 +29,7 @@ def bench_dropout_forward(x_size, p, backend):
         return triton.testing.do_bench(lambda: trident.function.dropout(input, p))
 
 
-@util.report("dropout backward", ["x_size"], [256 * i for i in range(1, 21)], {"p": 0.5})
+@util.report("dropout backward", ["x_size"], [128 * i for i in range(1, 21)], {"p": 0.5})
 def bench_dropout_backward(x_size, p, backend):
     input = torch.randn(x_size, device="cuda", requires_grad=True)
     grad_output = torch.randn(x_size, device="cuda")
