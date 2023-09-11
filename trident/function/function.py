@@ -19,15 +19,6 @@ import torch
 from trident import operation
 
 
-def adaptive_avg_pool2d(input, output_size):
-    """
-    Applies Adaptive Average Pooling 2D to an input.
-
-    See AdaptiveAvgPool2d for details.
-    """
-    return operation.AdaptiveAvgPool2d.apply(input, output_size)
-
-
 def argmax(input: torch.Tensor, dim: int):
     """
     Returns the indices of the maximum value of all elements in an input.
@@ -53,15 +44,6 @@ def batch_norm(
         assert running_mean is not None and running_var is not None
 
     return operation.BatchNorm.apply(input, None, None, eps, running_mean, running_var)
-
-
-def conv2d(input, weight, bias=None):
-    """
-    Applies Convolution 2D to an input.
-
-    See Conv2d for details.
-    """
-    return operation.Conv2d.apply(input, weight, bias)
 
 
 def cosine_similarity(x1: torch.Tensor, x2: torch.Tensor, dim: int = 1, eps: float = 1e-08):
@@ -179,15 +161,6 @@ def linear(
         return output.view(output.shape[1:3])
     else:
         return operation.Linear.apply(input, weight, bias, use_accelerator)
-
-
-def max_pool2d(input, kernel_size):
-    """
-    Applies Max Pooling 2D to an input.
-
-    See MaxPool2d for details.
-    """
-    return operation.MaxPool2d.apply(input, kernel_size)
 
 
 def max(input: torch.Tensor, dim: int):

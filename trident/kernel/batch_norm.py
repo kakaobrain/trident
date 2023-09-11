@@ -45,9 +45,10 @@ class BatchNorm:
             var = tl.load(running_var_ptr + pid)
         else:
             mean = tl.sum(inp, 0) / bt_sz
-            var = tl.sum(language.pow2(tl.where(msk, inp - mean, 0.0)), 0) / bt_sz
+            centered_mean = tl.where(msk, inp - mean, 0.0)
+            var = tl.sum(centered_mean * centered_mean, 0) / bt_sz
 
-        std = language.std(var, eps)
+        std = tl.sqrt(var + eps)
         out = (inp - mean) / std
 
         if wgt_ptr is not None:
@@ -84,8 +85,9 @@ class BatchNorm:
         wgt = tl.load(wgt_ptr + pid) if wgt_ptr is not None else 1
 
         mean = tl.sum(inp, 0) / bt_sz
-        var = tl.sum(language.pow2(tl.where(msk, inp - mean, 0.0)), 0) / bt_sz
-        std = language.std(var, eps)
+        centered_mean = tl.where(msk, inp - mean, 0.0)
+        var = tl.sum(centered_mean * centered_mean, 0) / bt_sz
+        std = tl.sqrt(var + eps)
 
         xc = inp - mean
         xn = xc / std

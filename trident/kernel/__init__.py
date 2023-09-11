@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .adaptive_avg_pool2d import *
 from .argmax import *
 from .attention import *
 from .batch_norm import *
-from .conv2d import *
 from .cosine_similarity import *
 from .dropout import *
 from .geglu import *
@@ -27,7 +25,6 @@ from .layer_norm import *
 from .leaky_relu import *
 from .linear import *
 from .max import *
-from .max_pool2d import *
 from .mean import *
 from .prelu import *
 from .relu import *
