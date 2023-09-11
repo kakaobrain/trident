@@ -20,57 +20,6 @@ import torch
 from trident import function, operation, util
 
 
-class AdaptiveAvgPool2d(torch.nn.Module):
-    def __init__(self, output_size):
-        """
-        Applies Adaptive Average Pooling 2D to an input.
-
-        Args:
-            output_size: the target output size.
-        """
-        super().__init__()
-
-        self.output_size = output_size
-
-    def forward(self, input):
-        """
-        Applies Adaptive Average Pooling 2D to an input.
-
-        Args:
-            input: an input (N, C, H, W) or (C, H, W)
-
-        Returns:
-            an output (N, C, T, T) or (C, T, T)
-        """
-        assert input.dim() == 3 or input.dim() == 4
-
-        x = AdaptiveAvgPool2d.__view(input)
-        y = operation.AdaptiveAvgPool2d.apply(x, self.output_size)
-
-        return y if y.dim() == 4 else y.squeeze()
-
-    def extra_repr(self):
-        """
-        Set the extra representation of the module.
-
-        Returns:
-            customized extra information
-        """
-        return f"output_size={self.output_size}, backend=Trident"
-
-    @staticmethod
-    def __shape(x):
-        if x.dim() == 3:
-            return 1, x.shape[0], x.shape[1], x.shape[2]
-        else:
-            return x.shape
-
-    @staticmethod
-    def __view(x):
-        num_batches, num_channels, height, width = AdaptiveAvgPool2d.__shape(x)
-        return x.view(num_batches, num_channels, height, width)
-
-
 class BatchNorm1d(torch.nn.Module):
     def __init__(
         self,
@@ -149,60 +98,6 @@ class BatchNorm1d(torch.nn.Module):
             f"momentum={self.momentum}, "
             f"affine={self.affine}, "
             f"track_running_stats={self.track_running_stats}, "
-            f"backend=Trident"
-        )
-
-
-class Conv2d(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, bias=True):
-        """
-        Applies Convolution 2D to an input.
-
-        Args:
-            in_channels: number of channels in the input image
-            out_channels: number of channels produced by the convolution
-            kernel_size: size of the convolution kernel
-            bias: If True, adds a learnable bias to the output.
-        """
-        super().__init__()
-
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.weight = torch.empty(
-            out_channels,
-            in_channels,
-            kernel_size,
-            kernel_size,
-            device="cuda",
-            dtype=torch.float,
-        )
-        self.bias = torch.empty(out_channels, device="cuda", dtype=torch.float) if bias else None
-
-    def forward(self, input):
-        """
-        Applies Convolution 2D to an input.
-
-        Args:
-            input: an input (N, C, H, W) or (C, H, W)
-
-        Returns:
-            an output (N, C, R, C) or (C, R, C)
-        """
-        return operation.Conv2d.apply(input, self.weight, self.bias)
-
-    def extra_repr(self):
-        """
-        Set the extra representation of the module.
-
-        Returns:
-            customized extra information
-        """
-        return (
-            f"{self.in_channels}, "
-            f"{self.out_channels}, "
-            f"kernel_size={self.kernel_size}, "
-            f"bias={self.bias is not None}, "
             f"backend=Trident"
         )
 
@@ -843,40 +738,6 @@ class Max(torch.nn.Module):
             customized extra information
         """
         return f"dim={self.dim}, backend=Trident"
-
-
-class MaxPool2d(torch.nn.Module):
-    def __init__(self, kernel_size):
-        """
-        Applies Max Pooling 2D to an input.
-
-        Args:
-            kernel_size: the size of the window to take a max over
-        """
-        super().__init__()
-
-        self.kernel_size = kernel_size
-
-    def forward(self, input):
-        """
-        Applies Max Pooling 2D to an input.
-
-        Args:
-            input: an input (N, C, inp_height, inp_width)
-
-        Returns:
-            an output (N, C, out_height, out_width)
-        """
-        return operation.MaxPool2d.apply(input, self.kernel_size)
-
-    def extra_repr(self):
-        """
-        Set the extra representation of the module.
-
-        Returns:
-            customized extra information
-        """
-        return f"kernel_size={self.kernel_size}, backend=Trident"
 
 
 class Mean(torch.nn.Module):

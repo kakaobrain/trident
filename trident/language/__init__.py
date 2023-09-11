@@ -15,7 +15,6 @@
 from . import math
 from .combine import *
 from .constant import *
-from .function import *
 from .linear import *
 from .mean import *
 from .sum import *

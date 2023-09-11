@@ -214,16 +214,18 @@ class CosineSimilarity:
             numerator = tl.load(numerator_block_ptr)
             grad_output = tl.load(grad_output_block_ptr)
 
-            square_sum1 = tl.sum(x1 * x1, 0)
-            square_sum2 = tl.sum(x2 * x2, 0)
+            squared_x1 = x1 * x1
+            squared_x2 = x2 * x2
+            squared_x1_sum = tl.sum(squared_x1, 0)
+            squared_x2_sum = tl.sum(squared_x2, 0)
 
             grad_denominator = grad_output * numerator * (-1 / (denominator * denominator))
 
-            grad_mul1 = grad_denominator * language.distance(x2, 0)
-            grad_mul2 = grad_denominator * language.distance(x1, 0)
+            grad_mul1 = grad_denominator * tl.sqrt(tl.sum(squared_x2, 0))
+            grad_mul2 = grad_denominator * tl.sqrt(tl.sum(squared_x1, 0))
 
-            grad_sqrt1 = grad_mul1 / (2 * tl.sqrt(square_sum1))
-            grad_sqrt2 = grad_mul2 / (2 * tl.sqrt(square_sum2))
+            grad_sqrt1 = grad_mul1 / (2 * tl.sqrt(squared_x1_sum))
+            grad_sqrt2 = grad_mul2 / (2 * tl.sqrt(squared_x2_sum))
 
             grad_to_dot = grad_output / denominator
 
