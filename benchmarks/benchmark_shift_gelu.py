@@ -23,9 +23,9 @@ def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
     return torch.nn.functional.gelu(input + bias)
 
 
-@util.report("shift gelu forward", ["x_size"], [512 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
+@util.report("shift gelu forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
 def bench_shift_gelu_forward(num_batches, y_size, x_size, backend):
-    input = torch.randn((num_batches, y_size, x_size), device="cuda")
+    input = torch.randn(num_batches, y_size, x_size, device="cuda")
     bias = torch.randn(x_size, device="cuda")
 
     if backend == "torch":
@@ -34,11 +34,11 @@ def bench_shift_gelu_forward(num_batches, y_size, x_size, backend):
         return triton.testing.do_bench(lambda: trident.function.shift_gelu(input, bias))
 
 
-@util.report("shift gelu backward", ["x_size"], [512 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
+@util.report("shift gelu backward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 2048, "y_size": 16})
 def bench_shift_gelu_backward(num_batches, y_size, x_size, backend):
-    input = torch.randn((num_batches, y_size, x_size), device="cuda", requires_grad=True)
+    input = torch.randn(num_batches, y_size, x_size, device="cuda", requires_grad=True)
     bias = torch.randn(x_size, device="cuda")
-    grad_output = torch.randn((num_batches, y_size, x_size), device="cuda")
+    grad_output = torch.randn(num_batches, y_size, x_size, device="cuda")
 
     if backend == "torch":
         output = shift_gelu(input, bias)

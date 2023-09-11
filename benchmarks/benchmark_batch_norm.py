@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("batch norm forward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
+@util.report("batch norm forward", ["vec_sz"], [128 * i for i in range(1, 21)], {"num_vec": 16})
 def bench_batch_norm_forward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda")
 
@@ -29,7 +29,7 @@ def bench_batch_norm_forward(num_vec, vec_sz, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(inp, training=True))
 
 
-@util.report("batch norm backward", ["vec_sz"], [256 * i for i in range(1, 21)], {"num_vec": 20})
+@util.report("batch norm backward", ["vec_sz"], [128 * i for i in range(1, 21)], {"num_vec": 16})
 def bench_batch_norm_backward(num_vec, vec_sz, backend):
     inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
 

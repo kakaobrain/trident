@@ -19,12 +19,7 @@ import util
 import trident
 
 
-@util.report(
-    "cosine similarity forward",
-    ["x_size"],
-    [256 * i for i in range(1, 21)],
-    {"z_size": 16, "y_size": 16},
-)
+@util.report("cosine similarity forward", ["x_size"], [128 * i for i in range(1, 21)], {"z_size": 16, "y_size": 16})
 def bench_cosine_similarity_forward(z_size, y_size, x_size, backend):
     x1 = torch.randn(z_size, y_size, x_size, device="cuda")
     x2 = torch.randn(z_size, y_size, x_size, device="cuda")
@@ -35,12 +30,7 @@ def bench_cosine_similarity_forward(z_size, y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.cosine_similarity(x1, x2, 2))
 
 
-@util.report(
-    "cosine similarity backward",
-    ["x_size"],
-    [256 * i for i in range(1, 21)],
-    {"z_size": 16, "y_size": 16},
-)
+@util.report("cosine similarity backward", ["x_size"], [128 * i for i in range(1, 21)], {"z_size": 16, "y_size": 16})
 def bench_cosine_similarity_backward(z_size, y_size, x_size, backend):
     x1 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)
     x2 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)

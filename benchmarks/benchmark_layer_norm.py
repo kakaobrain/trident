@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("layer norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 4, "y_size": 2048})
+@util.report("layer norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 512, "y_size": 2048})
 def bench_layer_norm_forward(num_batches, y_size, x_size, backend):
     input = torch.randn((num_batches, y_size, x_size), device="cuda")
     normalized_shape = (input.shape[-1],)

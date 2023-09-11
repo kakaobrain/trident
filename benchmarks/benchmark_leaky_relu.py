@@ -19,7 +19,7 @@ import util
 import trident
 
 
-@util.report("leaky relu forward", ["x_size"], [512 * i for i in range(1, 11)], {"y_size": 64})
+@util.report("leaky relu forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 64})
 def bench_leaky_relu_forward(y_size, x_size, backend):
     input = torch.randn(y_size, x_size, device="cuda")
 
@@ -29,7 +29,7 @@ def bench_leaky_relu_forward(y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.leaky_relu(input))
 
 
-@util.report("leaky relu forward", ["x_size"], [512 * i for i in range(1, 11)], {"y_size": 64})
+@util.report("leaky relu forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 64})
 def bench_leaky_relu_backward(y_size, x_size, backend):
     input = torch.randn(y_size, x_size, device="cuda", requires_grad=True)
     grad_output = torch.randn(y_size, x_size, device="cuda")

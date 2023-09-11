@@ -24,7 +24,7 @@ def geglu(input, weight, bias: torch.Tensor = None):
     return hidden_state * torch.nn.functional.gelu(gate)
 
 
-@util.report("geglu forward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 11)], {"num_batches": 16})
+@util.report("geglu forward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 21)], {"num_batches": 16})
 def bench_geglu_forward(num_batches, m_size, n_size, k_size, backend):
     input = torch.randn(num_batches, m_size, k_size, device="cuda")
     weight = torch.randn(n_size, k_size, device="cuda")
@@ -38,7 +38,7 @@ def bench_geglu_forward(num_batches, m_size, n_size, k_size, backend):
         )
 
 
-@util.report("linear backward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 11)], {"num_batches": 16})
+@util.report("linear backward", ["m_size", "n_size", "k_size"], [128 * i for i in range(1, 21)], {"num_batches": 16})
 def bench_geglu_backward(num_batches, m_size, n_size, k_size, backend):
     input = torch.randn(num_batches, m_size, k_size, device="cuda", requires_grad=True)
     weight = torch.randn(n_size, k_size, device="cuda", requires_grad=True)

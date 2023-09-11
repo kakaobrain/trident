@@ -19,10 +19,9 @@ import util
 import trident
 
 
-@util.report("var mean forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 32})
+@util.report("var mean forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 32})
 def bench_var_mean_forward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.var_mean(input, 1))
@@ -30,18 +29,17 @@ def bench_var_mean_forward(y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.var_mean(input, 1))
 
 
-@util.report("var backward forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 32})
+@util.report("var backward forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 32})
 def bench_var_mean_backward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda", "requires_grad": True}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.empty(y_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device="cuda", requires_grad=True)
+    grad_output = torch.empty(y_size, device="cuda")
 
     if backend == "torch":
         output, mean = torch.var_mean(input, 1)
     else:
         output, mean = trident.function.var_mean(input, 1)
 
-    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

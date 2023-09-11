@@ -120,8 +120,6 @@ class InstanceNorm(torch.autograd.Function):
         def grid(meta):
             return (num_batches * y_size,)
 
-        print(running_var)
-
         kernel.InstanceNorm.backward[grid](
             grad_input,
             grad_weight_staging,

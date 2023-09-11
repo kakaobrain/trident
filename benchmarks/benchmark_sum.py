@@ -19,15 +19,9 @@ import util
 import trident
 
 
-@util.report(
-    "sum forward",
-    ["x_size"],
-    [256 * i for i in range(1, 21)],
-    {"y_size": 32},
-)
+@util.report("sum forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 32})
 def bench_sum_forward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.sum(input, 1))
@@ -35,23 +29,17 @@ def bench_sum_forward(y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.sum(input, 1))
 
 
-@util.report(
-    "sum backward",
-    ["x_size"],
-    [256 * i for i in range(1, 21)],
-    {"y_size": 32},
-)
+@util.report("sum backward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 32})
 def bench_sum_backward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda", "requires_grad": True}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    target = torch.empty(y_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device="cuda", requires_grad=True)
+    grad_output = torch.randn(y_size, device="cuda")
 
     if backend == "torch":
         output = torch.sum(input, 1)
     else:
         output = trident.function.sum(input, 1)
 
-    return triton.testing.do_bench_cudagraph(lambda: output.backward(target, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
 def run_benchmark(mode, show_plots):

@@ -19,10 +19,9 @@ import util
 import trident
 
 
-@util.report("argmax forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 32})
+@util.report("argmax forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 32})
 def bench_mean_forward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.argmax(input, 1))
