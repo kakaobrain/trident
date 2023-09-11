@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def geglu_configs():
@@ -39,7 +39,7 @@ def geglu_configs():
 
 class GEGLU:
     @staticmethod
-    @triton.autotune(configs=geglu_configs(), key=["m_size", "k_size", "x_size"])
+    @util.autotune(configs=geglu_configs(), key=["m_size", "k_size", "x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,

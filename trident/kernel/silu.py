@@ -15,6 +15,8 @@
 import triton
 import triton.language as tl
 
+from trident import util
+
 
 def silu_configs():
     configs = []
@@ -27,7 +29,7 @@ def silu_configs():
 
 class SiLU:
     @staticmethod
-    @triton.autotune(silu_configs(), ["x_size"])
+    @util.autotune(silu_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -59,7 +61,7 @@ class SiLU:
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
-    @triton.autotune(silu_configs(), ["x_size"])
+    @util.autotune(silu_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

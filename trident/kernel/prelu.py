@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def prelu_configs():
@@ -30,7 +30,7 @@ def prelu_configs():
 
 class PReLU:
     @staticmethod
-    @triton.autotune(prelu_configs(), ["x_size"])
+    @util.autotune(prelu_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -88,7 +88,7 @@ class PReLU:
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(1, 2))
 
     @staticmethod
-    @triton.autotune(prelu_configs(), ["x_size"])
+    @util.autotune(prelu_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

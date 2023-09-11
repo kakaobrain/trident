@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def var_mean_configs():
@@ -29,7 +29,7 @@ def var_mean_configs():
 
 class VarMean:
     @staticmethod
-    @triton.autotune(var_mean_configs(), ["x_size"])
+    @util.autotune(var_mean_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -75,7 +75,7 @@ class VarMean:
         tl.store(mean_block_ptr, mean)
 
     @staticmethod
-    @triton.autotune(var_mean_configs(), ["x_size"])
+    @util.autotune(var_mean_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

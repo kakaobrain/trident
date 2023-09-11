@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def var_configs():
@@ -29,7 +29,7 @@ def var_configs():
 
 class Var:
     @staticmethod
-    @triton.autotune(var_configs(), ["x_size"])
+    @util.autotune(var_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -65,7 +65,7 @@ class Var:
         tl.store(output_block_ptr, output)
 
     @staticmethod
-    @triton.autotune(var_configs(), ["x_size"])
+    @util.autotune(var_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
