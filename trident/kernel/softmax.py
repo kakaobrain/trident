@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def softmax_configs():
@@ -28,7 +28,7 @@ def softmax_configs():
 
 class Softmax:
     @staticmethod
-    @triton.autotune(softmax_configs(), ["x_size"])
+    @util.autotune(softmax_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -90,7 +90,7 @@ class Softmax:
             input_block_ptr = tl.advance(input_block_ptr, (0, x_block_size))
 
     @staticmethod
-    @triton.autotune(softmax_configs(), ["x_size"])
+    @util.autotune(softmax_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -150,7 +150,7 @@ class Softmax:
             output_block_ptr = tl.advance(output_block_ptr, (0, x_block_size))
 
     @staticmethod
-    @triton.autotune(softmax_configs(), ["x_size"])
+    @util.autotune(softmax_configs(), ["x_size"])
     @triton.jit
     def backward_delta(
         delta_ptr: tl.tensor,

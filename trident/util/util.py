@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Callable, List
+
 import torch
+import triton
 import triton.language as tl
 
-from trident import module
+from trident import config, module
+
+
+def autotune(
+    configs: List[triton.Config],
+    key: List[str],
+    prune_configs_by: Callable = None,
+    reset_to_zero: List[str] = None,
+    warmup: int = 25,
+    rep: int = 100,
+):
+    return triton.autotune(
+        configs if config.use_autotune else [configs[0]], key, prune_configs_by, reset_to_zero, warmup, rep
+    )
 
 
 def fill(inp, val):

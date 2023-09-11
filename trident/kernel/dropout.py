@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def dropout_configs():
@@ -29,7 +29,7 @@ def dropout_configs():
 
 class Dropout:
     @staticmethod
-    @triton.autotune(dropout_configs(), ["x_size"])
+    @util.autotune(dropout_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -63,7 +63,7 @@ class Dropout:
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
-    @triton.autotune(dropout_configs(), ["x_size"])
+    @util.autotune(dropout_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr,

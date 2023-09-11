@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def linear_configs():
@@ -54,7 +54,7 @@ def linear_configs_for_backward_bias():
 
 class Linear:
     @staticmethod
-    @triton.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -116,7 +116,7 @@ class Linear:
         tl.store(output_block_ptr, output, boundary_check=(0, 1))
 
     @staticmethod
-    @triton.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -173,7 +173,7 @@ class Linear:
         tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
 
     @staticmethod
-    @triton.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
     @triton.jit
     def backward_weight(
         grad_weight_staging_ptr: tl.tensor,
@@ -229,7 +229,7 @@ class Linear:
         tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
 
     @staticmethod
-    @triton.autotune(configs=linear_configs_for_backward_bias(), key=["m_size", "n_size"])
+    @util.autotune(configs=linear_configs_for_backward_bias(), key=["m_size", "n_size"])
     @triton.jit
     def backward_bias(
         grad_bias_staging_ptr: tl.tensor,

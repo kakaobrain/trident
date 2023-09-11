@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def shift_gelu_configs():
@@ -29,7 +29,7 @@ def shift_gelu_configs():
 
 class ShiftGELU:
     @staticmethod
-    @triton.autotune(shift_gelu_configs(), ["x_size"])
+    @util.autotune(shift_gelu_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -88,7 +88,7 @@ class ShiftGELU:
         tl.store(shift_block_ptr, shift.to(dtype), boundary_check=(1,))
 
     @staticmethod
-    @triton.autotune(shift_gelu_configs(), ["x_size"])
+    @util.autotune(shift_gelu_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

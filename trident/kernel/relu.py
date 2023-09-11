@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def relu_configs():
@@ -29,7 +29,7 @@ def relu_configs():
 
 class ReLU:
     @staticmethod
-    @triton.autotune(relu_configs(), ["x_size"])
+    @util.autotune(relu_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor, input_ptr: tl.tensor, x_size: tl.int32, dtype: tl.constexpr, x_block_size: tl.constexpr
@@ -46,7 +46,7 @@ class ReLU:
         tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
 
     @staticmethod
-    @triton.autotune(relu_configs(), ["x_size"])
+    @util.autotune(relu_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

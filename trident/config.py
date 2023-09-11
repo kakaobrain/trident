@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import function, kernel, util
-from .config import *
-from .module import *
+
+use_autotune = True

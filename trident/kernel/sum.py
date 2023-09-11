@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def sum_configs_for_forward():
@@ -50,7 +50,7 @@ def sum_configs_for_backward():
 
 class Sum:
     @staticmethod
-    @triton.autotune(sum_configs_for_forward(), ["x_size"])
+    @util.autotune(sum_configs_for_forward(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -75,7 +75,7 @@ class Sum:
         tl.store(output_block_ptr, output)
 
     @staticmethod
-    @triton.autotune(sum_configs_for_backward(), ["y_size"])
+    @util.autotune(sum_configs_for_backward(), ["y_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,

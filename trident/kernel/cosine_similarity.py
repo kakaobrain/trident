@@ -15,7 +15,7 @@
 import triton
 import triton.language as tl
 
-from trident import language
+from trident import language, util
 
 
 def cosine_similarity_configs():
@@ -29,7 +29,7 @@ def cosine_similarity_configs():
 
 class CosineSimilarity:
     @staticmethod
-    @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
+    @util.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -123,7 +123,7 @@ class CosineSimilarity:
         tl.store(numerator_block_ptr, numerator.to(dtype))
 
     @staticmethod
-    @triton.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
+    @util.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
     @triton.jit
     def backward(
         grad_x1_ptr: tl.tensor,
