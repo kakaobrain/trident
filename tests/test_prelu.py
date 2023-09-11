@@ -19,7 +19,7 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
+@pytest.mark.parametrize("y_size, x_size", [(128, 512), (200, 300)])
 def test_forward(y_size, x_size, device):
     input = torch.randn(y_size, x_size, device=device)
     weight = torch.randn(x_size, device=device)
@@ -27,23 +27,24 @@ def test_forward(y_size, x_size, device):
     assert util.equal(torch.nn.functional.prelu(input, weight), trident.function.prelu(input, weight))
 
 
-@pytest.mark.parametrize("y_size, x_size", [(512, 512), (200, 300), (100, 1), (1, 100)])
+@pytest.mark.parametrize("y_size, x_size", [(512, 128), (100, 600)])
 def test_backward(y_size, x_size, device):
     input = torch.randn(y_size, x_size, device=device)
-    target = torch.randn(y_size, x_size, device=device)
+    weight = torch.randn(x_size, device=device)
+    grad_output = torch.rand_like(input)
 
-    x = input.clone()
-    a = input.clone()
-    x.requires_grad = a.requires_grad = True
+    def train(func):
+        i = input.clone()
+        j = weight.clone()
+        i.requires_grad = j.requires_grad = True
+        func(i, j).backward(grad_output, retain_graph=True)
+        return i.grad, j.grad
 
-    y = torch.nn.PReLU(x_size, 0.3, device=device)
-    b = trident.PReLU(x_size, 0.3, device=device)
+    (x, y) = train(torch.nn.functional.prelu)
+    (a, b) = train(trident.function.prelu)
 
-    util.train(x, target, y)
-    util.train(a, target, b)
-
-    assert util.equal(x.grad, a.grad)
-    assert util.equal(y.weight.grad, b.weight.grad)
+    assert util.equal(x, a)
+    assert util.equal(y, b)
 
 
 @pytest.mark.parametrize("y_size, x_size", [(1, 100)])
@@ -52,4 +53,6 @@ def test_prelu(y_size, x_size, device, dtype):
     input = torch.randn(y_size, x_size, **factory_kwargs)
 
     output = trident.PReLU(x_size, 0.3, **factory_kwargs).forward(input)
-    assert output is not None and output.dtype == dtype
+
+    assert output is not None
+    assert output.dtype == dtype

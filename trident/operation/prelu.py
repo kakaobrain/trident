@@ -17,54 +17,89 @@ from typing import Any
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class PReLU(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight = args
+        output = PReLU.__forward(input.view(PReLU.__shape(input)), weight)
 
         ctx.save_for_backward(input, weight)
 
-        return PReLU.__forward(input, weight)
+        return output.view(input.shape)
 
     @staticmethod
-    def __forward(input, weight):
-        assert input.is_contiguous() and weight.is_contiguous()
-
-        y_size, x_size = input.shape
+    def __forward(input: torch.Tensor, weight: torch.Tensor):
+        num_batches, y_size, x_size = input.shape
         output = torch.empty_like(input)
 
         def grid(meta):
-            return (triton.cdiv(y_size, meta["y_block_size"]) * triton.cdiv(x_size, meta["x_block_size"]),)
+            num_y_blocks = triton.cdiv(y_size, meta["y_block_size"])
+            num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
+            return (num_batches * num_y_blocks * num_x_blocks,)
 
         kernel.PReLU.forward[grid](
             output,
             input,
             weight,
+            num_batches,
             y_size,
             x_size,
+            input.stride(0),
+            input.stride(1),
+            input.stride(2),
+            util.dtype(output.dtype),
         )
 
         return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
-        return PReLU.__backward(grad_outputs[0], *ctx.saved_tensors)
+        grad_output = grad_outputs[0]
+        input, weight = ctx.saved_tensors
+        grad_input, grad_weight = PReLU.__backward(grad_output, input.view(PReLU.__shape(input)), weight)
+
+        return grad_input.view(input.shape), grad_weight, None
 
     @staticmethod
-    def __backward(grad_output, input, weight):
-        assert input.is_contiguous() and weight.is_contiguous()
-
-        y_size, x_size = input.shape
-
+    def __backward(grad_output: torch.Tensor, input: torch.Tensor, weight: torch.Tensor):
+        num_batches, y_size, x_size = input.shape
         grad_input = torch.empty_like(input)
-        grad_weight = torch.empty_like(input)
+        grad_weight_staging = torch.empty_like(input)
 
         def grid(meta):
-            return (triton.cdiv(y_size, meta["y_block_size"]) * triton.cdiv(x_size, meta["x_block_size"]),)
+            num_y_blocks = triton.cdiv(y_size, meta["y_block_size"])
+            num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
+            return (num_batches * num_y_blocks * num_x_blocks,)
 
-        kernel.PReLU.backward[grid](grad_input, grad_weight, input, weight, grad_output, y_size, x_size)
+        kernel.PReLU.backward[grid](
+            grad_input,
+            grad_weight_staging,
+            grad_output,
+            input,
+            weight,
+            num_batches,
+            y_size,
+            x_size,
+            grad_input.stride(0),
+            grad_input.stride(1),
+            grad_input.stride(2),
+        )
 
-        return grad_input, grad_weight, None
+        if grad_weight_staging.dim() < 3:
+            grad_weight = grad_weight_staging
+        else:
+            grad_weight = torch.sum(grad_weight_staging, 2)
+
+        return grad_input, grad_weight
+
+    @staticmethod
+    def __shape(input: torch.Tensor):
+        if input.dim() == 1:
+            return 1, 1, -1
+        elif input.dim() == 2:
+            return *input.shape, 1
+        else:
+            return *input.shape[0:2], -1

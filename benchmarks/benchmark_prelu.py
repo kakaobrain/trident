@@ -19,12 +19,10 @@ import util
 import trident
 
 
-@util.report("prelu forward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
-def bench_prelu_forward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-
-    input = torch.randn(y_size, x_size, **factory_kwargs)
-    weight = torch.randn(x_size, **factory_kwargs)
+@util.report("prelu forward", ["y_size"], [256 * i for i in range(1, 11)], {"num_batches": 64, "x_size": 512})
+def bench_prelu_forward(num_batches, y_size, x_size, backend):
+    input = torch.randn(num_batches, y_size, x_size, device="cuda")
+    weight = torch.randn(y_size, device="cuda")
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.prelu(input, weight))
@@ -32,19 +30,16 @@ def bench_prelu_forward(y_size, x_size, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.prelu(input, weight))
 
 
-@util.report("prelu backward", ["x_size"], [256 * i for i in range(1, 21)], {"y_size": 16})
-def bench_prelu_backward(y_size, x_size, backend):
-    factory_kwargs = {"device": "cuda"}
-
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+@util.report("prelu backward", ["y_size"], [256 * i for i in range(1, 11)], {"num_batches": 64, "x_size": 512})
+def bench_prelu_backward(num_batches, y_size, x_size, backend):
+    input = torch.randn(num_batches, y_size, x_size, device="cuda", requires_grad=True)
+    weight = torch.randn(y_size, device="cuda", requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     if backend == "torch":
-        operation = torch.nn.PReLU(x_size, 0.3, **factory_kwargs)
+        output = torch.nn.functional.prelu(input, weight)
     else:
-        operation = trident.PReLU(x_size, 0.3, **factory_kwargs)
-
-    output = operation.forward(input)
-    grad_output = torch.ones_like(output)
+        output = trident.function.prelu(input, weight)
 
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 

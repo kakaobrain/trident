@@ -235,7 +235,7 @@ def shift_gelu(input: torch.Tensor, bias: torch.Tensor):
     return operation.ShiftGELU.apply(input.view(-1, input.shape[-1]), bias).view(input.shape)
 
 
-def silu(input):
+def silu(input: torch.Tensor):
     """
     Applies the Sigmoid Linear Unit to an input.
 
@@ -244,7 +244,7 @@ def silu(input):
     return operation.SiLU.apply(input.view(-1, input.shape[-1])).view(input.shape)
 
 
-def prelu(input, weight):
+def prelu(input: torch.Tensor, weight: torch.Tensor):
     """
     Applies PReLU to an input.
 
