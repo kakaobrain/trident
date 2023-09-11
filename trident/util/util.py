@@ -14,6 +14,7 @@
 
 from typing import Callable, List
 
+import nvtx
 import torch
 import triton
 import triton.language as tl
@@ -32,6 +33,11 @@ def autotune(
     return triton.autotune(
         configs if config.use_autotune else [configs[0]], key, prune_configs_by, reset_to_zero, warmup, rep
     )
+
+
+def calculate_fan_in_and_fan_out(input: torch.Tensor):
+    with torch.no_grad():
+        return torch.nn.init._calculate_fan_in_and_fan_out(input)
 
 
 def fill(inp, val):
@@ -110,14 +116,19 @@ def optimize_model(model):
         optimize_model(child)
 
 
+def push_trace(message: str):
+    if config.use_trace:
+        nvtx.push_range(message, color="green", domain="Trident")
+
+
+def pop_trace():
+    if config.use_trace:
+        nvtx.pop_range(domain="Trident")
+
+
 def uniform(input: torch.Tensor, a: float = 0.0, b: float = 1.0):
     with torch.no_grad():
         return torch.nn.init.uniform(input, a, b)
-
-
-def calculate_fan_in_and_fan_out(input: torch.Tensor):
-    with torch.no_grad():
-        return torch.nn.init._calculate_fan_in_and_fan_out(input)
 
 
 def zero(inp):

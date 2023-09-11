@@ -25,28 +25,37 @@ class Var(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim, correction = args
 
+        util.push_trace("Var.__forward")
+        output = Var.__forward(input, dim, correction)
+        util.pop_trace()
+
         ctx.save_for_backward(input)
         ctx.dim = dim
         ctx.correction = correction
 
-        return Var.__forward(input, dim, correction)
+        return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         (input,) = ctx.saved_tensors
         (grad_output,) = grad_outputs
-        return Var.__backward(grad_output, input, ctx.dim, ctx.correction)
+
+        util.push_trace("Var.__backward")
+        grad_input = Var.__backward(grad_output, input, ctx.dim, ctx.correction)
+        util.pop_trace()
+
+        return grad_input, None, None
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: int, correction: int):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
+        output = torch.empty(y_size, **factory_kwargs)
 
         def grid(meta):
             return (y_size,)
 
-        output = torch.empty(y_size, **factory_kwargs)
-
+        util.push_trace("kernel.Var.forward")
         kernel.Var.forward[grid](
             output,
             input,
@@ -57,18 +66,19 @@ class Var(torch.autograd.Function):
             correction,
             util.dtype(input.dtype),
         )
+        util.pop_trace()
 
         return output
 
     @staticmethod
     def __backward(grad_output: torch.Tensor, input: torch.Tensor, dim: int, correction: int):
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
+        grad_input = torch.zeros_like(input)
 
         def grid(meta):
             return (y_size * triton.cdiv(x_size, meta["x_block_size"]),)
 
-        grad_input = torch.zeros_like(input)
-
+        util.push_trace("kernel.Var.backward")
         kernel.Var.backward[grid](
             grad_input,
             grad_output,
@@ -80,5 +90,6 @@ class Var(torch.autograd.Function):
             correction,
             util.dtype(grad_input.dtype),
         )
+        util.pop_trace()
 
-        return grad_input, None, None
+        return grad_input

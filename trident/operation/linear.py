@@ -24,7 +24,10 @@ class Linear(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight, bias, use_accelerator = args
+
+        util.push_trace("Linear.__forward")
         output = Linear.__forward(input, weight, bias, use_accelerator)
+        util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias, output)
         ctx.use_accelerator = use_accelerator
@@ -35,7 +38,14 @@ class Linear(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, output = ctx.saved_tensors
-        return Linear.__backward(grad_output, output, input, weight, bias, ctx.use_accelerator)
+
+        util.push_trace("Linear.__backward")
+        grad_input, grad_weight, grad_bias = Linear.__backward(
+            grad_output, output, input, weight, bias, ctx.use_accelerator
+        )
+        util.pop_trace()
+
+        return grad_input, grad_weight, grad_bias, None, None
 
     @staticmethod
     def __forward(input, weight, bias, use_accelerator):
@@ -49,6 +59,7 @@ class Linear(torch.autograd.Function):
             num_n_blocks = triton.cdiv(n_size, meta["n_block_size"])
             return (num_batches * num_m_blocks * num_n_blocks,)
 
+        util.push_trace("kernel.Linear.forward")
         kernel.Linear.forward[grid](
             output,
             input,
@@ -65,6 +76,7 @@ class Linear(torch.autograd.Function):
             use_accelerator,
             util.dtype(input.dtype),
         )
+        util.pop_trace()
 
         return output
 
@@ -81,6 +93,7 @@ class Linear(torch.autograd.Function):
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
             return (num_batches * num_m_blocks * num_k_blocks,)
 
+        util.push_trace("kernel.Linear.backward")
         kernel.Linear.backward[grid](
             grad_input,
             grad_output,
@@ -95,12 +108,14 @@ class Linear(torch.autograd.Function):
             use_accelerator,
             util.dtype(grad_input.dtype),
         )
+        util.pop_trace()
 
         def grid(meta):
             num_n_blocks = triton.cdiv(n_size, meta["n_block_size"])
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
             return (num_batches * num_n_blocks * num_k_blocks,)
 
+        util.push_trace("kernel.Linear.backward_weight")
         kernel.Linear.backward_weight[grid](
             grad_weight_staging,
             grad_output,
@@ -114,8 +129,11 @@ class Linear(torch.autograd.Function):
             use_accelerator,
             util.dtype(grad_weight_staging.dtype),
         )
+        util.pop_trace()
 
+        util.push_trace("torch.sum")
         grad_weight = torch.sum(grad_weight_staging, 0)
+        util.pop_trace()
 
         if bias is not None:
             grad_bias_staging = torch.empty(num_batches, n_size, **factory_kwargs)
@@ -123,6 +141,7 @@ class Linear(torch.autograd.Function):
             def grid(meta):
                 return (num_batches * n_size,)
 
+            util.push_trace("kernel.Linear.backward_bias")
             kernel.Linear.backward_bias[grid](
                 grad_bias_staging,
                 grad_output,
@@ -130,9 +149,12 @@ class Linear(torch.autograd.Function):
                 n_size,
                 util.dtype(grad_bias_staging.dtype),
             )
+            util.pop_trace()
 
+            util.push_trace("torch.sum")
             grad_bias = torch.sum(grad_bias_staging, 0)
+            util.pop_trace()
         else:
             grad_bias = None
 
-        return grad_input, grad_weight, grad_bias, None, None
+        return grad_input, grad_weight, grad_bias

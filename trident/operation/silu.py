@@ -24,15 +24,25 @@ class SiLU(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         (input,) = args
+
+        util.push_trace("SiLU.__forward")
+        output = SiLU.__forward(input)
+        util.pop_trace()
+
         ctx.save_for_backward(input)
 
-        return SiLU.__forward(input)
+        return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (input,) = ctx.saved_tensors
-        return SiLU.__backward(grad_output, input)
+
+        util.push_trace("SiLU.__backward")
+        grad_input = SiLU.__backward(grad_output, input)
+        util.pop_trace()
+
+        return grad_input, None
 
     @staticmethod
     def __forward(input: torch.Tensor):
@@ -43,7 +53,9 @@ class SiLU(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.SiLU.forward")
         kernel.SiLU.forward[grid](output, input, x_size, util.dtype(output.dtype))
+        util.pop_trace()
 
         return output
 
@@ -55,6 +67,8 @@ class SiLU(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.SiLU.backward")
         kernel.SiLU.backward[grid](grad_input, grad_output, input, x_size, util.dtype(grad_input.dtype))
+        util.pop_trace()
 
-        return grad_input, None
+        return grad_input

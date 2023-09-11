@@ -24,7 +24,10 @@ class Attention(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         query, key, value, is_causal, softmax_scale, use_accelerator = args
+
+        util.push_trace("Attention.__forward")
         output, log_sum_exp, grid = Attention.__forward(query, key, value, is_causal, softmax_scale, use_accelerator)
+        util.pop_trace()
 
         ctx.save_for_backward(query, key, value, output, log_sum_exp)
         ctx.grid = grid
@@ -46,7 +49,8 @@ class Attention(torch.autograd.Function):
         is_causal = ctx.is_causal
         use_accelerator = ctx.use_accelerator
 
-        return Attention.__backward(
+        util.push_trace("Attention.__backward")
+        grad_query, grad_key, grad_value = Attention.__backward(
             grad_output,
             query,
             key,
@@ -59,6 +63,9 @@ class Attention(torch.autograd.Function):
             is_causal,
             use_accelerator,
         )
+        util.pop_trace()
+
+        return grad_query, grad_key, grad_value, None, None, None
 
     @staticmethod
     def __forward(
@@ -79,8 +86,9 @@ class Attention(torch.autograd.Function):
         log_sum_exp = torch.empty(
             (query.shape[0] * query.shape[1], query.shape[2]), device=query.device, dtype=torch.float32
         )
-
         num_warps = 4 if key.shape[-1] <= 64 else 8
+
+        util.push_trace("kernel.Attention.forward")
         kernel.Attention.forward[grid](
             output,
             log_sum_exp,
@@ -106,6 +114,7 @@ class Attention(torch.autograd.Function):
             dtype=util.dtype(query.dtype),
             num_warps=num_warps,
         )
+        util.pop_trace()
 
         return output, log_sum_exp, grid
 
@@ -131,10 +140,14 @@ class Attention(torch.autograd.Function):
         delta = torch.empty_like(log_sum_exp)
 
         num_batches, num_heads, y_size, x_size = output.shape
+
+        util.push_trace("kernel.Softmax.backward_delta")
         kernel.Softmax.backward_delta[(num_batches * num_heads * y_size,)](
             delta, output, grad_output, num_batches * num_heads * y_size, x_size, x_size, 1, util.dtype(delta.dtype)
         )
+        util.pop_trace()
 
+        util.push_trace("kernel.Attention.backward")
         kernel.Attention.backward[(grid[1],)](
             grad_query,
             grad_key,
@@ -163,5 +176,6 @@ class Attention(torch.autograd.Function):
             dtype=util.dtype(query.dtype),
             num_warps=8,
         )
+        util.pop_trace()
 
-        return grad_query, grad_key, grad_value, None, None, None
+        return grad_query, grad_key, grad_value

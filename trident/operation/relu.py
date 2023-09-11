@@ -25,15 +25,24 @@ class ReLU(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         (input,) = args
 
+        util.push_trace("ReLU.__forward")
+        output = ReLU.__forward(input)
+        util.pop_trace()
+
         ctx.save_for_backward(input)
 
-        return ReLU.__forward(input)
+        return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         (input,) = ctx.saved_tensors
-        return ReLU.__backward(grad_output, input)
+
+        util.push_trace("ReLU.__forward")
+        grad_input = ReLU.__backward(grad_output, input)
+        util.pop_trace()
+
+        return grad_input
 
     @staticmethod
     def __forward(input: torch.Tensor):
@@ -43,7 +52,9 @@ class ReLU(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.ReLU.forward")
         kernel.ReLU.forward[grid](output, input, x_size, util.dtype(output.dtype))
+        util.pop_trace()
 
         return output
 
@@ -55,6 +66,8 @@ class ReLU(torch.autograd.Function):
         def grid(meta):
             return [triton.cdiv(x_size, meta["x_block_size"])]
 
+        util.push_trace("kernel.ReLU.backward")
         kernel.ReLU.backward[grid](grad_input, grad_output, input, x_size, util.dtype(grad_input.dtype))
+        util.pop_trace()
 
         return grad_input

@@ -24,11 +24,25 @@ class PReLU(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight = args
+
+        util.push_trace("PReLU.__forward")
         output = PReLU.__forward(input.view(PReLU.__shape(input)), weight)
+        util.pop_trace()
 
         ctx.save_for_backward(input, weight)
 
         return output.view(input.shape)
+
+    @staticmethod
+    def backward(ctx: Any, *grad_outputs: Any):
+        grad_output = grad_outputs[0]
+        input, weight = ctx.saved_tensors
+
+        util.push_trace("PReLU.__backward")
+        grad_input, grad_weight = PReLU.__backward(grad_output, input.view(PReLU.__shape(input)), weight)
+        util.pop_trace()
+
+        return grad_input.view(input.shape), grad_weight, None
 
     @staticmethod
     def __forward(input: torch.Tensor, weight: torch.Tensor):
@@ -40,6 +54,7 @@ class PReLU(torch.autograd.Function):
             num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
             return (num_batches * num_y_blocks * num_x_blocks,)
 
+        util.push_trace("kernel.PReLU.forward")
         kernel.PReLU.forward[grid](
             output,
             input,
@@ -52,16 +67,9 @@ class PReLU(torch.autograd.Function):
             input.stride(2),
             util.dtype(output.dtype),
         )
+        util.pop_trace()
 
         return output
-
-    @staticmethod
-    def backward(ctx: Any, *grad_outputs: Any):
-        grad_output = grad_outputs[0]
-        input, weight = ctx.saved_tensors
-        grad_input, grad_weight = PReLU.__backward(grad_output, input.view(PReLU.__shape(input)), weight)
-
-        return grad_input.view(input.shape), grad_weight, None
 
     @staticmethod
     def __backward(grad_output: torch.Tensor, input: torch.Tensor, weight: torch.Tensor):
@@ -74,6 +82,7 @@ class PReLU(torch.autograd.Function):
             num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
             return (num_batches * num_y_blocks * num_x_blocks,)
 
+        util.push_trace("kernel.PReLU.backward")
         kernel.PReLU.backward[grid](
             grad_input,
             grad_weight_staging,
@@ -87,11 +96,14 @@ class PReLU(torch.autograd.Function):
             grad_input.stride(1),
             grad_input.stride(2),
         )
+        util.pop_trace()
 
         if grad_weight_staging.dim() < 3:
             grad_weight = grad_weight_staging
         else:
+            util.push_trace("torch.sum")
             grad_weight = torch.sum(grad_weight_staging, 2)
+            util.pop_trace()
 
         return grad_input, grad_weight
 

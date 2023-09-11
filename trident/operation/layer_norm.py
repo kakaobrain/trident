@@ -25,7 +25,10 @@ class LayerNorm(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, normalized_shape, weight, bias, eps = args
+
+        util.push_trace("LayerNorm.__forward")
         output, rstd, mean = LayerNorm.__forward(input, normalized_shape, weight, bias, eps)
+        util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.normalized_shape = normalized_shape
@@ -36,7 +39,14 @@ class LayerNorm(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
-        return LayerNorm.__backward(grad_output, input, ctx.normalized_shape, weight, bias, rstd, mean)
+
+        util.push_trace("LayerNorm.__backward")
+        grad_input, grad_weight, grad_bias = LayerNorm.__backward(
+            grad_output, input, ctx.normalized_shape, weight, bias, rstd, mean
+        )
+        util.pop_trace()
+
+        return grad_input, None, grad_weight, grad_bias, None, None, None, None
 
     @staticmethod
     def __forward(input, normalized_shape, weight, bias, eps):
@@ -50,6 +60,7 @@ class LayerNorm(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.LayerNorm.forward")
         kernel.LayerNorm.forward[grid](
             output,
             rstd,
@@ -63,6 +74,7 @@ class LayerNorm(torch.autograd.Function):
             util.dtype(input.dtype),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         return output, rstd, mean
 
@@ -74,14 +86,14 @@ class LayerNorm(torch.autograd.Function):
         grad_input = torch.empty_like(input)
 
         if weight is not None:
-            grad_weight_staging = torch.empty((y_size, x_size), **factory_kwargs)
-            # grad_weight_staging = torch.empty((x_size, y_size), **factory_kwargs)
+            grad_weight_staging = torch.empty(y_size, x_size, **factory_kwargs)
         else:
             grad_weight_staging = None
 
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.LayerNorm.backward")
         kernel.LayerNorm.backward[grid](
             grad_input,
             grad_weight_staging,
@@ -95,15 +107,20 @@ class LayerNorm(torch.autograd.Function):
             util.dtype(grad_output.dtype),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         if weight is not None:
+            util.push_trace("torch.sum")
             grad_weight = torch.sum(grad_weight_staging, 0)
+            util.pop_trace()
         else:
             grad_weight = None
 
         if bias is not None:
+            util.push_trace("torch.sum")
             grad_bias = torch.sum(grad_output, 0)
+            util.pop_trace()
         else:
             grad_bias = None
 
-        return grad_input, None, grad_weight, grad_bias, None, None, None, None
+        return grad_input, grad_weight, grad_bias

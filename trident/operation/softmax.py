@@ -24,7 +24,10 @@ class Softmax(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
+
+        util.push_trace("Softmax.__forward")
         output = Softmax.__forward(input, dim)
+        util.pop_trace()
 
         ctx.save_for_backward(output)
         ctx.dim = dim
@@ -35,7 +38,12 @@ class Softmax(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         (output,) = ctx.saved_tensors
-        return Softmax.__backward(grad_output, output, ctx.dim)
+
+        util.push_trace("Softmax.__backward")
+        grad_input = Softmax.__backward(grad_output, output, ctx.dim)
+        util.pop_trace()
+
+        return grad_input, None
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: int):
@@ -45,6 +53,7 @@ class Softmax(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Softmax.forward")
         kernel.Softmax.forward[grid](
             output,
             input,
@@ -54,6 +63,7 @@ class Softmax(torch.autograd.Function):
             x_stride,
             util.dtype(output.dtype),
         )
+        util.pop_trace()
 
         return output
 
@@ -67,6 +77,7 @@ class Softmax(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Softmax.backward_delta")
         kernel.Softmax.backward_delta[grid](
             delta,
             grad_output,
@@ -77,10 +88,12 @@ class Softmax(torch.autograd.Function):
             x_stride,
             util.dtype(delta.dtype),
         )
+        util.pop_trace()
 
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Softmax.backward")
         kernel.Softmax.backward[grid](
             grad_input,
             grad_output,
@@ -92,5 +105,6 @@ class Softmax(torch.autograd.Function):
             x_stride,
             util.dtype(output.dtype),
         )
+        util.pop_trace()
 
-        return grad_input, None
+        return grad_input

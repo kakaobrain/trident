@@ -24,27 +24,36 @@ class Sum(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
 
+        util.push_trace("Sum.__forward")
+        output = Sum.__forward(input, dim)
+        util.pop_trace()
+
         ctx.save_for_backward(input)
         ctx.dim = dim
 
-        return Sum.__forward(input, dim)
+        return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         (input,) = ctx.saved_tensors
         (grad_output,) = grad_outputs
-        return Sum.__backward(grad_output, input, ctx.dim)
+
+        util.push_trace("Sum.__backward")
+        grad_input = Sum.__backward(grad_output, input, ctx.dim)
+        util.pop_trace()
+
+        return grad_input, None
 
     @staticmethod
     def __forward(input, dim):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
+        output = torch.empty(y_size, **factory_kwargs)
 
         def grid(meta):
             return (y_size,)
 
-        output = torch.empty(y_size, **factory_kwargs)
-
+        util.push_trace("kernel.Sum.forward")
         kernel.Sum.forward[grid](
             output,
             input,
@@ -52,8 +61,9 @@ class Sum(torch.autograd.Function):
             x_size,
             y_stride,
             x_stride,
-            dtype=util.dtype(input.dtype),
+            util.dtype(input.dtype),
         )
+        util.pop_trace()
 
         return output
 
@@ -65,6 +75,7 @@ class Sum(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Sum.backward")
         kernel.Sum.backward[grid](
             grad_input,
             grad_output,
@@ -73,5 +84,6 @@ class Sum(torch.autograd.Function):
             y_stride,
             x_stride,
         )
+        util.pop_trace()
 
-        return grad_input, None
+        return grad_input

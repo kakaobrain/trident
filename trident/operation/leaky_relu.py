@@ -25,16 +25,25 @@ class LeakyReLU(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, negative_slope = args
 
+        util.push_trace("LeakyReLU.__forward")
+        output = LeakyReLU.__forward(input, negative_slope)
+        util.pop_trace()
+
         ctx.save_for_backward(input)
         ctx.negative_slope = negative_slope
 
-        return LeakyReLU.__forward(input, negative_slope)
+        return output
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         (input,) = ctx.saved_tensors
-        return LeakyReLU.__backward(grad_output, input, ctx.negative_slope)
+
+        util.push_trace("LeakyReLU.__backward")
+        grad_input = LeakyReLU.__backward(grad_output, input, ctx.negative_slope)
+        util.pop_trace()
+
+        return grad_input, None
 
     @staticmethod
     def __forward(input: torch.Tensor, negative_slope: torch.float32):
@@ -44,7 +53,9 @@ class LeakyReLU(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.LeakyReLU.forward")
         kernel.LeakyReLU.forward[grid](output, input, x_size, negative_slope, util.dtype(input.dtype))
+        util.pop_trace()
 
         return output
 
@@ -56,8 +67,10 @@ class LeakyReLU(torch.autograd.Function):
         def grid(meta):
             return [triton.cdiv(x_size, meta["x_block_size"])]
 
+        util.push_trace("kernel.LeakyReLU.backward")
         kernel.LeakyReLU.backward[grid](
             grad_input, grad_output, input, x_size, negative_slope, util.dtype(grad_input.dtype)
         )
+        util.pop_trace()
 
-        return grad_input, None
+        return grad_input

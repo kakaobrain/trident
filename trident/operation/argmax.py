@@ -24,7 +24,12 @@ class Argmax(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
-        return Argmax.__forward(input, dim)
+
+        util.push_trace("Argmax.__forward")
+        output = Argmax.__forward(input, dim)
+        util.pop_trace()
+
+        return output
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: torch.int32):
@@ -35,6 +40,7 @@ class Argmax(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Argmax.forward")
         kernel.Argmax.forward[grid](
             output,
             input,
@@ -45,5 +51,6 @@ class Argmax(torch.autograd.Function):
             util.dtype(output.dtype),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         return output

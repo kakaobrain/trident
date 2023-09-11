@@ -24,7 +24,10 @@ class GEGLU(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight, bias, use_accelerator = args
+
+        util.push_trace("GEGLU.__forward")
         output, state_gate = GEGLU.__forward(input, weight, bias, use_accelerator)
+        util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias, state_gate)
         ctx.use_accelerator = False
@@ -35,13 +38,19 @@ class GEGLU(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, state_gate = ctx.saved_tensors
-        return GEGLU.__backward(grad_output, input, weight, bias, state_gate, ctx.use_accelerator)
+
+        util.push_trace("GEGLU.__backward")
+        grad_input, grad_weight, grad_bias = GEGLU.__backward(
+            grad_output, input, weight, bias, state_gate, ctx.use_accelerator
+        )
+        util.pop_trace()
+
+        return grad_input, grad_weight, grad_bias, None
 
     @staticmethod
     def __forward(input, weight, bias, use_accelerator):
-        num_batches, m_size, k_size = input.shape
-
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        num_batches, m_size, k_size = input.shape
         n_size, _ = weight.shape
         x_size = n_size // 2
         output = torch.empty(num_batches, m_size, x_size, **factory_kwargs)
@@ -52,6 +61,7 @@ class GEGLU(torch.autograd.Function):
             num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
             return (num_batches * num_m_blocks * num_x_blocks,)
 
+        util.push_trace("kernel.GEGLU.forward")
         kernel.GEGLU.forward[grid](
             output,
             state_gate,
@@ -70,14 +80,14 @@ class GEGLU(torch.autograd.Function):
             use_accelerator,
             util.dtype(input.dtype),
         )
+        util.pop_trace()
 
         return output, state_gate
 
     @staticmethod
     def __backward(grad_output, input, weight, bias, state_gate, use_accelerator):
-        num_batches, m_size, k_size = input.shape
-
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
+        num_batches, m_size, k_size = input.shape
         n_size, _ = weight.shape
         x_size = n_size // 2
         grad_state_gate = torch.empty_like(state_gate)
@@ -87,15 +97,18 @@ class GEGLU(torch.autograd.Function):
         def grid(meta):
             return (num_batches * m_size,)
 
+        util.push_trace("kernel.GEGLU.backward")
         kernel.GEGLU.backward[grid](
             grad_state_gate, grad_output, state_gate, m_size, n_size, x_size, triton.next_power_of_2(x_size)
         )
+        util.pop_trace()
 
         def grid(meta):
             num_m_blocks = triton.cdiv(m_size, meta["m_block_size"])
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
             return (num_batches * num_m_blocks * num_k_blocks,)
 
+        util.push_trace("kernel.Linear.backward")
         kernel.Linear.backward[grid](
             grad_input,
             grad_state_gate,
@@ -110,12 +123,14 @@ class GEGLU(torch.autograd.Function):
             use_accelerator,
             util.dtype(grad_input.dtype),
         )
+        util.pop_trace()
 
         def grid(meta):
             num_n_blocks = triton.cdiv(n_size, meta["n_block_size"])
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
             return (num_batches * num_n_blocks * num_k_blocks,)
 
+        util.push_trace("kernel.Linear.backward_weight")
         kernel.Linear.backward_weight[grid](
             grad_weight_staging,
             grad_state_gate,
@@ -129,8 +144,11 @@ class GEGLU(torch.autograd.Function):
             use_accelerator,
             util.dtype(grad_weight_staging.dtype),
         )
+        util.pop_trace()
 
+        util.push_trace("torch.sum")
         grad_weight = torch.sum(grad_weight_staging, 0)
+        util.pop_trace()
 
         if bias is not None:
             grad_bias_staging = torch.empty(num_batches, n_size, **factory_kwargs)
@@ -138,6 +156,7 @@ class GEGLU(torch.autograd.Function):
             def grid(meta):
                 return (num_batches * n_size,)
 
+            util.push_trace("kernel.Linear.backward_bias")
             kernel.Linear.backward_bias[grid](
                 grad_bias_staging,
                 grad_state_gate,
@@ -145,9 +164,12 @@ class GEGLU(torch.autograd.Function):
                 n_size,
                 util.dtype(grad_bias_staging.dtype),
             )
+            util.pop_trace()
 
+            util.push_trace("torch.sum")
             grad_bias = torch.sum(grad_bias_staging, 0)
+            util.pop_trace()
         else:
             grad_bias = None
 
-        return grad_input, grad_weight, grad_bias, None
+        return grad_input, grad_weight, grad_bias
