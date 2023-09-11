@@ -1,5 +1,6 @@
+matplotlib
+nvtx
+pandas
 pytest
 pytest-xdist
 torch
-matplotlib
-pandas

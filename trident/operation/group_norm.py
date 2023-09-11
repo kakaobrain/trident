@@ -24,7 +24,10 @@ class GroupNorm(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, num_groups, weight, bias, eps = args
+
+        util.push_trace("GroupNorm.__forward")
         output, rstd, mean = GroupNorm.__forward(input, num_groups, weight, bias, eps)
+        util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias, rstd, mean)
         ctx.num_groups = num_groups
@@ -35,7 +38,14 @@ class GroupNorm(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, weight, bias, rstd, mean = ctx.saved_tensors
-        return GroupNorm.__backward(grad_output, input, weight, bias, rstd, mean, ctx.num_groups)
+
+        util.push_trace("GroupNorm.__backward")
+        grad_input, grad_weight, grad_bias = GroupNorm.__backward(
+            grad_output, input, weight, bias, rstd, mean, ctx.num_groups
+        )
+        util.pop_trace()
+
+        return grad_input, None, grad_weight, grad_bias, None, None, None, None
 
     @staticmethod
     def __forward(
@@ -50,6 +60,7 @@ class GroupNorm(torch.autograd.Function):
         def grid(meta):
             return (num_batches * num_groups,)
 
+        util.push_trace("kernel.GroupNorm.forward")
         kernel.GroupNorm.forward[grid](
             output,
             input,
@@ -65,6 +76,7 @@ class GroupNorm(torch.autograd.Function):
             triton.next_power_of_2(y_size // num_groups),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         return output, rstd, mean
 
@@ -95,6 +107,7 @@ class GroupNorm(torch.autograd.Function):
         def grid(meta):
             return (num_batches * num_groups,)
 
+        util.push_trace("kernel.GroupNorm.backward")
         kernel.GroupNorm.backward[grid](
             grad_input,
             grad_weight_staging,
@@ -111,15 +124,20 @@ class GroupNorm(torch.autograd.Function):
             triton.next_power_of_2(y_size // num_groups),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         if weight is not None:
-            grad_weight = function.sum(grad_weight_staging, 0)
+            util.push_trace("torch.sum")
+            grad_weight = torch.sum(grad_weight_staging, 0)
+            util.pop_trace()
         else:
             grad_weight = None
 
         if bias is not None:
-            grad_bias = function.sum(grad_bias_staging, 0)
+            util.push_trace("torch.sum")
+            grad_bias = torch.sum(grad_bias_staging, 0)
+            util.pop_trace()
         else:
             grad_bias = None
 
-        return grad_input, None, grad_weight, grad_bias, None, None, None, None
+        return grad_input, grad_weight, grad_bias

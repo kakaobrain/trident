@@ -17,7 +17,7 @@ from typing import Any
 import torch
 import triton
 
-from trident import kernel
+from trident import kernel, util
 
 
 class BatchNorm(torch.autograd.Function):
@@ -25,14 +25,22 @@ class BatchNorm(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, weight, bias, eps, running_mean, running_var = args
 
+        util.push_trace("BatchNorm.__forward")
+        output = BatchNorm.__forward(input, weight, bias, eps, running_mean, running_var)
+        util.pop_trace()
+
         ctx.save_for_backward(input, weight, bias)
         ctx.eps = eps
 
-        return BatchNorm.__forward(input, weight, bias, eps, running_mean, running_var)
+        return output
 
     @staticmethod
     def backward(ctx, *grad_outputs):
-        return BatchNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
+        util.push_trace("BatchNorm.__backward")
+        grad_input, grad_weight, grad_bias = BatchNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
+        util.pop_trace()
+
+        return grad_input, grad_weight, grad_bias, None, None, None
 
     @staticmethod
     def __forward(inp, wgt, bis, eps, running_mean, running_var):
@@ -44,6 +52,7 @@ class BatchNorm(torch.autograd.Function):
         out = torch.empty_like(inp)
         bt_blk_sz = triton.next_power_of_2(bt_sz)
 
+        util.push_trace("kernel.BatchNorm.forward")
         kernel.BatchNorm.forward[grid](
             inp,
             vec_sz,
@@ -56,6 +65,8 @@ class BatchNorm(torch.autograd.Function):
             out,
             blk_sz=bt_blk_sz,
         )
+        util.pop_trace()
+
         return out
 
     @staticmethod
@@ -69,6 +80,8 @@ class BatchNorm(torch.autograd.Function):
         grad_wgt = torch.empty_like(wgt) if wgt is not None else None
         grad_bis = torch.empty_like(bis) if bis is not None else None
         bt_blk_sz = triton.next_power_of_2(bt_sz)
+
+        util.push_trace("kernel.BatchNorm.backward")
         kernel.BatchNorm.backward[grid](
             grad_out,
             inp,
@@ -81,5 +94,6 @@ class BatchNorm(torch.autograd.Function):
             eps,
             blk_sz=bt_blk_sz,
         )
+        util.pop_trace()
 
-        return grad_inp, grad_wgt, grad_bis, None, None, None
+        return grad_inp, grad_wgt, grad_bis

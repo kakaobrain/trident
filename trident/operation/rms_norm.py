@@ -24,7 +24,10 @@ class RMSNorm(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, p, weight, bias, eps = args
+
+        util.push_trace("RMSNorm.__forward")
         output, rms = RMSNorm.__forward(input, p, weight, bias, eps)
+        util.pop_trace()
 
         ctx.save_for_backward(input, rms, weight, bias)
         ctx.p = p
@@ -36,7 +39,12 @@ class RMSNorm(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
         input, rms, weight, bias = ctx.saved_tensors
-        return RMSNorm.__backward(grad_output, input, ctx.p, rms, weight, bias, ctx.eps)
+
+        util.push_trace("RMSNorm.__backward")
+        grad_input, grad_weight, grad_bias = RMSNorm.__backward(grad_output, input, ctx.p, rms, weight, bias, ctx.eps)
+        util.pop_trace()
+
+        return grad_input, None, grad_weight, grad_bias, None
 
     @staticmethod
     def __forward(input: torch.Tensor, p: float, weight: torch.Tensor, bias: torch.Tensor, eps: float):
@@ -48,6 +56,7 @@ class RMSNorm(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.RMSNorm.forward")
         kernel.RMSNorm.forward[grid](
             output,
             rms,
@@ -63,6 +72,7 @@ class RMSNorm(torch.autograd.Function):
             util.dtype(input.dtype),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         return output, rms
 
@@ -84,6 +94,7 @@ class RMSNorm(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.RMSNorm.backward")
         kernel.RMSNorm.backward[grid](
             grad_input,
             grad_weight_staging,
@@ -100,12 +111,17 @@ class RMSNorm(torch.autograd.Function):
             util.dtype(input.dtype),
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
-        grad_weight = function.sum(grad_weight_staging, 0)
+        util.push_trace("torch.sum")
+        grad_weight = torch.sum(grad_weight_staging, 0)
+        util.pop_trace()
 
         if bias is not None:
+            util.push_trace("torch.sum")
             grad_bias = function.sum(grad_output, 0)
+            util.pop_trace()
         else:
             grad_bias = None
 
-        return grad_input, None, grad_weight, grad_bias, None
+        return grad_input, grad_weight, grad_bias

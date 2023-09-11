@@ -24,7 +24,10 @@ class Max(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, dim = args
+
+        util.push_trace("Max.__forward")
         output, argmax = Max.__forward(input, dim)
+        util.pop_trace()
 
         ctx.save_for_backward(input, output, argmax)
         ctx.dim = dim
@@ -35,7 +38,12 @@ class Max(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         grad_output, grad_argmax = grad_outputs
         input, output, argmax = ctx.saved_tensors
-        return Max.__backward(grad_output, input, argmax, ctx.dim)
+
+        util.push_trace("Max.__forward")
+        grad_input = Max.__backward(grad_output, input, argmax, ctx.dim)
+        util.pop_trace()
+
+        return grad_input, None, None
 
     @staticmethod
     def __forward(input: torch.Tensor, dim: torch.int32):
@@ -47,6 +55,7 @@ class Max(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Max.forward")
         kernel.Max.forward[grid](
             output,
             argmax,
@@ -57,6 +66,7 @@ class Max(torch.autograd.Function):
             x_stride,
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
         return output, argmax
 
@@ -68,6 +78,7 @@ class Max(torch.autograd.Function):
         def grid(meta):
             return (y_size,)
 
+        util.push_trace("kernel.Max.backward")
         kernel.Max.backward[grid](
             grad_input,
             grad_output,
@@ -78,5 +89,6 @@ class Max(torch.autograd.Function):
             x_stride,
             triton.next_power_of_2(x_size),
         )
+        util.pop_trace()
 
-        return grad_input, None, None
+        return grad_input

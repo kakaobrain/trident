@@ -23,7 +23,10 @@ class CosineSimilarity(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         x1, x2, dim, eps = args
+
+        util.push_trace("CosineSimilarity.__forward")
         output, denominator, numerator = CosineSimilarity.__forward(x1, x2, dim, eps)
+        util.pop_trace()
 
         ctx.save_for_backward(x1, x2, denominator, numerator)
         ctx.dim = dim
@@ -34,14 +37,18 @@ class CosineSimilarity(torch.autograd.Function):
     def backward(ctx: Any, *grad_outputs: Any):
         grad_output = grad_outputs[0]
         x1, x2, denominator, numerator = ctx.saved_tensors
-        return CosineSimilarity.__backward(grad_output, x1, x2, denominator, numerator, ctx.dim)
+
+        util.push_trace("CosineSimilarity.__backward")
+        grad_x1, grad_x2 = CosineSimilarity.__backward(grad_output, x1, x2, denominator, numerator, ctx.dim)
+        util.pop_trace()
+
+        return grad_x1, grad_x2, None, None
 
     @staticmethod
     def __forward(x1: torch.Tensor, x2: torch.Tensor, dim: torch.int32, eps: torch.float32):
         assert x1.is_contiguous() and x2.is_contiguous() and x1.shape == x2.shape
 
         factory_kwargs = {"device": x1.device, "dtype": x1.dtype}
-
         z_size, y_size, x_size, z_stride, y_stride, x_stride = util.size_and_stride(x1, dim)
         output_y_size, output_x_size, size_along_dim = CosineSimilarity.__output_size_and_size_along_dim(x1, dim)
         output = torch.empty(output_y_size, output_x_size, **factory_kwargs)
@@ -51,6 +58,7 @@ class CosineSimilarity(torch.autograd.Function):
         def grid(meta):
             return (output_y_size * output_x_size,)
 
+        util.push_trace("kernel.CosineSimilarity.forward")
         kernel.CosineSimilarity.forward[grid](
             output,
             denominator,
@@ -69,6 +77,7 @@ class CosineSimilarity(torch.autograd.Function):
             output_x_size,
             util.dtype(x1.dtype),
         )
+        util.pop_trace()
 
         return output, denominator, numerator
 
@@ -83,6 +92,7 @@ class CosineSimilarity(torch.autograd.Function):
         def grid(meta):
             return (output_y_size * output_x_size,)
 
+        util.push_trace("kernel.CosineSimilarity.backward")
         kernel.CosineSimilarity.backward[grid](
             grad_x1,
             grad_x2,
@@ -102,8 +112,9 @@ class CosineSimilarity(torch.autograd.Function):
             output_x_size,
             util.dtype(x1.dtype),
         )
+        util.pop_trace()
 
-        return grad_x1, grad_x2, None, None
+        return grad_x1, grad_x2
 
     @staticmethod
     def __output_size_and_size_along_dim(input: torch.Tensor, dim: int):

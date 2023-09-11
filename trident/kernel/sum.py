@@ -18,52 +18,31 @@ import triton.language as tl
 from trident import language, util
 
 
-def sum_configs_for_forward():
-    configs = []
-    for y_block_size in [512, 1024, 2048]:
-        for num_stages in [4, 5]:
-            config = triton.Config(
-                {
-                    "y_block_size": y_block_size,
-                },
-                2 if y_block_size <= 1024 else 4,
-                num_stages,
-            )
-            configs.append(config)
-    return configs
-
-
-def sum_configs_for_backward():
+def sum_configs():
     configs = []
     for x_block_size in [512, 1024, 2048]:
         for num_stages in [4, 5]:
-            config = triton.Config(
-                {
-                    "x_block_size": x_block_size,
-                },
-                2 if x_block_size <= 1024 else 4,
-                num_stages,
-            )
+            config = triton.Config({"x_block_size": x_block_size}, 2 if x_block_size <= 1024 else 4, num_stages)
             configs.append(config)
     return configs
 
 
 class Sum:
     @staticmethod
-    @util.autotune(sum_configs_for_forward(), ["x_size"])
+    @util.autotune(sum_configs(), ["x_size"])
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
         input_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
-        y_block_size: tl.constexpr,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         dtype: tl.constexpr,
+        x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
-        output = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, y_block_size, dtype)
+        output = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, x_block_size, dtype)
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size,),
@@ -75,15 +54,15 @@ class Sum:
         tl.store(output_block_ptr, output)
 
     @staticmethod
-    @util.autotune(sum_configs_for_backward(), ["y_size"])
+    @util.autotune(sum_configs(), ["x_size"])
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
         grad_output_ptr: tl.tensor,
-        y_size: int,
-        x_size: int,
-        y_stride: int,
-        x_stride: int,
+        y_size: tl.int32,
+        x_size: tl.int32,
+        y_stride: tl.int32,
+        x_stride: tl.int32,
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)

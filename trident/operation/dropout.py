@@ -24,7 +24,10 @@ class Dropout(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, p = args
+
+        util.push_trace("Dropout.__forward")
         output = Dropout.__forward(input, p)
+        util.pop_trace()
 
         ctx.save_for_backward(input, output)
         ctx.p = p
@@ -34,8 +37,13 @@ class Dropout(torch.autograd.Function):
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
         (grad_output,) = grad_outputs
-        (input, output) = ctx.saved_tensors
-        return Dropout.__backward(grad_output, input, output, ctx.p)
+        input, output = ctx.saved_tensors
+
+        util.push_trace("Dropout.__backward")
+        grad_input = Dropout.__backward(grad_output, input, output, ctx.p)
+        util.pop_trace()
+
+        return grad_input, None, None
 
     @staticmethod
     def __forward(input: torch.Tensor, p: torch.float32):
@@ -46,7 +54,9 @@ class Dropout(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.Dropout.forward")
         kernel.Dropout.forward[grid](output, input, x_size, p, torch.random.seed(), util.dtype(output.dtype))
+        util.pop_trace()
 
         return output
 
@@ -58,6 +68,8 @@ class Dropout(torch.autograd.Function):
         def grid(meta):
             return (triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.Dropout.backward")
         kernel.Dropout.backward[grid](grad_input, grad_output, output, x_size, p, util.dtype(grad_input.dtype))
+        util.pop_trace()
 
-        return grad_input, None, None
+        return grad_input

@@ -24,16 +24,25 @@ class ShiftGELU(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         input, bias = args
+
+        util.push_trace("ShiftGELU.__forward")
         output, shift = ShiftGELU.__forward(input, bias)
+        util.pop_trace()
 
         ctx.save_for_backward(input, shift)
 
         return output
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx: Any, *grad_outputs: Any):
         input, shift = ctx.saved_tensors
-        return ShiftGELU.__backward(grad_output, input, shift)
+        grad_output = grad_outputs[0]
+
+        util.push_trace("ShiftGELU.__backward")
+        grad_input, grad_bias = ShiftGELU.__backward(grad_output, input, shift)
+        util.pop_trace()
+
+        return grad_input, grad_bias
 
     @staticmethod
     def __forward(input: torch.Tensor, bias: torch.Tensor):
@@ -44,7 +53,9 @@ class ShiftGELU(torch.autograd.Function):
         def grid(meta):
             return (y_size * triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.ShiftGELU.forward")
         kernel.ShiftGELU.forward[grid](output, shift, input, y_size, x_size, bias, util.dtype(input.dtype))
+        util.pop_trace()
 
         return output, shift
 
@@ -56,6 +67,12 @@ class ShiftGELU(torch.autograd.Function):
         def grid(meta):
             return (y_size * triton.cdiv(x_size, meta["x_block_size"]),)
 
+        util.push_trace("kernel.ShiftGELU.backward")
         kernel.ShiftGELU.backward[grid](grad_input, grad_output, shift, y_size, x_size, util.dtype(input.dtype))
+        util.pop_trace()
 
-        return grad_input, torch.sum(grad_input, 0)
+        util.push_trace("torch.sum")
+        grad_bias = torch.sum(grad_input, 0)
+        util.pop_trace()
+
+        return grad_input, grad_bias
