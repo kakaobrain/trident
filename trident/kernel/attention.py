@@ -19,6 +19,7 @@ from trident import language
 
 
 class Attention:
+    @staticmethod
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -113,6 +114,7 @@ class Attention:
         )
         tl.store(output_block_ptr, accumulation.to(dtype))
 
+    @staticmethod
     @triton.jit
     def backward(
         grad_query_ptr: tl.tensor,

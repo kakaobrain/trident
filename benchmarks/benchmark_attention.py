@@ -20,9 +20,9 @@ import trident
 
 
 @util.report("attention forward", ["sequence_size"], [2**i for i in range(10, 15)])
-def bench_attention_forward(sequence_size, backend):
+def bench_attention_forward(sequence_size, dtype, backend):
     num_batches, num_heads, embedding_size = 4, 48, 64
-    factory_kwargs = {"device": "cuda"}
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
     query = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
     key = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
     value = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
@@ -38,9 +38,9 @@ def bench_attention_forward(sequence_size, backend):
 
 
 @util.report("attention backward", ["sequence_size"], [256 * i for i in range(1, 4)])
-def bench_attention_backward(sequence_size, backend):
+def bench_attention_backward(sequence_size, dtype, backend):
     num_batches, num_heads, embedding_size = 4, 48, 64
-    factory_kwargs = {"device": "cuda"}
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
     query = torch.randn(
         (num_batches, num_heads, sequence_size, embedding_size),
         **factory_kwargs,
@@ -66,8 +66,8 @@ def bench_attention_backward(sequence_size, backend):
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_attention_forward.run(print_data=True, show_plots=show_plots)
+        bench_attention_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_attention_backward.run(print_data=True, show_plots=show_plots)
+        bench_attention_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)

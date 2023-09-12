@@ -19,33 +19,36 @@ import util
 import trident
 
 
-@util.report("batch norm forward", ["vec_sz"], [128 * i for i in range(1, 21)], {"num_vec": 16})
-def bench_batch_norm_forward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda")
+@util.report("batch norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
+def bench_batch_norm_forward(y_size, x_size, dtype, backend):
+    input = torch.randn(y_size, x_size, device="cuda", dtype=dtype)
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.batch_norm(inp, None, None, training=True))
+        return triton.testing.do_bench_cudagraph(
+            lambda: torch.nn.functional.batch_norm(input, None, None, training=True)
+        )
     else:
-        return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(inp, training=True))
+        return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(input, None, None, training=True))
 
 
-@util.report("batch norm backward", ["vec_sz"], [128 * i for i in range(1, 21)], {"num_vec": 16})
-def bench_batch_norm_backward(num_vec, vec_sz, backend):
-    inp = torch.randn(num_vec, vec_sz, device="cuda", requires_grad=True)
+@util.report("batch norm backward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
+def bench_batch_norm_backward(y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    weight = torch.randn(x_size, **factory_kwargs, requires_grad=True)
+    bias = torch.randn(x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
-        lyr = torch.nn.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")
+        output = torch.nn.functional.batch_norm(input, None, None, weight, bias, True)
     else:
-        lyr = trident.BatchNorm1d(vec_sz, affine=True, dtype=torch.float32, device="cuda")
+        output = trident.function.batch_norm(input, None, None, weight, bias, True)
 
-    out = lyr.forward(inp)
-    grad_out = torch.ones_like(inp)
-
-    return triton.testing.do_bench_cudagraph(lambda: out.backward(grad_out, retain_graph=True))
+    return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_batch_norm_forward.run(print_data=True, show_plots=show_plots)
+        bench_batch_norm_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_batch_norm_backward.run(print_data=True, show_plots=show_plots)
+        bench_batch_norm_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)

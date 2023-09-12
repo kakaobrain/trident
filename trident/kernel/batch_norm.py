@@ -84,9 +84,9 @@ class BatchNorm:
         inp = tl.load(inp_ptr + inp_blk, msk, 0)
         wgt = tl.load(wgt_ptr + pid) if wgt_ptr is not None else 1
 
-        mean = tl.sum(inp, 0) / bt_sz
+        mean = tl.sum(inp / bt_sz, 0)
         centered_mean = tl.where(msk, inp - mean, 0.0)
-        var = tl.sum(centered_mean * centered_mean, 0) / bt_sz
+        var = tl.sum(centered_mean * centered_mean / bt_sz, 0)
         std = tl.sqrt(var + eps)
 
         xc = inp - mean

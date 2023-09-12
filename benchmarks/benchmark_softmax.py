@@ -20,8 +20,8 @@ import trident
 
 
 @util.report("softmax forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
-def bench_softmax_forward(y_size, x_size, backend):
-    input = torch.randn(y_size, x_size, device="cuda")
+def bench_softmax_forward(y_size, x_size, dtype, backend):
+    input = torch.randn(y_size, x_size, device="cuda", dtype=dtype)
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.softmax(input, 1))
@@ -30,20 +30,21 @@ def bench_softmax_forward(y_size, x_size, backend):
 
 
 @util.report("softmax backward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
-def bench_softmax_backward(y_size, x_size, backend):
-    input = torch.randn(y_size, x_size, device="cuda", requires_grad=True)
-    grad_output = torch.randn(y_size, x_size, device="cuda")
+def bench_softmax_backward(y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
-        output = torch.softmax(input, 1)
+        output = torch.nn.functional.softmax(input, 1)
     else:
         output = trident.function.softmax(input, 1)
 
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_softmax_forward.run(print_data=True, show_plots=show_plots)
+        bench_softmax_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_softmax_backward.run(print_data=True, show_plots=show_plots)
+        bench_softmax_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)

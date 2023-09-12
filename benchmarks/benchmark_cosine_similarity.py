@@ -20,9 +20,10 @@ import trident
 
 
 @util.report("cosine similarity forward", ["x_size"], [128 * i for i in range(1, 21)], {"z_size": 16, "y_size": 16})
-def bench_cosine_similarity_forward(z_size, y_size, x_size, backend):
-    x1 = torch.randn(z_size, y_size, x_size, device="cuda")
-    x2 = torch.randn(z_size, y_size, x_size, device="cuda")
+def bench_cosine_similarity_forward(z_size, y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    x1 = torch.randn(z_size, y_size, x_size, **factory_kwargs)
+    x2 = torch.randn(z_size, y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(lambda: torch.nn.functional.cosine_similarity(x1, x2, 2))
@@ -31,10 +32,11 @@ def bench_cosine_similarity_forward(z_size, y_size, x_size, backend):
 
 
 @util.report("cosine similarity backward", ["x_size"], [128 * i for i in range(1, 21)], {"z_size": 16, "y_size": 16})
-def bench_cosine_similarity_backward(z_size, y_size, x_size, backend):
-    x1 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)
-    x2 = torch.randn(z_size, y_size, x_size, device="cuda", requires_grad=True)
-    grad_output = torch.randn(z_size, y_size, device="cuda")
+def bench_cosine_similarity_backward(z_size, y_size, x_size, dtype, backend):
+    factory_kwargs = {"device": "cuda", "dtype": dtype}
+    x1 = torch.randn(z_size, y_size, x_size, **factory_kwargs, requires_grad=True)
+    x2 = torch.randn(z_size, y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.empty(z_size, y_size, **factory_kwargs)
 
     if backend == "torch":
         output = torch.nn.functional.cosine_similarity(x1, x2, 2)
@@ -44,8 +46,8 @@ def bench_cosine_similarity_backward(z_size, y_size, x_size, backend):
     return triton.testing.do_bench_cudagraph(lambda: output.backward(grad_output, retain_graph=True))
 
 
-def run_benchmark(mode, show_plots):
+def run_benchmark(mode, show_plots, dtype):
     if mode == "forward":
-        bench_cosine_similarity_forward.run(print_data=True, show_plots=show_plots)
+        bench_cosine_similarity_forward.run(print_data=True, show_plots=show_plots, dtype=dtype)
     else:
-        bench_cosine_similarity_backward.run(print_data=True, show_plots=show_plots)
+        bench_cosine_similarity_backward.run(print_data=True, show_plots=show_plots, dtype=dtype)
