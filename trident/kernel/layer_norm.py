@@ -33,6 +33,7 @@ class LayerNorm:
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size, x_size),
@@ -67,10 +68,10 @@ class LayerNorm:
         )
 
         input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
-        mean = tl.sum(input, 1) / x_size
+        mean = tl.sum(input / x_size, 1)
         condition = tl.arange(0, x_block_size) < x_size
         centered_mean = tl.where(condition, input - mean, 0)
-        var = tl.sum(centered_mean * centered_mean, 1) / x_size
+        var = tl.sum(centered_mean * centered_mean / x_size, 1)
         rstd = tl.math.rsqrt(var + eps)
         output = centered_mean * rstd
 
@@ -118,6 +119,7 @@ class LayerNorm:
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(y_size, x_size),
@@ -158,6 +160,7 @@ class LayerNorm:
             block_shape=(1,),
             order=(0,),
         )
+
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,))
         input = tl.load(input_block_ptr, boundary_check=(1,))
         rstd = tl.load(rstd_block_ptr)

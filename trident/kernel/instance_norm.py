@@ -67,7 +67,7 @@ class InstanceNorm:
                 block_shape=(1,),
                 order=(0,),
             )
-            mean = (tl.sum(input, 1) / x_size).to(dtype)
+            mean = (tl.sum(input / x_size, 1)).to(dtype)
             tl.store(mean_block_ptr, mean)
         else:
             running_mean_block_ptr = tl.make_block_ptr(
@@ -92,7 +92,7 @@ class InstanceNorm:
                 block_shape=(1,),
                 order=(0,),
             )
-            var = (tl.sum(centered_mean * centered_mean, 1) / x_size).to(dtype)
+            var = (tl.sum(centered_mean * centered_mean / x_size, 1)).to(dtype)
             tl.store(var_block_ptr, var)
         else:
             running_var_block_ptr = tl.make_block_ptr(
