@@ -30,11 +30,12 @@ def argmax(input: torch.Tensor, dim: int):
 
 def batch_norm(
     input: torch.Tensor,
-    running_mean: Optional[torch.Tensor],
-    running_var: Optional[torch.Tensor],
+    running_mean: Optional[torch.Tensor] = None,
+    running_var: Optional[torch.Tensor] = None,
     weight: Optional[torch.Tensor] = None,
     bias: Optional[torch.Tensor] = None,
     training: bool = False,
+    momentum: float = 0.1,
     eps: float = 1e-05,
 ):
     """
@@ -42,12 +43,7 @@ def batch_norm(
 
     See BatchNorm for details.
     """
-    if training:
-        running_mean, running_var = None, None
-    else:
-        assert running_mean is not None and running_var is not None
-
-    return operation.BatchNorm.apply(input, running_mean, running_var, weight, bias, eps)
+    return operation.BatchNorm.apply(input, running_mean, running_var, weight, bias, momentum, eps)
 
 
 def cosine_similarity(x1: torch.Tensor, x2: torch.Tensor, dim: int = 1, eps: float = 1e-08):

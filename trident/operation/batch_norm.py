@@ -23,77 +23,104 @@ from trident import kernel, util
 class BatchNorm(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
-        input, running_mean, running_var, weight, bias, eps = args
+        input, running_mean, running_var, weight, bias, momentum, eps = args
 
         util.push_trace("BatchNorm.__forward")
-        output = BatchNorm.__forward(input, running_mean, running_var, weight, bias, eps)
+        output, mean, var = BatchNorm.__forward(input, running_mean, running_var, weight, bias, momentum, eps)
         util.pop_trace()
 
-        ctx.save_for_backward(input, weight, bias)
+        ctx.save_for_backward(input, weight, bias, mean, var)
         ctx.eps = eps
 
         return output
 
     @staticmethod
-    def backward(ctx, *grad_outputs):
+    def backward(ctx: Any, *grad_outputs: Any):
         util.push_trace("BatchNorm.__backward")
         grad_input, grad_weight, grad_bias = BatchNorm.__backward(*grad_outputs, *ctx.saved_tensors, ctx.eps)
         util.pop_trace()
 
-        return grad_input, None, None, grad_weight, grad_bias, None
+        return grad_input, None, None, grad_weight, grad_bias, None, None
 
     @staticmethod
-    def __forward(inp, running_mean, running_var, wgt, bis, eps):
-        bt_sz, vec_sz = inp.shape
+    def __forward(
+        input: torch.Tensor,
+        running_mean: torch.Tensor,
+        running_var: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+        momentum: torch.float32,
+        eps: torch.float32,
+    ):
+        num_batches, y_size, x_size = input.shape
+        factory_kwargs = {"device": input.device, "dtype": input.dtype}
 
         def grid(meta):
-            return (vec_sz,)
+            return (y_size,)
 
-        out = torch.empty_like(inp)
-        bt_blk_sz = triton.next_power_of_2(bt_sz)
+        output = torch.empty_like(input)
+        mean = torch.empty(y_size, **factory_kwargs)
+        var = torch.empty(y_size, **factory_kwargs)
 
         util.push_trace("kernel.BatchNorm.forward")
         kernel.BatchNorm.forward[grid](
-            inp,
-            vec_sz,
-            bt_sz,
-            wgt,
-            bis,
-            eps,
+            output,
+            mean,
+            var,
+            input,
+            num_batches,
+            y_size,
+            x_size,
+            weight,
+            bias,
             running_mean,
             running_var,
-            out,
-            blk_sz=bt_blk_sz,
+            momentum,
+            eps,
+            util.dtype(input.dtype),
+            batch_block_size=triton.next_power_of_2(num_batches),
+            x_block_size=triton.next_power_of_2(x_size),
         )
         util.pop_trace()
 
-        return out
+        return output, mean, var
 
     @staticmethod
-    def __backward(grad_out, inp, wgt, bis, eps):
-        bt_sz, vec_sz = inp.shape
+    def __backward(
+        grad_output: torch.Tensor,
+        input: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+        mean: torch.Tensor,
+        var: torch.Tensor,
+        eps: torch.float32,
+    ):
+        num_batches, y_size, x_size = input.shape
 
         def grid(meta):
-            return (vec_sz,)
+            return (y_size,)
 
-        grad_inp = torch.empty_like(inp)
-        grad_wgt = torch.empty_like(wgt) if wgt is not None else None
-        grad_bis = torch.empty_like(bis) if bis is not None else None
-        bt_blk_sz = triton.next_power_of_2(bt_sz)
+        grad_input = torch.empty_like(input)
+        grad_weight = torch.empty_like(weight) if weight is not None else None
+        grad_bias = torch.empty_like(bias) if bias is not None else None
 
         util.push_trace("kernel.BatchNorm.backward")
         kernel.BatchNorm.backward[grid](
-            grad_out,
-            inp,
-            grad_inp,
-            vec_sz,
-            bt_sz,
-            wgt,
-            grad_wgt,
-            grad_bis,
+            grad_input,
+            grad_weight,
+            grad_bias,
+            grad_output,
+            input,
+            weight,
+            mean,
+            var,
+            num_batches,
+            y_size,
+            x_size,
             eps,
-            blk_sz=bt_blk_sz,
+            batch_block_size=triton.next_power_of_2(num_batches),
+            x_block_size=triton.next_power_of_2(x_size),
         )
         util.pop_trace()
 
-        return grad_inp, grad_wgt, grad_bis
+        return grad_input, grad_weight, grad_bias
