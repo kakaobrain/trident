@@ -19,9 +19,9 @@ import util
 import trident
 
 
-@util.report("batch norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
-def bench_batch_norm_forward(y_size, x_size, dtype, backend):
-    input = torch.randn(y_size, x_size, device="cuda", dtype=dtype)
+@util.report("batch norm forward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 8, "y_size": 16})
+def bench_batch_norm_forward(num_batches, y_size, x_size, dtype, backend):
+    input = torch.randn(num_batches, y_size, x_size, device="cuda", dtype=dtype)
 
     if backend == "torch":
         return triton.testing.do_bench_cudagraph(
@@ -31,13 +31,13 @@ def bench_batch_norm_forward(y_size, x_size, dtype, backend):
         return triton.testing.do_bench_cudagraph(lambda: trident.function.batch_norm(input, None, None, training=True))
 
 
-@util.report("batch norm backward", ["x_size"], [128 * i for i in range(1, 21)], {"y_size": 16})
-def bench_batch_norm_backward(y_size, x_size, dtype, backend):
+@util.report("batch norm backward", ["x_size"], [128 * i for i in range(1, 21)], {"num_batches": 8, "y_size": 16})
+def bench_batch_norm_backward(num_batches, y_size, x_size, dtype, backend):
     factory_kwargs = {"device": "cuda", "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
-    weight = torch.randn(x_size, **factory_kwargs, requires_grad=True)
-    bias = torch.randn(x_size, **factory_kwargs, requires_grad=True)
-    grad_output = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs, requires_grad=True)
+    weight = torch.randn(y_size, **factory_kwargs, requires_grad=True)
+    bias = torch.randn(y_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(num_batches, y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
         output = torch.nn.functional.batch_norm(input, None, None, weight, bias, True)

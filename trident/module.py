@@ -53,18 +53,20 @@ class BatchNorm1d(torch.nn.Module):
         self.track_running_stats = track_running_stats
 
         if affine:
-            self.weight = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs).fill_(1))
-            self.bias = torch.nn.Parameter(torch.zeros(num_features, **factory_kwargs))
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)
 
         if self.track_running_stats:
-            self.running_mean = torch.zeros(num_features, device=device, dtype=dtype)
-            self.running_var = torch.ones(num_features, device=device, dtype=dtype)
+            self.register_buffer("running_mean", torch.empty(num_features, **factory_kwargs))
+            self.register_buffer("running_var", torch.empty(num_features, **factory_kwargs))
         else:
-            self.register_parameter("running_mean", None)
-            self.register_parameter("running_var", None)
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
+
+        self.reset_parameters()
 
     def forward(self, input: torch.Tensor):
         """
@@ -76,14 +78,36 @@ class BatchNorm1d(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        assert input.dim() == 2
-        assert input.shape[0] > 1
+        if input.dim() == 2:
+            inp = input.view(*input.shape, 1)
+        else:
+            inp = input
+        assert inp.dim() == 3
+        assert inp.shape[0] > 1
+
+        output = function.batch_norm(
+            inp,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            self.track_running_stats,
+            self.momentum,
+            self.eps,
+        )
+        return output.view(input.shape)
+
+    def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
+        if self.affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
 
         if self.track_running_stats:
-            self.running_mean = input.mean(axis=0) * self.momentum + self.running_mean * (1 - self.momentum)
-            self.running_var = input.var(axis=0) * self.momentum + self.running_var * (1 - self.momentum)
-
-        return operation.BatchNorm.apply(input, None, None, self.weight, self.bias, self.eps)
+            self.running_mean.zero_()
+            self.running_var.fill_(1)
 
     def extra_repr(self):
         """
