@@ -84,6 +84,9 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
 
 @pytest.mark.parametrize("m_size, n_size, k_size", [(32, 32, 32)])
 def test_linear(m_size, n_size, k_size, device, dtype):
+    if dtype is torch.bfloat16:
+        pytest.skip("Triton has a bug.")
+
     factory_kwargs = {"device": device, "dtype": dtype}
     input = torch.randn(m_size, k_size, **factory_kwargs, requires_grad=True)
     weight = torch.randn(n_size, k_size, **factory_kwargs, requires_grad=True)
