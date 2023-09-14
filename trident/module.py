@@ -78,15 +78,11 @@ class BatchNorm1d(torch.nn.Module):
         Returns:
             an output with the same dimension and shape as an input
         """
-        if input.dim() == 2:
-            inp = input.view(*input.shape, 1)
-        else:
-            inp = input
-        assert inp.dim() == 3
-        assert inp.shape[0] > 1
+        if input.dim() != 2 and input.dim() != 3:
+            raise ValueError("Input dimension should be 2 or 3.")
 
-        output = function.batch_norm(
-            inp,
+        return function.batch_norm(
+            input.view(*input.shape, 1) if input.dim() == 2 else input,
             self.running_mean,
             self.running_var,
             self.weight,
@@ -94,8 +90,108 @@ class BatchNorm1d(torch.nn.Module):
             self.track_running_stats,
             self.momentum,
             self.eps,
+        ).view(input.shape)
+
+    def reset_parameters(self):
+        """
+        Reset parameters of the module.
+        """
+        if self.affine:
+            util.fill(self.weight, 1)
+            util.zero(self.bias)
+
+        if self.track_running_stats:
+            self.running_mean.zero_()
+            self.running_var.fill_(1)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return (
+            f"{self.num_features}, "
+            f"eps={self.eps}, "
+            f"momentum={self.momentum}, "
+            f"affine={self.affine}, "
+            f"track_running_stats={self.track_running_stats}, "
+            f"backend=Trident"
         )
-        return output.view(input.shape)
+
+
+class BatchNorm2d(torch.nn.Module):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-05,
+        momentum: float = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device=None,
+        dtype=None,
+    ):
+        """
+        Applies Batch Normalization over a 4D input.
+
+        Args:
+            num_features: number of features
+            eps: a value added to the denominator for numerical stability
+            momentum: the value used for the running_mean and running_var computation.
+            affine: a boolean value that when set to True, this module has learnable affine parameters.
+            track_running_stats: a boolean value that when set to True, this module tracks
+                the running mean and variance, and when set to False, this module does not track such statistics,
+                and initializes the statistics as None.
+        """
+        super().__init__()
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+        self.num_features = num_features
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
+
+        if affine:
+            self.weight = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, **factory_kwargs))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+        if self.track_running_stats:
+            self.register_buffer("running_mean", torch.empty(num_features, **factory_kwargs))
+            self.register_buffer("running_var", torch.empty(num_features, **factory_kwargs))
+        else:
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
+
+        self.reset_parameters()
+
+    def forward(self, input: torch.Tensor):
+        """
+        Applies Batch Normalization to an input.
+
+        Args:
+            input: an input
+
+        Returns:
+            an output with the same dimension and shape as an input
+        """
+        if input.dim() != 4:
+            raise ValueError("Input dimension should be 4.")
+
+        return function.batch_norm(
+            input.view(*input.shape[0:2], -1),
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            self.track_running_stats,
+            self.momentum,
+            self.eps,
+        ).view(input.shape)
 
     def reset_parameters(self):
         """
