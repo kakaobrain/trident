@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  CUDA_VISIBLE_DEVICES: 2
-
 jobs:
   build:
     runs-on: self-hosted
