@@ -72,18 +72,30 @@ def test_backward(num_batches, y_size, x_size, device):
 @pytest.mark.parametrize("num_batches, y_size", [(3, 20)])
 def test_batch_norm_1d(num_batches, y_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, y_size, **factory_kwargs)
+    input = torch.randn(num_batches, y_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn_like(input)
 
     output = trident.BatchNorm1d(y_size, **factory_kwargs).forward(input)
     assert output is not None
     assert output.dtype == dtype
 
+    output.backward(grad_output)
+
+    assert input.grad is not None
+    assert input.grad.dtype == dtype
+
 
 @pytest.mark.parametrize("num_batches, z_size, y_size, x_size", [(3, 3, 128, 128)])
 def test_batch_norm_2d(num_batches, z_size, y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, z_size, y_size, x_size, **factory_kwargs)
+    input = torch.randn(num_batches, z_size, y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn_like(input)
 
     output = trident.BatchNorm2d(z_size, **factory_kwargs).forward(input)
     assert output is not None
     assert output.dtype == dtype
+
+    output.backward(grad_output)
+
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

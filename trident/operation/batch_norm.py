@@ -118,6 +118,7 @@ class BatchNorm(torch.autograd.Function):
             y_size,
             x_size,
             eps,
+            util.dtype(input.dtype),
             batch_block_size=triton.next_power_of_2(num_batches),
             x_block_size=triton.next_power_of_2(x_size),
         )
