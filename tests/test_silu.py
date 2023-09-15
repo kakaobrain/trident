@@ -46,7 +46,12 @@ def test_backward(y_size, x_size, device):
 @pytest.mark.parametrize("y_size, x_size", [(1, 32)])
 def test_silu(y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     output = trident.SiLU().forward(input)
     assert output is not None and output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

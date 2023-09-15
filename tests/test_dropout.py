@@ -46,7 +46,12 @@ def test_backward(x_size, p, device):
 @pytest.mark.parametrize("x_size, p", [(16, 0.7)])
 def test_dropout(x_size, p, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(x_size, **factory_kwargs)
+    input = torch.randn(x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn_like(input)
 
     output = trident.Dropout(p).forward(input)
     assert output is not None and output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

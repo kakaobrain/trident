@@ -95,6 +95,7 @@ class PReLU(torch.autograd.Function):
             grad_input.stride(0),
             grad_input.stride(1),
             grad_input.stride(2),
+            util.dtype(grad_input.dtype),
         )
         util.pop_trace()
 

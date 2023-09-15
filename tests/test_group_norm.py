@@ -96,7 +96,8 @@ def test_backward(num_batches, y_size, x_size, num_groups, device):
 @pytest.mark.parametrize("num_batches, y_size, x_size, num_groups", [(1, 8, 1, 4)])
 def test_group_norm(num_batches, y_size, x_size, num_groups, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     operation = trident.GroupNorm(num_groups, y_size, **factory_kwargs)
     output = operation.forward(input)
@@ -105,3 +106,7 @@ def test_group_norm(num_batches, y_size, x_size, num_groups, device, dtype):
     operation = trident.GroupNorm(num_groups, y_size, affine=True, **factory_kwargs)
     output = operation.forward(input)
     assert output is not None and output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

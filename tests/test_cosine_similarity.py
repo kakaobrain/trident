@@ -38,13 +38,13 @@ def test_backward(z_size, y_size, x_size, dim, device):
     else:
         target_dim = (z_size, y_size)
 
-    grad_ouput = torch.randn(target_dim, **factory_kwargs)
+    grad_output = torch.randn(target_dim, **factory_kwargs)
 
     def train(func):
         i = x1.clone()
         j = x2.clone()
         i.requires_grad = j.requires_grad = True
-        func(i, j).backward(grad_ouput, retain_graph=True)
+        func(i, j).backward(grad_output, retain_graph=True)
         return i.grad, j.grad
 
     (x, y) = train(torch.nn.CosineSimilarity(dim))
@@ -52,3 +52,29 @@ def test_backward(z_size, y_size, x_size, dim, device):
 
     assert util.equal(x, a)
     assert util.equal(y, b)
+
+
+@pytest.mark.parametrize("z_size, y_size, x_size, dim", [(640, 21, 86, 2)])
+def test_cosine_similarity(z_size, y_size, x_size, dim, device, dtype):
+    factory_kwargs = {"device": device, "dtype": dtype}
+    x1 = torch.randn(z_size, y_size, x_size, **factory_kwargs, requires_grad=True)
+    x2 = torch.randn(z_size, y_size, x_size, **factory_kwargs, requires_grad=True)
+
+    output = trident.CosineSimilarity(dim).forward(x1, x2)
+    assert output is not None
+    assert output.dtype == dtype
+
+    if dim == 0:
+        target_dim = (y_size, x_size)
+    elif dim == 1:
+        target_dim = (z_size, x_size)
+    else:
+        target_dim = (z_size, y_size)
+
+    grad_output = torch.randn(target_dim, **factory_kwargs)
+
+    output.backward(grad_output)
+    assert x1.grad is not None
+    assert x1.grad.dtype == dtype
+    assert x2.grad is not None
+    assert x2.grad.dtype == dtype
