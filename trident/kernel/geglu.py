@@ -150,6 +150,7 @@ class GEGLU:
         m_size: tl.int32,
         n_size: tl.int32,
         x_size: tl.int32,
+        dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
         pid = tl.program_id(0)
@@ -202,5 +203,5 @@ class GEGLU:
         gate = tl.load(gate_block_ptr, boundary_check=(1,))
         grad_state = grad_output * language.math.GELU.forward(gate)
         grad_gate = language.math.GELU.backward(grad_output * state, gate)
-        tl.store(grad_state_block_ptr, grad_state, boundary_check=(1,))
-        tl.store(grad_gate_block_ptr, grad_gate, boundary_check=(1,))
+        tl.store(grad_state_block_ptr, grad_state.to(dtype), boundary_check=(1,))
+        tl.store(grad_gate_block_ptr, grad_gate.to(dtype), boundary_check=(1,))

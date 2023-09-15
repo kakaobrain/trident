@@ -87,7 +87,9 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
 @pytest.mark.parametrize("num_batches, m_size, n_size, k_size", [(1, 16, 16, 16)])
 def test_geglu(num_batches, m_size, n_size, k_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, m_size, k_size, **factory_kwargs)
+    x_size = n_size // 2
+    input = torch.randn(num_batches, m_size, k_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(num_batches, m_size, x_size, **factory_kwargs)
 
     output = trident.GEGLU(m_size, n_size, **factory_kwargs).forward(input)
 
@@ -98,3 +100,8 @@ def test_geglu(num_batches, m_size, n_size, k_size, device, dtype):
 
     assert output is not None
     assert output.dtype == dtype
+
+    output.backward(grad_output)
+
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

@@ -46,7 +46,13 @@ def test_backward(y_size, x_size, device):
 @pytest.mark.parametrize("y_size, x_size", [(2, 128)])
 def test_gelu(y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((y_size, x_size), **factory_kwargs)
+    input = torch.randn((y_size, x_size), **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn((y_size, x_size), device=device)
 
     output = trident.GELU().forward(input)
     assert output is not None and output.dtype == dtype
+
+    output.backward(grad_output)
+
+    assert input.grad is not None
+    assert input.grad.dtype == dtype
