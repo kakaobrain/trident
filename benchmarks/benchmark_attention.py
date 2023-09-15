@@ -19,44 +19,35 @@ import util
 import trident
 
 
-@util.report("attention forward", ["sequence_size"], [2**i for i in range(10, 15)])
-def bench_attention_forward(sequence_size, dtype, backend):
-    num_batches, num_heads, embedding_size = 4, 48, 64
+@util.report(
+    "attention forward", ["y_size"], [32 * i for i in range(1, 21)], {"num_batches": 64, "num_heads": 8, "x_size": 64}
+)
+def bench_attention_forward(num_batches, num_heads, y_size, x_size, dtype, backend):
     factory_kwargs = {"device": "cuda", "dtype": dtype}
-    query = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
-    key = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
-    value = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
+    query = torch.randn(num_batches, num_heads, y_size, x_size, **factory_kwargs)
+    key = torch.randn_like(query)
+    value = torch.randn_like(query)
 
     if backend == "torch":
-        return triton.testing.do_bench_cudagraph(
-            lambda: torch.nn.functional.scaled_dot_product_attention(query, key, value)
-        )
+        return triton.testing.do_bench(lambda: torch.nn.functional.scaled_dot_product_attention(query, key, value))
     else:
-        return triton.testing.do_bench_cudagraph(
+        return triton.testing.do_bench(
             lambda: trident.function.scaled_dot_product_attention(query, key, value, use_accelerator=True)
         )
 
 
-@util.report("attention backward", ["sequence_size"], [256 * i for i in range(1, 4)])
-def bench_attention_backward(sequence_size, dtype, backend):
-    num_batches, num_heads, embedding_size = 4, 48, 64
+@util.report(
+    "attention backward",
+    ["y_size"],
+    [64 * i for i in range(1, 21)],
+    {"num_batches": 64, "num_heads": 8, "x_size": 64},
+)
+def bench_attention_backward(num_batches, num_heads, y_size, x_size, dtype, backend):
     factory_kwargs = {"device": "cuda", "dtype": dtype}
-    query = torch.randn(
-        (num_batches, num_heads, sequence_size, embedding_size),
-        **factory_kwargs,
-        requires_grad=True,
-    )
-    key = torch.randn(
-        (num_batches, num_heads, sequence_size, embedding_size),
-        **factory_kwargs,
-        requires_grad=True,
-    )
-    value = torch.randn(
-        (num_batches, num_heads, sequence_size, embedding_size),
-        **factory_kwargs,
-        requires_grad=True,
-    )
-    grad_output = torch.randn((num_batches, num_heads, sequence_size, embedding_size), **factory_kwargs)
+    query = torch.randn(num_batches, num_heads, y_size, x_size, **factory_kwargs, requires_grad=True)
+    key = torch.randn_like(query, requires_grad=True)
+    value = torch.randn_like(query, requires_grad=True)
+    grad_output = torch.randn(num_batches, num_heads, y_size, x_size, **factory_kwargs)
 
     if backend == "torch":
         output = torch.nn.functional.scaled_dot_product_attention(query, key, value)
