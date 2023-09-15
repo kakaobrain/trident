@@ -102,5 +102,5 @@ class Dropout:
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
         output = tl.load(output_block_ptr, boundary_check=(0,))
         condition = (p == 0.0) | (output > 0.0)
-        grad_input = tl.where(condition, grad_output, 0.0)
+        grad_input = tl.where(condition, grad_output * (1.0 - p + language.eps), 0.0)
         tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))

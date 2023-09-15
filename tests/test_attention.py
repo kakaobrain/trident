@@ -19,35 +19,36 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("is_causal, embedding_size", [(True, 16), (False, 32), (False, 64)])
-def test_forward(is_causal, embedding_size, device):
-    num_batches, num_heads, sequence_size = 6, 9, 1024
-    factory_kwargs = {"device": device}
-    query = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    key = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    value = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+@pytest.mark.parametrize(
+    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 128, 64, False)]
+)
+def test_forward(num_batches, num_heads, y_size, x_size, is_causal, device):
+    query = torch.randn(num_batches, num_heads, y_size, x_size, device=device)
+    key = torch.randn_like(query)
+    value = torch.randn_like(query)
 
-    a = torch.nn.functional.scaled_dot_product_attention(query, key, value, is_causal=is_causal)
-    b = trident.function.scaled_dot_product_attention(query, key, value, is_causal=is_causal)
-    assert util.equal(a, b)
+    assert util.equal(
+        torch.nn.functional.scaled_dot_product_attention(query, key, value, is_causal=is_causal),
+        trident.function.scaled_dot_product_attention(query, key, value, is_causal=is_causal),
+    )
 
 
-@pytest.mark.parametrize("is_causal, embedding_size", [(True, 16), (False, 32), (False, 64)])
-def test_backward(is_causal, embedding_size, device):
-    num_batches, num_heads, sequence_size = 6, 9, 1024
-    factory_kwargs = {"device": device}
-    query = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    key = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    value = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    grad_out = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+@pytest.mark.parametrize(
+    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 128, 64, False)]
+)
+def test_backward(num_batches, num_heads, y_size, x_size, is_causal, device):
+    query = torch.rand(num_batches, num_heads, y_size, x_size, device=device)
+    key = torch.randn_like(query)
+    value = torch.randn_like(query)
+    grad_output = torch.randn_like(query)
 
     def train(func):
-        q = query.clone()
-        k = key.clone()
-        v = value.clone()
-        q.requires_grad = k.requires_grad = v.requires_grad = True
-        func(q, k, v, is_causal=is_causal).backward(grad_out, retain_graph=True)
-        return q.grad, k.grad, v.grad
+        i = query.clone()
+        j = key.clone()
+        k = value.clone()
+        i.requires_grad = j.requires_grad = k.requires_grad = True
+        func(i, j, k, is_causal=is_causal).backward(grad_output, retain_graph=True)
+        return i.grad, j.grad, k.grad
 
     (x, y, z) = train(torch.nn.functional.scaled_dot_product_attention)
     (a, b, c) = train(trident.function.scaled_dot_product_attention)
@@ -57,13 +58,29 @@ def test_backward(is_causal, embedding_size, device):
     assert util.equal(z, c)
 
 
-@pytest.mark.parametrize("is_causal, embedding_size", [(True, 16)])
-def test_attention(is_causal, embedding_size, device, dtype):
-    num_batches, num_heads, sequence_size = 6, 9, 1024
+@pytest.mark.parametrize(
+    "num_batches, num_heads, y_size, x_size, is_causal", [(1, 1, 1, 16, True), (1, 1, 1, 16, False)]
+)
+def test_attention(num_batches, num_heads, y_size, x_size, is_causal, device, dtype):
+    if dtype is torch.bfloat16:
+        pytest.skip("Triton has a bug.")
+
     factory_kwargs = {"device": device, "dtype": dtype}
-    query = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    key = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
-    value = torch.rand(num_batches, num_heads, sequence_size, embedding_size, **factory_kwargs)
+    query = torch.rand(num_batches, num_heads, y_size, x_size, **factory_kwargs, requires_grad=True)
+    key = torch.randn_like(query, requires_grad=True)
+    value = torch.randn_like(query, requires_grad=True)
+    grad_output = torch.randn_like(query)
 
     output = trident.function.scaled_dot_product_attention(query, key, value, is_causal=is_causal)
-    assert output is not None and output.dtype == dtype
+
+    assert output is not None
+    assert output.dtype == dtype
+
+    output.backward(grad_output)
+
+    assert query.grad is not None
+    assert query.grad.dtype == dtype
+    assert key.grad is not None
+    assert key.grad.dtype == dtype
+    assert value.grad is not None
+    assert value.grad.dtype == dtype

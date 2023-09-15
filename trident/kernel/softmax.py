@@ -200,4 +200,4 @@ class Softmax:
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, x_block_size))
 
         delta = tl.sum(delta, 1)
-        tl.store(delta_block_ptr, delta)
+        tl.store(delta_block_ptr, delta.to(dtype))
