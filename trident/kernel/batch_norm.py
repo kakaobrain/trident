@@ -104,6 +104,7 @@ class BatchNorm:
         y_size: tl.int32,
         x_size: tl.int32,
         eps: tl.float32,
+        dtype: tl.constexpr,
         batch_block_size: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
@@ -152,12 +153,12 @@ class BatchNorm:
         grad_mean = tl.sum(tl.where(condition, grad_centered_mean, 0.0) / denominator)
         grad_input = grad_centered_mean - grad_mean
 
-        tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0, 1))
 
         if grad_weight_ptr:
             input_norm = centered_mean / std
             grad_weight = tl.sum(input_norm * grad_output)
-            tl.store(grad_weight_ptr + pid, grad_weight)
+            tl.store(grad_weight_ptr + pid, grad_weight.to(dtype))
 
         if grad_bias_ptr:
             grad_bias = tl.sum(grad_output)
