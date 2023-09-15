@@ -99,7 +99,14 @@ class GEGLU(torch.autograd.Function):
 
         util.push_trace("kernel.GEGLU.backward")
         kernel.GEGLU.backward[grid](
-            grad_state_gate, grad_output, state_gate, m_size, n_size, x_size, triton.next_power_of_2(x_size)
+            grad_state_gate,
+            grad_output,
+            state_gate,
+            m_size,
+            n_size,
+            x_size,
+            util.dtype(state_gate.dtype),
+            triton.next_power_of_2(x_size),
         )
         util.pop_trace()
 

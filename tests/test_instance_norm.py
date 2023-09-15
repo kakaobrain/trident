@@ -102,7 +102,8 @@ def test_backward(num_batches, y_size, x_size, device):
 @pytest.mark.parametrize("num_channels, length", [(1, 64)])
 def test_instance_norm1d(num_channels, length, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_channels, length, **factory_kwargs)
+    input = torch.randn(num_channels, length, **factory_kwargs, requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     output = trident.InstanceNorm1d(num_channels, **factory_kwargs).forward(input)
 
@@ -126,11 +127,16 @@ def test_instance_norm1d(num_channels, length, device, dtype):
     assert output is not None
     assert output.dtype == dtype
 
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype
+
 
 @pytest.mark.parametrize("num_batches, num_channels, height, width", [(1, 1, 64, 64)])
 def test_instance_norm2d(num_batches, num_channels, height, width, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, num_channels, height, width, **factory_kwargs)
+    input = torch.randn(num_batches, num_channels, height, width, **factory_kwargs, requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     output = trident.InstanceNorm2d(num_channels, **factory_kwargs).forward(input)
 
@@ -153,3 +159,7 @@ def test_instance_norm2d(num_batches, num_channels, height, width, device, dtype
 
     assert output is not None
     assert output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

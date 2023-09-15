@@ -46,9 +46,15 @@ def test_backward(y_size, x_size, device):
 @pytest.mark.parametrize("num_batches, num_elements", [(1, 100)])
 def test_leaky_relu(num_batches, num_elements, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, num_elements, **factory_kwargs)
+    input = torch.randn(num_batches, num_elements, **factory_kwargs, requires_grad=True)
+    grad_output = torch.rand_like(input)
 
     output = trident.LeakyReLU().forward(input)
 
     assert output is not None
     assert output.dtype == dtype
+
+    output.backward(grad_output)
+
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

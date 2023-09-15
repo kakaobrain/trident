@@ -46,9 +46,14 @@ def test_backward(y_size, x_size, device):
 @pytest.mark.parametrize("y_size, x_size", [(1, 100)])
 def test_relu(y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn_like(input)
 
     output = trident.ReLU().forward(input)
 
     assert output is not None
     assert output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

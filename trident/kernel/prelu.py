@@ -102,6 +102,7 @@ class PReLU:
         batch_stride: tl.int32,
         y_stride: tl.int32,
         x_stride: tl.int32,
+        dtype: tl.constexpr,
         y_block_size: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
@@ -162,5 +163,5 @@ class PReLU:
         grad_output = tl.load(grad_output_block_ptr, boundary_check=(1, 2))
         grad_input = language.math.LeakyReLU.backward(grad_output, input, weight)
         grad_weight = grad_output * tl.where(input > 0, 0, input)
-        tl.store(grad_input_block_ptr, grad_input, boundary_check=(1, 2))
-        tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(1, 2))
+        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1, 2))
+        tl.store(grad_weight_staging_block_ptr, grad_weight.to(dtype), boundary_check=(1, 2))

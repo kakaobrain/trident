@@ -54,7 +54,13 @@ def test_backward(num_batches, y_size, x_size, device):
 @pytest.mark.parametrize("num_batches, y_size, x_size", [(2, 10, 1000)])
 def test_shift_gelu(num_batches, y_size, x_size, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn((num_batches, y_size, x_size), **factory_kwargs)
+    input = torch.randn(num_batches, y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn_like(input)
 
     output = trident.ShiftGELU(x_size, **factory_kwargs).forward(input)
-    assert output is not None and output.dtype == dtype
+    assert output is not None
+    assert output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

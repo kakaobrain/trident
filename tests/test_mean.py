@@ -46,7 +46,13 @@ def test_backward(y_size, x_size, dim, device):
 @pytest.mark.parametrize("y_size, x_size, dim", [(1, 16, 0), (16, 1, 1)])
 def test_mean(y_size, x_size, dim, device, dtype):
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
 
     output = trident.Mean(dim).forward(input)
-    assert output is not None and output.dtype == dtype
+    assert output is not None
+    assert output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype

@@ -54,7 +54,13 @@ def test_max(y_size, x_size, dim, device, dtype):
         pytest.skip("Skipping due to bfloat16 dtype")
 
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(y_size, x_size, **factory_kwargs)
+    input = torch.randn(y_size, x_size, **factory_kwargs, requires_grad=True)
+    grad_output = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
 
-    operation = trident.Max(dim)
-    assert operation.forward(input) is not None
+    output, argmax = trident.Max(dim).forward(input)
+    assert output is not None
+    assert output.dtype == dtype
+
+    output.backward(grad_output)
+    assert input.grad is not None
+    assert input.grad.dtype == dtype
