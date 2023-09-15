@@ -143,6 +143,7 @@ class InstanceNorm:
         running_var_ptr: tl.tensor,
         num_batches: tl.int32,
         y_size: tl.int32,
+        x_size: tl.int32,
         momentum: tl.constexpr,
         batch_block_size: tl.constexpr,
     ):
@@ -188,7 +189,7 @@ class InstanceNorm:
         running_mean = tl.load(running_mean_block_ptr, boundary_check=(0,))
         running_mean = mean * momentum + running_mean * (1 - momentum)
         running_var = tl.load(running_var_block_ptr, boundary_check=(0,))
-        running_var = var * momentum + running_var * (1 - momentum)
+        running_var = var * (x_size / (x_size - 1)) * momentum + running_var * (1 - momentum)
         tl.store(running_mean_block_ptr, running_mean, boundary_check=(0,))
         tl.store(running_var_block_ptr, running_var, boundary_check=(0,))
 

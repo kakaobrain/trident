@@ -96,7 +96,15 @@ class InstanceNorm(torch.autograd.Function):
 
             util.push_trace("kernel.InstanceNorm.forward_running_mean_running_var")
             kernel.InstanceNorm.forward_running_mean_running_var[grid](
-                mean, var, running_mean, running_var, num_batches, y_size, momentum, triton.next_power_of_2(num_batches)
+                mean,
+                var,
+                running_mean,
+                running_var,
+                num_batches,
+                y_size,
+                x_size,
+                momentum,
+                triton.next_power_of_2(num_batches),
             )
             util.pop_trace()
 

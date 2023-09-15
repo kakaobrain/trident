@@ -19,7 +19,10 @@ import trident
 from tests import util
 
 
-@pytest.mark.parametrize("num_batches, y_size, x_size, use_input_stats", [(2, 8, 1024, True), (3, 5, 2000, False)])
+@pytest.mark.parametrize(
+    "num_batches, y_size, x_size, use_input_stats",
+    [(2, 8, 1024, True), (2, 2, 2, True), (3, 5, 2000, False)],
+)
 def test_forward(num_batches, y_size, x_size, use_input_stats, device):
     input = torch.randn(num_batches, y_size, x_size, device=device)
 
