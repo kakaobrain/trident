@@ -12,49 +12,113 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 import triton
 import triton.language as tl
 
 from trident import language, util
 
 
-def linear_configs():
+def num_warps_and_stages_for_linear(size):
+    if size >= 2**15:
+        num_warps = 8
+        num_stages = 3
+    elif size >= 2**14:
+        num_warps = 4
+        num_stages = 4
+    else:
+        num_warps = 2
+        num_stages = 5
+    return num_warps, num_stages
+
+
+def linear_configs(m_block_size_list: List[int], n_block_size_list: List[int], k_block_size_list: List[int]):
     configs = []
-    for m_block_size in [16, 32, 64]:
-        for n_block_size in [32, 64]:
-            for k_block_size in [32, 64, 128, 256]:
-                for num_stages in [2, 3]:
-                    config = triton.Config(
-                        {
-                            "m_block_size": m_block_size,
-                            "n_block_size": n_block_size,
-                            "k_block_size": k_block_size,
-                        },
-                        2 if k_block_size <= 64 else 4,
-                        num_stages,
-                    )
-                    configs.append(config)
+    for m_block_size in m_block_size_list:
+        for n_block_size in n_block_size_list:
+            for k_block_size in k_block_size_list:
+                num_warps, num_stages = num_warps_and_stages_for_linear(m_block_size * n_block_size)
+                config = triton.Config(
+                    {
+                        "m_block_size": m_block_size,
+                        "n_block_size": n_block_size,
+                        "k_block_size": k_block_size,
+                    },
+                    num_warps=num_warps,
+                    num_stages=num_stages,
+                )
+                configs.append(config)
+
+    return configs
+
+
+def linear_backward_configs(m_block_size_list: List[int], n_block_size_list: List[int], k_block_size_list: List[int]):
+    configs = []
+    for m_block_size in m_block_size_list:
+        for n_block_size in n_block_size_list:
+            for k_block_size in k_block_size_list:
+                num_warps, num_stages = num_warps_and_stages_for_linear(m_block_size * k_block_size)
+                config = triton.Config(
+                    {
+                        "m_block_size": m_block_size,
+                        "n_block_size": n_block_size,
+                        "k_block_size": k_block_size,
+                    },
+                    num_warps=num_warps,
+                    num_stages=num_stages,
+                )
+                configs.append(config)
+
+    return configs
+
+
+def linear_backward_weight_configs(
+    m_block_size_list: List[int], n_block_size_list: List[int], k_block_size_list: List[int]
+):
+    configs = []
+    for m_block_size in m_block_size_list:
+        for n_block_size in n_block_size_list:
+            for k_block_size in k_block_size_list:
+                num_warps, num_stages = num_warps_and_stages_for_linear(n_block_size * k_block_size)
+                config = triton.Config(
+                    {
+                        "m_block_size": m_block_size,
+                        "n_block_size": n_block_size,
+                        "k_block_size": k_block_size,
+                    },
+                    num_warps=num_warps,
+                    num_stages=num_stages,
+                )
+                configs.append(config)
+
     return configs
 
 
 def linear_configs_for_backward_bias():
     configs = []
-    for m_block_size in [32, 64, 128, 256]:
+    for m_block_size in [32, 64, 128]:
         for num_stages in [2, 3]:
             config = triton.Config(
-                {
-                    "m_block_size": m_block_size,
-                },
+                {"m_block_size": m_block_size},
                 2 if m_block_size <= 64 else 4,
                 num_stages,
             )
             configs.append(config)
+
     return configs
 
 
 class Linear:
     @staticmethod
-    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(linear_configs([16, 64, 128], [32, 64, 128], [32, 64]), ["m_size", "n_size", "k_size"])
+    @triton.heuristics(
+        {
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+        }
+    )
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -74,6 +138,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_m_blocks = tl.cdiv(m_size, m_block_size)
@@ -103,8 +170,12 @@ class Linear:
             m_block_size,
             n_block_size,
             k_block_size,
+            require_m_boundary_check,
+            require_n_boundary_check,
+            require_k_boundary_check,
             dtype,
         )
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr + batch * m_size * n_size,
             shape=(m_size, n_size),
@@ -113,10 +184,20 @@ class Linear:
             block_shape=(m_block_size, n_block_size),
             order=(1, 0),
         )
-        tl.store(output_block_ptr, output, boundary_check=(0, 1))
+        if require_m_boundary_check & require_n_boundary_check:
+            tl.store(output_block_ptr, output)
+        else:
+            tl.store(output_block_ptr, output, boundary_check=(0, 1))
 
     @staticmethod
-    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(linear_backward_configs([64, 128], [32, 64], [32, 64, 128]), ["m_size", "n_size", "k_size"])
+    @triton.heuristics(
+        {
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+        }
+    )
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -134,6 +215,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_m_blocks = tl.cdiv(m_size, m_block_size)
@@ -160,8 +244,12 @@ class Linear:
             m_block_size,
             n_block_size,
             k_block_size,
+            require_m_boundary_check,
+            require_n_boundary_check,
+            require_k_boundary_check,
             dtype,
         )
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr + batch * m_size * k_size,
             shape=(m_size, k_size),
@@ -170,10 +258,24 @@ class Linear:
             block_shape=(m_block_size, k_block_size),
             order=(1, 0),
         )
-        tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
+
+        if require_m_boundary_check & require_k_boundary_check:
+            tl.store(grad_input_block_ptr)
+        else:
+            tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
 
     @staticmethod
-    @util.autotune(configs=linear_configs(), key=["m_size", "n_size", "k_size"])
+    @util.autotune(
+        linear_backward_weight_configs([32, 64], [64, 128], [32, 64, 128]),
+        ["m_size", "n_size", "k_size"],
+    )
+    @triton.heuristics(
+        {
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+        }
+    )
     @triton.jit
     def backward_weight(
         grad_weight_staging_ptr: tl.tensor,
@@ -190,6 +292,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_n_blocks = tl.cdiv(n_size, n_block_size)
@@ -216,8 +321,12 @@ class Linear:
             m_block_size,
             n_block_size,
             k_block_size,
+            require_m_boundary_check,
+            require_n_boundary_check,
+            require_k_boundary_check,
             dtype,
         )
+
         grad_weight_staging_block_ptr = tl.make_block_ptr(
             grad_weight_staging_ptr + batch * n_size * k_size,
             shape=(n_size, k_size),
@@ -226,10 +335,15 @@ class Linear:
             block_shape=(n_block_size, k_block_size),
             order=(1, 0),
         )
-        tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
+
+        if require_n_boundary_check & require_k_boundary_check:
+            tl.store(grad_weight_staging_block_ptr)
+        else:
+            tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
 
     @staticmethod
-    @util.autotune(configs=linear_configs_for_backward_bias(), key=["m_size", "n_size"])
+    @util.autotune(linear_configs_for_backward_bias(), ["m_size", "n_size"])
+    @triton.heuristics({"require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0})
     @triton.jit
     def backward_bias(
         grad_bias_staging_ptr: tl.tensor,
@@ -238,13 +352,21 @@ class Linear:
         n_size: tl.int32,
         dtype: tl.constexpr,
         m_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         batch = pid // n_size
         n_offset = pid % n_size
         grad_bias = language.Linear.backward_bias(
-            grad_output_ptr + batch * m_size * n_size, m_size, n_size, n_offset, m_block_size, dtype
+            grad_output_ptr + batch * m_size * n_size,
+            m_size,
+            n_size,
+            n_offset,
+            m_block_size,
+            require_m_boundary_check,
+            dtype,
         )
+
         grad_bias_staging_block_ptr = tl.make_block_ptr(
             grad_bias_staging_ptr + batch * n_size,
             shape=(n_size,),

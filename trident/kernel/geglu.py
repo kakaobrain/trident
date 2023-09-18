@@ -18,28 +18,48 @@ import triton.language as tl
 from trident import language, util
 
 
+def num_warps_and_stages_for_geglu(size):
+    if size >= 2**15:
+        num_warps = 8
+        num_stages = 3
+    elif size >= 2**14:
+        num_warps = 4
+        num_stages = 4
+    else:
+        num_warps = 2
+        num_stages = 5
+    return num_warps, num_stages
+
+
 def geglu_configs():
     configs = []
-    for m_block_size in [32, 64]:
-        for k_block_size in [32, 64, 128, 256]:
-            for x_block_size in [32, 64]:
-                for num_stages in [2, 3]:
-                    config = triton.Config(
-                        {
-                            "m_block_size": m_block_size,
-                            "k_block_size": k_block_size,
-                            "x_block_size": x_block_size,
-                        },
-                        2 if k_block_size <= 64 else 4,
-                        num_stages,
-                    )
-                    configs.append(config)
+    for k_block_size in [32, 64]:
+        for m_block_size in [16, 64, 128]:
+            for x_block_size in [32, 64, 128]:
+                num_warps, num_stages = num_warps_and_stages_for_geglu(m_block_size * x_block_size)
+                config = triton.Config(
+                    {
+                        "m_block_size": m_block_size,
+                        "k_block_size": k_block_size,
+                        "x_block_size": x_block_size,
+                    },
+                    num_warps=num_warps,
+                    num_stages=num_stages,
+                )
+                configs.append(config)
     return configs
 
 
 class GEGLU:
     @staticmethod
-    @util.autotune(configs=geglu_configs(), key=["m_size", "k_size", "x_size"])
+    @util.autotune(geglu_configs(), ["m_size", "k_size", "x_size"])
+    @triton.heuristics(
+        {
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+            "require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"] == 0,
+        }
+    )
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -61,6 +81,9 @@ class GEGLU:
         m_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_m_blocks = tl.cdiv(m_size, m_block_size)
@@ -115,6 +138,9 @@ class GEGLU:
             m_block_size,
             x_block_size,
             k_block_size,
+            require_m_boundary_check,
+            require_x_boundary_check,
+            require_k_boundary_check,
             dtype,
         )
         gate = language.Linear.forward(
@@ -134,12 +160,21 @@ class GEGLU:
             m_block_size,
             x_block_size,
             k_block_size,
+            require_m_boundary_check,
+            require_x_boundary_check,
+            require_k_boundary_check,
             dtype,
         )
         output = state * language.math.GELU.forward(gate)
-        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0, 1))
-        tl.store(state_block_ptr, state.to(dtype), boundary_check=(0, 1))
-        tl.store(gate_block_ptr, gate.to(dtype), boundary_check=(0, 1))
+
+        if require_m_boundary_check & require_x_boundary_check:
+            tl.store(output_block_ptr, output.to(dtype))
+            tl.store(state_block_ptr, state.to(dtype))
+            tl.store(gate_block_ptr, gate.to(dtype))
+        else:
+            tl.store(output_block_ptr, output.to(dtype), boundary_check=(0, 1))
+            tl.store(state_block_ptr, state.to(dtype), boundary_check=(0, 1))
+            tl.store(gate_block_ptr, gate.to(dtype), boundary_check=(0, 1))
 
     @staticmethod
     @triton.jit

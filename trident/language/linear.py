@@ -36,6 +36,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
         dtype: tl.constexpr,
     ):
         input_block_ptr = tl.make_block_ptr(
@@ -57,9 +60,18 @@ class Linear:
         output = tl.zeros((m_block_size, n_block_size), dtype)
 
         for k_offset in range(0, k_size, k_block_size):
-            input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            output += tl.dot(input, weight, use_accelerator).to(dtype)
+            if require_k_boundary_check & require_m_boundary_check:
+                input = tl.load(input_block_ptr)
+            else:
+                input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            if require_k_boundary_check & require_n_boundary_check:
+                weight = tl.load(weight_block_ptr)
+            else:
+                weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            output += tl.dot(input, weight, allow_tf32=use_accelerator, out_dtype=dtype)
+
             input_block_ptr = tl.advance(input_block_ptr, (0, k_block_size))
             weight_block_ptr = tl.advance(weight_block_ptr, (k_block_size, 0))
 
@@ -72,7 +84,10 @@ class Linear:
                 block_shape=(n_block_size,),
                 order=(0,),
             )
-            bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
+            if require_n_boundary_check:
+                bias = tl.load(bias_block_ptr)
+            else:
+                bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
             output += bias
 
         return output
@@ -93,6 +108,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
         dtype: tl.constexpr,
     ):
         grad_output_block_ptr = tl.make_block_ptr(
@@ -111,16 +129,25 @@ class Linear:
             block_shape=(n_block_size, k_block_size),
             order=(1, 0),
         )
-        grad_input = tl.zeros((m_block_size, k_block_size), tl.float32)
+        grad_input = tl.zeros((m_block_size, k_block_size), dtype)
 
-        for n_offset in range(0, n_size, n_block_size):
-            grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            grad_input += tl.dot(grad_output, weight, use_accelerator)
+        for _ in range(0, n_size, n_block_size):
+            if require_n_boundary_check & require_m_boundary_check:
+                grad_output = tl.load(grad_output_block_ptr)
+            else:
+                grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            if require_n_boundary_check & require_k_boundary_check:
+                weight = tl.load(weight_block_ptr)
+            else:
+                weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            grad_input += tl.dot(grad_output, weight, allow_tf32=use_accelerator, out_dtype=dtype)
+
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
             weight_block_ptr = tl.advance(weight_block_ptr, (n_block_size, 0))
 
-        return grad_input.to(dtype)
+        return grad_input
 
     @staticmethod
     @triton.jit
@@ -138,6 +165,9 @@ class Linear:
         m_block_size: tl.constexpr,
         n_block_size: tl.constexpr,
         k_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
+        require_n_boundary_check: tl.constexpr,
+        require_k_boundary_check: tl.constexpr,
         dtype: tl.constexpr,
     ):
         grad_output_block_ptr = tl.make_block_ptr(
@@ -156,25 +186,35 @@ class Linear:
             block_shape=(m_block_size, k_block_size),
             order=(1, 0),
         )
-        grad_weight = tl.zeros((n_block_size, k_block_size), tl.float32)
+        grad_weight = tl.zeros((n_block_size, k_block_size), dtype)
 
-        for m_offset in range(0, m_size, m_block_size):
-            grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
-            grad_weight += tl.dot(grad_output, input, use_accelerator)
+        for _ in range(0, m_size, m_block_size):
+            if require_m_boundary_check & require_n_boundary_check:
+                grad_output = tl.load(grad_output_block_ptr)
+            else:
+                grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            if require_m_boundary_check & require_k_boundary_check:
+                input = tl.load(input_block_ptr)
+            else:
+                input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+
+            grad_weight += tl.dot(grad_output, input, allow_tf32=use_accelerator, out_dtype=dtype)
+
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
             input_block_ptr = tl.advance(input_block_ptr, (m_block_size, 0))
 
-        return grad_weight.to(dtype)
+        return grad_weight
 
     @staticmethod
     @triton.jit
     def backward_bias(
         grad_output_ptr: tl.tensor,
-        m_size: int,
-        n_size: int,
-        n_offset: int,
+        m_size: tl.int32,
+        n_size: tl.int32,
+        n_offset: tl.int32,
         m_block_size: tl.constexpr,
+        require_m_boundary_check: tl.constexpr,
         dtype: tl.constexpr,
     ):
         grad_output_block_ptr = tl.make_block_ptr(
@@ -188,7 +228,11 @@ class Linear:
         grad_bias = tl.zeros((1, m_block_size), dtype)
 
         for m_offset in range(0, m_size, m_block_size):
-            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+            if require_m_boundary_check:
+                grad_output = tl.load(grad_output_block_ptr)
+            else:
+                grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+
             grad_bias += grad_output
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
 
