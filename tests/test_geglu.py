@@ -90,7 +90,6 @@ def test_geglu(num_batches, m_size, n_size, k_size, device, dtype):
         pytest.skip("Triton has a bug.")
 
     factory_kwargs = {"device": device, "dtype": dtype}
-    input = torch.randn(num_batches, m_size, k_size, **factory_kwargs)
     x_size = n_size // 2
     input = torch.randn(num_batches, m_size, k_size, **factory_kwargs, requires_grad=True)
     grad_output = torch.randn(num_batches, m_size, x_size, **factory_kwargs)
