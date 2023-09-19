@@ -260,7 +260,7 @@ class Linear:
         )
 
         if require_m_boundary_check & require_k_boundary_check:
-            tl.store(grad_input_block_ptr)
+            tl.store(grad_input_block_ptr, grad_input)
         else:
             tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
 
@@ -337,7 +337,7 @@ class Linear:
         )
 
         if require_n_boundary_check & require_k_boundary_check:
-            tl.store(grad_weight_staging_block_ptr)
+            tl.store(grad_weight_staging_block_ptr, grad_weight)
         else:
             tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
 
