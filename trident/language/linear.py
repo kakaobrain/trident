@@ -62,15 +62,15 @@ class Linear:
         output = tl.zeros((m_block_size, n_block_size), dtype)
 
         for k_offset in range(0, k_size, k_block_size):
-            if require_k_boundary_check & require_m_boundary_check:
-                input = tl.load(input_block_ptr)
-            else:
+            if require_k_boundary_check | require_m_boundary_check:
                 input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
-
-            if require_k_boundary_check & require_n_boundary_check:
-                weight = tl.load(weight_block_ptr)
             else:
+                input = tl.load(input_block_ptr)
+
+            if require_k_boundary_check | require_n_boundary_check:
                 weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            else:
+                weight = tl.load(weight_block_ptr)
 
             output += language.dot(input, weight, use_accelerator, dtype)
             input_block_ptr = tl.advance(input_block_ptr, (0, k_block_size))
@@ -86,9 +86,9 @@ class Linear:
                 order=(0,),
             )
             if require_n_boundary_check:
-                bias = tl.load(bias_block_ptr)
-            else:
                 bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
+            else:
+                bias = tl.load(bias_block_ptr)
 
             output += bias
 
@@ -134,15 +134,15 @@ class Linear:
         grad_input = tl.zeros((m_block_size, k_block_size), dtype)
 
         for _ in range(0, n_size, n_block_size):
-            if require_n_boundary_check & require_m_boundary_check:
-                grad_output = tl.load(grad_output_block_ptr)
-            else:
+            if require_n_boundary_check | require_m_boundary_check:
                 grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
-
-            if require_n_boundary_check & require_k_boundary_check:
-                weight = tl.load(weight_block_ptr)
             else:
+                grad_output = tl.load(grad_output_block_ptr)
+
+            if require_n_boundary_check | require_k_boundary_check:
                 weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            else:
+                weight = tl.load(weight_block_ptr)
 
             grad_input += language.dot(grad_output, weight, use_accelerator, dtype)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
@@ -190,15 +190,15 @@ class Linear:
         grad_weight = tl.zeros((n_block_size, k_block_size), dtype)
 
         for _ in range(0, m_size, m_block_size):
-            if require_m_boundary_check & require_n_boundary_check:
-                grad_output = tl.load(grad_output_block_ptr)
-            else:
+            if require_m_boundary_check | require_n_boundary_check:
                 grad_output = tl.load(grad_output_block_ptr, boundary_check=(0, 1), padding_option="zero")
-
-            if require_m_boundary_check & require_k_boundary_check:
-                input = tl.load(input_block_ptr)
             else:
+                grad_output = tl.load(grad_output_block_ptr)
+
+            if require_m_boundary_check | require_k_boundary_check:
                 input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
+            else:
+                input = tl.load(input_block_ptr)
 
             grad_weight += language.dot(grad_output, input, use_accelerator, dtype)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
@@ -229,9 +229,9 @@ class Linear:
 
         for m_offset in range(0, m_size, m_block_size):
             if require_m_boundary_check:
-                grad_output = tl.load(grad_output_block_ptr)
-            else:
                 grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+            else:
+                grad_output = tl.load(grad_output_block_ptr)
 
             grad_bias += grad_output
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))

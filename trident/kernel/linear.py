@@ -114,9 +114,9 @@ class Linear:
     @util.autotune(linear_configs([16, 64, 128], [32, 64, 128], [32, 64]), ["m_size", "n_size", "k_size"])
     @triton.heuristics(
         {
-            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
-            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
-            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"],
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"],
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"],
         }
     )
     @triton.jit
@@ -184,18 +184,18 @@ class Linear:
             block_shape=(m_block_size, n_block_size),
             order=(1, 0),
         )
-        if require_m_boundary_check & require_n_boundary_check:
-            tl.store(output_block_ptr, output)
-        else:
+        if require_m_boundary_check | require_n_boundary_check:
             tl.store(output_block_ptr, output, boundary_check=(0, 1))
+        else:
+            tl.store(output_block_ptr, output)
 
     @staticmethod
     @util.autotune(linear_backward_configs([64, 128], [32, 64], [32, 64, 128]), ["m_size", "n_size", "k_size"])
     @triton.heuristics(
         {
-            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
-            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
-            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"],
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"],
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"],
         }
     )
     @triton.jit
@@ -259,10 +259,10 @@ class Linear:
             order=(1, 0),
         )
 
-        if require_m_boundary_check & require_k_boundary_check:
-            tl.store(grad_input_block_ptr, grad_input)
-        else:
+        if require_m_boundary_check | require_k_boundary_check:
             tl.store(grad_input_block_ptr, grad_input, boundary_check=(0, 1))
+        else:
+            tl.store(grad_input_block_ptr, grad_input)
 
     @staticmethod
     @util.autotune(
@@ -271,9 +271,9 @@ class Linear:
     )
     @triton.heuristics(
         {
-            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0,
-            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"] == 0,
-            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"] == 0,
+            "require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"],
+            "require_n_boundary_check": lambda args: args["n_size"] % args["n_block_size"],
+            "require_k_boundary_check": lambda args: args["k_size"] % args["k_block_size"],
         }
     )
     @triton.jit
@@ -336,14 +336,14 @@ class Linear:
             order=(1, 0),
         )
 
-        if require_n_boundary_check & require_k_boundary_check:
-            tl.store(grad_weight_staging_block_ptr, grad_weight)
-        else:
+        if require_n_boundary_check | require_k_boundary_check:
             tl.store(grad_weight_staging_block_ptr, grad_weight, boundary_check=(0, 1))
+        else:
+            tl.store(grad_weight_staging_block_ptr, grad_weight)
 
     @staticmethod
     @util.autotune(linear_configs_for_backward_bias(), ["m_size", "n_size"])
-    @triton.heuristics({"require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"] == 0})
+    @triton.heuristics({"require_m_boundary_check": lambda args: args["m_size"] % args["m_block_size"]})
     @triton.jit
     def backward_bias(
         grad_bias_staging_ptr: tl.tensor,
