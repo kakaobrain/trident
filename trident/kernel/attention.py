@@ -120,7 +120,7 @@ class Attention:
                 score = tl.where(condition, score, float("-inf"))
 
             key = tl.load(key_block_ptr)
-            score += tl.dot(query, key, allow_tf32=use_accelerator, out_dtype=dtype)
+            score += language.dot(query, key, use_accelerator, dtype)
             peak = tl.maximum(max, tl.max(score, 1))
             alpha = tl.math.exp2(max - peak)
             beta = tl.math.exp2(score - peak[:, None])
@@ -128,8 +128,7 @@ class Attention:
             max = peak
             output *= alpha[:, None].to(dtype)
             value = tl.load(value_block_ptr)
-            gamma = tl.dot(beta.to(dtype), value, allow_tf32=use_accelerator, out_dtype=dtype)
-            output += gamma.to(dtype)
+            output += language.dot(beta.to(dtype), value, use_accelerator, dtype)
             key_block_ptr = tl.advance(key_block_ptr, (0, y_block_size))
             value_block_ptr = tl.advance(value_block_ptr, (y_block_size, 0))
 
@@ -254,7 +253,7 @@ class Attention:
                 else:
                     score = tl.zeros((y_block_size, y_block_size), dtype)
 
-                score += tl.dot(query, tl.trans(key), allow_tf32=use_accelerator, out_dtype=dtype)
+                score += language.dot(query, tl.trans(key), use_accelerator, dtype)
                 score *= score_scale
                 log2sum = tl.load(log2sum_block_ptr)
                 alpha = tl.math.exp2(score - log2sum[:, None]).to(dtype)
@@ -266,14 +265,14 @@ class Attention:
                     grad_dropout = tl.where(output > 0.0, dropout_scale, 0.0).to(dtype)
                     grad_output *= grad_dropout
 
-                grad_value += tl.dot(tl.trans(alpha), grad_output, allow_tf32=use_accelerator, out_dtype=dtype)
+                grad_value += language.dot(tl.trans(alpha), grad_output, use_accelerator, dtype)
                 delta = tl.load(delta_block_ptr)
                 grad_alpha = tl.zeros((y_block_size, y_block_size), dtype) - delta[:, None]
-                grad_alpha += tl.dot(grad_output, tl.trans(value), allow_tf32=use_accelerator, out_dtype=dtype)
+                grad_alpha += language.dot(grad_output, tl.trans(value), use_accelerator, dtype)
                 grad_softmax = (alpha * grad_alpha * softmax_scale).to(dtype)
-                grad_key += tl.dot(tl.trans(grad_softmax), query, allow_tf32=use_accelerator, out_dtype=dtype)
+                grad_key += language.dot(tl.trans(grad_softmax), query, use_accelerator, dtype)
                 grad_query = tl.load(grad_query_block_ptr)
-                grad_query += tl.dot(grad_softmax, key, allow_tf32=use_accelerator, out_dtype=dtype)
+                grad_query += language.dot(grad_softmax, key, use_accelerator, dtype)
                 tl.store(grad_query_block_ptr, grad_query)
 
                 grad_query_block_ptr = tl.advance(grad_query_block_ptr, (y_block_size, 0))

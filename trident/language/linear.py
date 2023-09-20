@@ -15,6 +15,8 @@
 import triton
 import triton.language as tl
 
+from trident import language
+
 
 class Linear:
     @staticmethod
@@ -70,8 +72,7 @@ class Linear:
             else:
                 weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
-            output += tl.dot(input, weight, allow_tf32=use_accelerator, out_dtype=dtype)
-
+            output += language.dot(input, weight, use_accelerator, dtype)
             input_block_ptr = tl.advance(input_block_ptr, (0, k_block_size))
             weight_block_ptr = tl.advance(weight_block_ptr, (k_block_size, 0))
 
@@ -88,6 +89,7 @@ class Linear:
                 bias = tl.load(bias_block_ptr)
             else:
                 bias = tl.load(bias_block_ptr, boundary_check=(0,), padding_option="zero")
+
             output += bias
 
         return output
@@ -142,8 +144,7 @@ class Linear:
             else:
                 weight = tl.load(weight_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
-            grad_input += tl.dot(grad_output, weight, allow_tf32=use_accelerator, out_dtype=dtype)
-
+            grad_input += language.dot(grad_output, weight, use_accelerator, dtype)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, n_block_size))
             weight_block_ptr = tl.advance(weight_block_ptr, (n_block_size, 0))
 
@@ -199,8 +200,7 @@ class Linear:
             else:
                 input = tl.load(input_block_ptr, boundary_check=(0, 1), padding_option="zero")
 
-            grad_weight += tl.dot(grad_output, input, allow_tf32=use_accelerator, out_dtype=dtype)
-
+            grad_weight += language.dot(grad_output, input, use_accelerator, dtype)
             grad_output_block_ptr = tl.advance(grad_output_block_ptr, (0, m_block_size))
             input_block_ptr = tl.advance(input_block_ptr, (m_block_size, 0))
 
