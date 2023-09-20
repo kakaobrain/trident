@@ -73,11 +73,7 @@ def geglu(input: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor = None, 
 
     See GEGLU for details.
     """
-    if input.dim() == 2:
-        output = operation.GEGLU.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
-        return output.view(output.shape[1:3])
-    else:
-        return operation.GEGLU.apply(input, weight, bias, use_accelerator)
+    return operation.GEGLU.apply(input, weight, bias, use_accelerator)
 
 
 def gelu(input: torch.Tensor):
@@ -156,11 +152,7 @@ def linear(
 
     See Linear for more details.
     """
-    if input.dim() == 2:
-        output = operation.Linear.apply(input.view(1, *input.shape), weight, bias, use_accelerator)
-        return output.view(output.shape[1:3])
-    else:
-        return operation.Linear.apply(input, weight, bias, use_accelerator)
+    return operation.Linear.apply(input, weight, bias, use_accelerator)
 
 
 def max(input: torch.Tensor, dim: int):
