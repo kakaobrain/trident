@@ -22,7 +22,7 @@ import trident
 @util.report(
     "group norm forward",
     ["y_size"],
-    [320 * i for i in range(1, 11)],
+    [256 * i for i in range(1, 11)],
     {"num_batches": 2, "x_size": 64, "num_groups": 32},
 )
 def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, dtype, backend):
@@ -37,7 +37,7 @@ def bench_group_norm_forward(num_batches, y_size, x_size, num_groups, dtype, bac
 @util.report(
     "group norm backward",
     ["y_size"],
-    [320 * i for i in range(1, 11)],
+    [256 * i for i in range(1, 11)],
     {"num_batches": 2, "x_size": 64, "num_groups": 32},
 )
 def bench_group_norm_backward(num_batches, y_size, x_size, num_groups, dtype, backend):
