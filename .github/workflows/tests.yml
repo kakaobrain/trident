@@ -39,4 +39,4 @@ jobs:
           bash install_package.sh
       - name: Test with pytest
         run: |
-          python -m pytest -n 6 .
+          python -m pytest -n 5 .
