@@ -30,6 +30,11 @@ def cosine_similarity_configs():
 class CosineSimilarity:
     @staticmethod
     @util.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
+    @triton.heuristics(
+        {
+            "require_boundary_check": lambda args: args["size_along_dim"] % args["block_size"],
+        }
+    )
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -49,6 +54,7 @@ class CosineSimilarity:
         output_x_size: tl.int32,
         dtype: tl.constexpr,
         block_size: tl.constexpr,
+        require_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
 
@@ -101,8 +107,12 @@ class CosineSimilarity:
         numerator_accumulation = tl.zeros((block_size, 1, 1), tl.float32)
 
         for _ in range(0, size_along_dim, block_size):
-            x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero")
-            x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero")
+            if require_boundary_check:
+                x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero")
+                x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero")
+            else:
+                x1 = tl.load(x1_block_ptr)
+                x2 = tl.load(x2_block_ptr)
 
             denominator_accumulation1 += x1 * x1
             denominator_accumulation2 += x2 * x2
@@ -124,6 +134,11 @@ class CosineSimilarity:
 
     @staticmethod
     @util.autotune(cosine_similarity_configs(), ["y_size", "x_size"])
+    @triton.heuristics(
+        {
+            "require_boundary_check": lambda args: args["size_along_dim"] % args["block_size"],
+        }
+    )
     @triton.jit
     def backward(
         grad_x1_ptr: tl.tensor,
@@ -144,6 +159,7 @@ class CosineSimilarity:
         output_x_size: tl.int32,
         dtype: tl.constexpr,
         block_size: tl.constexpr,
+        require_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_output_y = pid // output_x_size
@@ -207,8 +223,12 @@ class CosineSimilarity:
         )
 
         for _ in range(0, size_along_dim, block_size):
-            x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
-            x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
+            if require_boundary_check:
+                x1 = tl.load(x1_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
+                x2 = tl.load(x2_block_ptr, boundary_check=(0,), padding_option="zero").to(tl.float32)
+            else:
+                x1 = tl.load(x1_block_ptr)
+                x2 = tl.load(x2_block_ptr)
 
             denominator = tl.load(denominator_block_ptr)
             numerator = tl.load(numerator_block_ptr)
@@ -232,18 +252,12 @@ class CosineSimilarity:
             grad_x1 = (grad_sqrt1 * 2 * x1) + (grad_to_dot * x2)
             grad_x2 = (grad_sqrt2 * 2 * x2) + (grad_to_dot * x1)
 
-            tl.store(
-                grad_x1_block_ptr,
-                grad_x1.to(dtype),
-                mask=None,
-                boundary_check=(0,),
-            )
-            tl.store(
-                grad_x2_block_ptr,
-                grad_x2.to(dtype),
-                mask=None,
-                boundary_check=(0,),
-            )
+            if require_boundary_check:
+                tl.store(grad_x1_block_ptr, grad_x1.to(dtype), boundary_check=(0,))
+                tl.store(grad_x2_block_ptr, grad_x2.to(dtype), boundary_check=(0,))
+            else:
+                tl.store(grad_x1_block_ptr, grad_x1.to(dtype))
+                tl.store(grad_x2_block_ptr, grad_x2.to(dtype))
 
             x1_block_ptr = tl.advance(x1_block_ptr, (block_size, 0, 0))
             x2_block_ptr = tl.advance(x2_block_ptr, (block_size, 0, 0))
