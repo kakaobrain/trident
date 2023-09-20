@@ -62,9 +62,6 @@ def test_backward(num_batches, num_heads, y_size, x_size, is_causal, device):
     "num_batches, num_heads, y_size, x_size, is_causal", [(1, 1, 1, 16, True), (1, 1, 1, 16, False)]
 )
 def test_attention(num_batches, num_heads, y_size, x_size, is_causal, device, dtype):
-    if dtype is torch.bfloat16:
-        pytest.skip("Triton has a bug.")
-
     factory_kwargs = {"device": device, "dtype": dtype}
     query = torch.rand(num_batches, num_heads, y_size, x_size, **factory_kwargs, requires_grad=True)
     key = torch.randn_like(query, requires_grad=True)

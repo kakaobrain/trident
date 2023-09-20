@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import math
-from .combine import *
-from .constant import *
-from .linear import *
-from .mean import *
-from .standard import *
-from .sum import *
-from .var import *
-from .var_mean import *
+import triton
+import triton.language as tl
+
+
+@triton.jit
+def dot(input: tl.tensor, other: tl.tensor, use_accelerator: tl.constexpr, dtype: tl.constexpr):
+    if dtype is tl.bfloat16:
+        return tl.dot(input, other, allow_tf32=use_accelerator, out_dtype=tl.float16).to(dtype)
+    else:
+        return tl.dot(input, other, allow_tf32=use_accelerator, out_dtype=dtype)
