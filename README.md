@@ -26,6 +26,10 @@ You can also install Trident using pip.
 pip install git+https://github.com/kakaobrain/trident.git
 ```
 
+## 📖 How to use
+
+![how-to-use](https://github.com/kakaobrain/trident/assets/7459074/2876a2ca-d7cc-4d60-be81-b8d58cbb9f17)
+
 ## 🧑‍💻 Contribution
 
 You must set up `pre-commit` to maintain the consistent coding style.
