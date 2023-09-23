@@ -31,7 +31,7 @@ class Mean:
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
     ):
-        sum = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, x_block_size, dtype)
+        sum = language.Sum.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size, True)
         mean = sum / x_size
 
         return mean.to(dtype)
