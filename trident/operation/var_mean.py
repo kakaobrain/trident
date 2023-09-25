@@ -47,7 +47,7 @@ class VarMean(torch.autograd.Function):
         return grad_input, None, None
 
     @staticmethod
-    def __forward(input: torch.Tensor, dim: int, correction: int):
+    def __forward(input: torch.Tensor, dim: torch.int32, correction: torch.int32):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
         output = torch.empty(y_size, **factory_kwargs)
@@ -73,7 +73,9 @@ class VarMean(torch.autograd.Function):
         return output, mean
 
     @staticmethod
-    def __backward(grad_output: torch.Tensor, input: torch.Tensor, mean: torch.Tensor, dim: int, correction: int):
+    def __backward(
+        grad_output: torch.Tensor, input: torch.Tensor, mean: torch.Tensor, dim: torch.int32, correction: torch.int32
+    ):
         y_size, x_size, y_stride, x_stride = util.size_and_stride(input, dim)
         grad_input = torch.zeros_like(input)
 

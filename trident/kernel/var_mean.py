@@ -30,6 +30,7 @@ def var_mean_configs():
 class VarMean:
     @staticmethod
     @util.autotune(var_mean_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -42,19 +43,10 @@ class VarMean:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
-        output, mean = language.VarMean.forward(
-            input_ptr,
-            y_size,
-            x_size,
-            y_stride,
-            x_stride,
-            y_offset,
-            correction,
-            dtype,
-            x_block_size,
-        )
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size,),
@@ -71,11 +63,25 @@ class VarMean:
             block_shape=(1,),
             order=(0,),
         )
+
+        output, mean = language.VarMean.forward(
+            input_ptr,
+            y_size,
+            x_size,
+            y_stride,
+            x_stride,
+            y_offset,
+            correction,
+            dtype,
+            x_block_size,
+            require_x_boundary_check,
+        )
         tl.store(output_block_ptr, output)
         tl.store(mean_block_ptr, mean)
 
     @staticmethod
     @util.autotune(var_mean_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -89,6 +95,7 @@ class VarMean:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_x_blocks = tl.cdiv(x_size, x_block_size)
@@ -112,6 +119,7 @@ class VarMean:
             block_shape=(1,),
             order=(0,),
         )
+
         mean = tl.load(mean_block_ptr)
         grad_input = language.Var.backward(
             grad_output_ptr,
@@ -127,4 +135,8 @@ class VarMean:
             dtype,
             x_block_size,
         )
-        tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+
+        if require_x_boundary_check:
+            tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+        else:
+            tl.store(grad_input_block_ptr, grad_input)
