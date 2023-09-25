@@ -30,6 +30,7 @@ def var_configs():
 class Var:
     @staticmethod
     @util.autotune(var_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -41,11 +42,10 @@ class Var:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
-        output, mean = language.VarMean.forward(
-            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, correction, dtype, x_block_size, True
-        )
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size,),
@@ -54,10 +54,24 @@ class Var:
             block_shape=(1,),
             order=(0,),
         )
+
+        output, mean = language.VarMean.forward(
+            input_ptr,
+            y_size,
+            x_size,
+            y_stride,
+            x_stride,
+            y_offset,
+            correction,
+            dtype,
+            x_block_size,
+            require_x_boundary_check,
+        )
         tl.store(output_block_ptr, output)
 
     @staticmethod
     @util.autotune(var_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -70,6 +84,7 @@ class Var:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         pid = tl.program_id(0)
         num_x_blocks = tl.cdiv(x_size, x_block_size)
@@ -85,7 +100,10 @@ class Var:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
-        mean = language.Mean.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size)
+
+        mean = language.Mean.forward(
+            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size, require_x_boundary_check
+        )
         grad_input = language.Var.backward(
             grad_output_ptr,
             input_ptr,
@@ -99,5 +117,10 @@ class Var:
             correction,
             dtype,
             x_block_size,
+            require_x_boundary_check,
         )
-        tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+
+        if require_x_boundary_check:
+            tl.store(grad_input_block_ptr, grad_input, boundary_check=(1,))
+        else:
+            tl.store(grad_input_block_ptr, grad_input)

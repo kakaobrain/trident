@@ -42,7 +42,9 @@ class Mean:
         x_block_size: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
-        output = language.Mean.forward(input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size)
+        output = language.Mean.forward(
+            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, dtype, x_block_size, True
+        )
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(y_size,),

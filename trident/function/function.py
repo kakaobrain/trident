@@ -264,7 +264,7 @@ def sum(input: torch.Tensor, dim: Optional[Union[int, Tuple[int, ...]]] = None):
     return operation.Sum.apply(input, dim)
 
 
-def var(input, dim, correction=1):
+def var(input: torch.Tensor, dim: Optional[Union[int, Tuple[int, ...]]] = None, correction: int = 1):
     """
     Returns the variance along the specified dimension in an input.
 

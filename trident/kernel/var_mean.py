@@ -134,6 +134,7 @@ class VarMean:
             correction,
             dtype,
             x_block_size,
+            require_x_boundary_check,
         )
 
         if require_x_boundary_check:

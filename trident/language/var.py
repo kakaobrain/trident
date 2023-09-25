@@ -30,6 +30,7 @@ class Var:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         input_block_ptr = tl.make_block_ptr(
             input_ptr,
@@ -39,12 +40,18 @@ class Var:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+
         output = tl.zeros((1, x_block_size), tl.float32)
 
         for block_offset in range(0, x_size, x_block_size):
-            input = tl.load(input_block_ptr, boundary_check=(1,))
-            mask = (tl.arange(0, x_block_size) + block_offset) < x_size
-            centered_mean = tl.where(mask, input - mean, 0.0)
+            if require_x_boundary_check:
+                input = tl.load(input_block_ptr, boundary_check=(1,))
+                condition = tl.arange(0, x_block_size) + block_offset < x_size
+                centered_mean = tl.where(condition, input - mean, 0.0)
+            else:
+                input = tl.load(input_block_ptr)
+                centered_mean = input - mean
+
             output += centered_mean * centered_mean
             input_block_ptr = tl.advance(input_block_ptr, (0, x_block_size))
 
@@ -67,6 +74,7 @@ class Var:
         correction: tl.constexpr,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         grad_output_block_ptr = tl.make_block_ptr(
             grad_output_ptr,
@@ -84,10 +92,16 @@ class Var:
             block_shape=(1, x_block_size),
             order=(1, 0),
         )
+
+        if require_x_boundary_check:
+            input = tl.load(input_block_ptr, boundary_check=(1,))
+            condition = tl.arange(0, x_block_size) + x_offset < x_size
+            centered_mean = tl.where(condition[None, :], input - mean, 0.0)
+        else:
+            input = tl.load(input_block_ptr)
+            centered_mean = input - mean
+
         grad_output = tl.load(grad_output_block_ptr)
-        input = tl.load(input_block_ptr, boundary_check=(1,))
-        condition = tl.arange(0, x_block_size) + x_offset < x_size
-        centered_mean = tl.where(condition[None, :], input - mean, 0.0)
         grad_input = grad_output * 2 * centered_mean / (x_size - correction)
 
         return grad_input.to(dtype)
