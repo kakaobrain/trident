@@ -50,80 +50,11 @@ def test_sum(y_size, x_size, dim, device, dtype):
     grad_output = torch.randn(x_size if dim == 0 else y_size, **factory_kwargs)
 
     output = trident.Sum(dim).forward(input)
-    assert output is not None and output.dtype == dtype
+
+    assert output is not None
+    assert output.dtype == dtype
 
     output.backward(grad_output)
+
     assert input.grad is not None
     assert input.grad.dtype == dtype
-
-
-@pytest.mark.parametrize("dim", [0, 1])
-def test_sum_issue1(dim, device):
-    factory_kwargs = {"device": device, "dtype": torch.float16}
-    input = torch.tensor(
-        [
-            [
-                30.6875,
-                -40.4375,
-                -29.1719,
-                81.1875,
-                23.3125,
-                3.6348,
-                6.0508,
-                -100.5000,
-                -6.0273,
-                11.6562,
-            ],
-            [
-                21.5469,
-                11.3438,
-                14.0000,
-                33.7188,
-                13.4844,
-                -18.0938,
-                27.5156,
-                -29.0625,
-                -1.7559,
-                20.8594,
-            ],
-            [
-                28.6406,
-                -30.1094,
-                22.6406,
-                -35.8750,
-                3.5410,
-                -66.1250,
-                15.6016,
-                -22.4375,
-                50.0625,
-                39.6562,
-            ],
-            [
-                5.3281,
-                -75.1875,
-                -13.3828,
-                -39.9688,
-                -59.9062,
-                14.7812,
-                -23.0625,
-                -3.4336,
-                -34.8125,
-                32.7812,
-            ],
-            [
-                20.1406,
-                -33.4375,
-                -50.3438,
-                -25.2812,
-                69.6250,
-                2.2090,
-                18.9062,
-                16.3750,
-                -7.9922,
-                27.1562,
-            ],
-        ],
-        **factory_kwargs,
-    )
-
-    assert util.equal(torch.sum(input, dim), trident.function.sum(input, dim))

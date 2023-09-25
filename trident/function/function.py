@@ -14,7 +14,7 @@
 
 
 import math
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 import torch
 
@@ -255,7 +255,7 @@ def softmax(input: torch.Tensor, dim: int = None):
     return operation.Softmax.apply(input, dim)
 
 
-def sum(input, dim):
+def sum(input: torch.Tensor, dim: Optional[Union[int, Tuple[int, ...]]] = None):
     """
     Returns the sum along the specified dimension in an input.
 
