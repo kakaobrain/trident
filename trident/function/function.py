@@ -273,7 +273,7 @@ def var(input, dim, correction=1):
     return operation.Var.apply(input, dim, correction)
 
 
-def var_mean(input, dim, correction=1):
+def var_mean(input: torch.Tensor, dim: Optional[Union[int, Tuple[int, ...]]] = None, correction: int = 1):
     """
     Returns the variance and mean along the specified dimension in an input.
 

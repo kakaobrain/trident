@@ -44,15 +44,7 @@ class Var:
     ):
         y_offset = tl.program_id(0)
         output, mean = language.VarMean.forward(
-            input_ptr,
-            y_size,
-            x_size,
-            y_stride,
-            x_stride,
-            y_offset,
-            correction,
-            dtype,
-            x_block_size,
+            input_ptr, y_size, x_size, y_stride, x_stride, y_offset, correction, dtype, x_block_size, True
         )
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
