@@ -214,7 +214,7 @@ def silu(input: torch.Tensor):
 
     See SiLU for more details.
     """
-    return operation.SiLU.apply(input.view(-1, input.shape[-1])).view(input.shape)
+    return operation.SiLU.apply(input)
 
 
 def prelu(input: torch.Tensor, weight: torch.Tensor):
