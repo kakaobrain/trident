@@ -26,12 +26,12 @@ class SiLU(torch.autograd.Function):
         (input,) = args
 
         util.push_trace("SiLU.__forward")
-        output = SiLU.__forward(input)
+        output = SiLU.__forward(input.view(-1, input.shape[-1]))
         util.pop_trace()
 
         ctx.save_for_backward(input)
 
-        return output
+        return output.view(input.shape)
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
