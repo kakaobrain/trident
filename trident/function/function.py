@@ -172,7 +172,7 @@ def max(input: torch.Tensor, dim: int):
     return operation.Max.apply(input, dim)
 
 
-def mean(input, dim):
+def mean(input: torch.Tensor, dim: Optional[Union[int, Tuple[int, ...]]] = None):
     """
     Returns the mean along the specified dimension in an input.
 
