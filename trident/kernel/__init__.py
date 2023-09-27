@@ -24,6 +24,7 @@ from .instance_norm import *
 from .layer_norm import *
 from .leaky_relu import *
 from .linear import *
+from .masked_softmax import *
 from .max import *
 from .mean import *
 from .prelu import *

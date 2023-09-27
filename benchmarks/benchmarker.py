@@ -26,6 +26,7 @@ import benchmark_instance_norm
 import benchmark_layer_norm
 import benchmark_leaky_relu
 import benchmark_linear
+import benchmark_masked_softmax
 import benchmark_max
 import benchmark_mean
 import benchmark_prelu
@@ -58,6 +59,7 @@ def print_scenarios():
                 "layer-norm",
                 "leaky-relu",
                 "linear",
+                "masked-softmax",
                 "max",
                 "mean",
                 "prelu",
@@ -99,6 +101,8 @@ def run_benchmarks(scenario, mode, show_plots, dtype):
         benchmark_leaky_relu.run_benchmark(mode, show_plots, dtype)
     elif scenario == "linear":
         benchmark_linear.run_benchmark(mode, show_plots, dtype)
+    elif scenario == "masked-softmax":
+        benchmark_masked_softmax.run_benchmark(mode, show_plots, dtype)
     elif scenario == "max":
         benchmark_max.run_benchmark(mode, show_plots, dtype)
     elif scenario == "mean":
@@ -134,6 +138,7 @@ def run_benchmarks(scenario, mode, show_plots, dtype):
         benchmark_layer_norm.run_benchmark(mode, show_plots, dtype)
         benchmark_leaky_relu.run_benchmark(mode, show_plots, dtype)
         benchmark_linear.run_benchmark(mode, show_plots, dtype)
+        benchmark_masked_softmax.run_benchmark(mode, show_plots, dtype)
         benchmark_max.run_benchmark(mode, show_plots, dtype)
         benchmark_mean.run_benchmark(mode, show_plots, dtype)
         benchmark_prelu.run_benchmark(mode, show_plots, dtype)
