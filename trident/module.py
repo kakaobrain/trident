@@ -826,6 +826,41 @@ class Linear(torch.nn.Module):
             util.uniform(self.bias, -bound, bound)
 
 
+class MaskedSoftmax(torch.nn.Module):
+    def __init__(self, dim: int = None):
+        """
+        Applies Masked Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
+
+        Args:
+            dim: A dimension along which Softmax will be computed (so every slice along dim will sum to 1)
+        """
+        super().__init__()
+
+        self.dim = dim
+
+    def forward(self, input: torch.Tensor, mask: torch.Tensor):
+        """
+        Applies Masked Softmax to input.
+
+        Args:
+            input: an input
+            mask: a mask
+
+        Returns:
+            an output with the same dimension and shape as an input with values in the range [0, 1]
+        """
+        return function.masked_softmax(input, mask, self.dim)
+
+    def extra_repr(self):
+        """
+        Set the extra representation of the module.
+
+        Returns:
+            customized extra information
+        """
+        return f"dim={self.dim}, backend=Trident"
+
+
 class Max(torch.nn.Module):
     def __init__(self, dim: torch.int32):
         """

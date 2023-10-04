@@ -163,6 +163,15 @@ def linear(
         return operation.Linear.apply(input, weight, bias, use_accelerator)
 
 
+def masked_softmax(input: torch.Tensor, mask: torch.Tensor, dim: int):
+    """
+    Applies Masked Softmax to an input rescaling them so that an output lie in the range [0,1] and sum to 1.
+
+    See MaskedSoftmax for more details.
+    """
+    return operation.MaskedSoftmax.apply(input, mask, dim)
+
+
 def max(input: torch.Tensor, dim: int):
     """
     Returns the max along the specified dimension in an input.
