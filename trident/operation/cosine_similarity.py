@@ -24,14 +24,22 @@ class CosineSimilarity(torch.autograd.Function):
     def forward(ctx: Any, *args: Any, **kwargs: Any):
         x1, x2, dim, eps = args
 
+        if dim >= x1.dim():
+            raise ValueError(f"Unable to process the given dim: '{dim}'.")
+
         util.push_trace("CosineSimilarity.__forward")
-        output, denominator, numerator = CosineSimilarity.__forward(x1, x2, dim, eps)
+        output, denominator, numerator = CosineSimilarity.__forward(
+            x1.view(CosineSimilarity.__input_shape(x1)),
+            x2.view(CosineSimilarity.__input_shape(x2)),
+            CosineSimilarity.__dim(x1, dim),
+            eps,
+        )
         util.pop_trace()
 
         ctx.save_for_backward(x1, x2, denominator, numerator)
         ctx.dim = dim
 
-        return output
+        return output.view(CosineSimilarity.__output_shape(x1, output))
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
@@ -39,10 +47,17 @@ class CosineSimilarity(torch.autograd.Function):
         x1, x2, denominator, numerator = ctx.saved_tensors
 
         util.push_trace("CosineSimilarity.__backward")
-        grad_x1, grad_x2 = CosineSimilarity.__backward(grad_output, x1, x2, denominator, numerator, ctx.dim)
+        grad_x1, grad_x2 = CosineSimilarity.__backward(
+            grad_output,
+            x1.view(CosineSimilarity.__input_shape(x1)),
+            x2.view(CosineSimilarity.__input_shape(x2)),
+            denominator,
+            numerator,
+            CosineSimilarity.__dim(x1, ctx.dim),
+        )
         util.pop_trace()
 
-        return grad_x1, grad_x2, None, None
+        return grad_x1.view(x1.shape), grad_x2.view(x2.shape), None, None
 
     @staticmethod
     def __forward(x1: torch.Tensor, x2: torch.Tensor, dim: torch.int32, eps: torch.float32):
@@ -131,3 +146,29 @@ class CosineSimilarity(torch.autograd.Function):
             size_along_dim = x_size
 
         return output_y_size, output_x_size, size_along_dim
+
+    @staticmethod
+    def __input_shape(input: torch.Tensor):
+        if input.dim() == 1:
+            return (1, 1, *input.shape)
+        elif input.dim() == 2:
+            return (1, *input.shape)
+        elif input.dim() == 3:
+            return input.shape
+        else:
+            raise ValueError(f"Unable to convert the given input: '{input}'.")
+
+    @staticmethod
+    def __output_shape(input: torch.Tensor, output: torch.Tensor):
+        if input.dim() == 1:
+            return ()
+        if input.dim() == 2:
+            return output.shape[1]
+        elif input.dim() == 3:
+            return output.shape
+        else:
+            raise ValueError(f"Unable to convert the given x: '{input}'.")
+
+    @staticmethod
+    def __dim(input: torch.Tensor, dim: torch.int32):
+        return dim + 3 - input.dim()
