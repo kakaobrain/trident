@@ -30,6 +30,7 @@ def dropout_configs():
 class Dropout:
     @staticmethod
     @util.autotune(dropout_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -39,8 +40,11 @@ class Dropout:
         seed: tl.int32,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
-        x_offset = tl.program_id(0) * x_block_size
+        pid = tl.program_id(0)
+        x_offset = pid * x_block_size
+
         output_block_ptr = tl.make_block_ptr(
             output_ptr,
             shape=(x_size,),
@@ -57,24 +61,37 @@ class Dropout:
             block_shape=(x_block_size,),
             order=(0,),
         )
-        input = tl.load(input_block_ptr, boundary_check=(0,))
+
+        if require_x_boundary_check:
+            input = tl.load(input_block_ptr, boundary_check=(0,))
+        else:
+            input = tl.load(input_block_ptr)
+
         condition = tl.rand(seed, tl.arange(0, x_block_size) + x_offset) > p
         output = tl.where(condition, input / (1.0 - p + language.eps), 0.0)
-        tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
+
+        if require_x_boundary_check:
+            tl.store(output_block_ptr, output.to(dtype), boundary_check=(0,))
+        else:
+            tl.store(output_block_ptr, output.to(dtype))
 
     @staticmethod
     @util.autotune(dropout_configs(), ["x_size"])
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def backward(
-        grad_input_ptr,
-        grad_output_ptr,
-        output_ptr,
-        x_size,
+        grad_input_ptr: tl.tensor,
+        grad_output_ptr: tl.tensor,
+        output_ptr: tl.tensor,
+        x_size: tl.int32,
         p: tl.float32,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
-        x_offset = tl.program_id(0) * x_block_size
+        pid = tl.program_id(0)
+        x_offset = pid * x_block_size
+
         grad_input_block_ptr = tl.make_block_ptr(
             grad_input_ptr,
             shape=(x_size,),
@@ -99,8 +116,18 @@ class Dropout:
             block_shape=(x_block_size,),
             order=(0,),
         )
-        grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
-        output = tl.load(output_block_ptr, boundary_check=(0,))
+
+        if require_x_boundary_check:
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(0,))
+            output = tl.load(output_block_ptr, boundary_check=(0,))
+        else:
+            grad_output = tl.load(grad_output_block_ptr)
+            output = tl.load(output_block_ptr)
+
         condition = (p == 0.0) | (output > 0.0)
         grad_input = tl.where(condition, grad_output * (1.0 - p + language.eps), 0.0)
-        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))
+
+        if require_x_boundary_check:
+            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(0,))
+        else:
+            tl.store(grad_input_block_ptr, grad_input.to(dtype))
