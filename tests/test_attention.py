@@ -20,7 +20,7 @@ from tests import util
 
 
 @pytest.mark.parametrize(
-    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 128, 64, False)]
+    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 256, 32, False)]
 )
 def test_forward(num_batches, num_heads, y_size, x_size, is_causal, device):
     query = torch.randn(num_batches, num_heads, y_size, x_size, device=device)
@@ -32,9 +32,16 @@ def test_forward(num_batches, num_heads, y_size, x_size, is_causal, device):
         trident.function.scaled_dot_product_attention(query, key, value, is_causal=is_causal),
     )
 
+    mask = torch.randn(num_batches, num_heads, y_size, y_size, device=device)
+
+    assert util.equal(
+        torch.nn.functional.scaled_dot_product_attention(query, key, value, attn_mask=mask),
+        trident.function.scaled_dot_product_attention(query, key, value, attn_mask=mask),
+    )
+
 
 @pytest.mark.parametrize(
-    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 128, 64, False)]
+    "num_batches, num_heads, y_size, x_size, is_causal", [(4, 8, 128, 64, True), (4, 8, 256, 32, False)]
 )
 def test_backward(num_batches, num_heads, y_size, x_size, is_causal, device):
     query = torch.rand(num_batches, num_heads, y_size, x_size, device=device)
@@ -56,6 +63,25 @@ def test_backward(num_batches, num_heads, y_size, x_size, is_causal, device):
     assert util.equal(x, a)
     assert util.equal(y, b)
     assert util.equal(z, c)
+
+    mask = torch.randn(num_batches, num_heads, y_size, y_size, device=device)
+
+    def train(func):
+        i = query.clone()
+        j = key.clone()
+        k = value.clone()
+        l = mask.clone()
+        i.requires_grad = j.requires_grad = k.requires_grad = l.requires_grad = True
+        func(i, j, k, attn_mask=l).backward(grad_output, retain_graph=True)
+        return i.grad, j.grad, k.grad, l.grad
+
+    (w, x, y, z) = train(torch.nn.functional.scaled_dot_product_attention)
+    (a, b, c, d) = train(trident.function.scaled_dot_product_attention)
+
+    assert util.equal(w, a)
+    assert util.equal(x, b)
+    assert util.equal(y, c)
+    assert util.equal(z, d)
 
 
 @pytest.mark.parametrize(
@@ -81,3 +107,10 @@ def test_attention(num_batches, num_heads, y_size, x_size, is_causal, device, dt
     assert key.grad.dtype == dtype
     assert value.grad is not None
     assert value.grad.dtype == dtype
+
+    mask = torch.randn(num_batches, num_heads, y_size, y_size, **factory_kwargs, requires_grad=True)
+    output = trident.function.scaled_dot_product_attention(query, key, value, attn_mask=mask)
+    output.backward(grad_output)
+
+    assert mask.grad is not None
+    assert mask.grad.dtype == dtype
