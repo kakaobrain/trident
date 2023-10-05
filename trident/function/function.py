@@ -230,6 +230,7 @@ def scaled_dot_product_attention(
     query: torch.Tensor,
     key: torch.Tensor,
     value: torch.Tensor,
+    attn_mask: torch.Tensor = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
     use_accelerator: bool = False,
@@ -238,11 +239,8 @@ def scaled_dot_product_attention(
     Computes scaled dot product attention on query, key and value tensors,
     and applying dropout if a probability greater than 0.0 is specified.
     """
-    if query.dim() != 4 or key.dim() != 4 or value.dim() != 4:
-        raise ValueError("The dimension of query, key and value should be 4.")
-
     return operation.Attention.apply(
-        query, key, value, dropout_p, is_causal, 1.0 / math.sqrt(key.shape[-1]), use_accelerator
+        query, key, value, attn_mask, dropout_p, is_causal, 1.0 / math.sqrt(key.shape[-1]), use_accelerator
     )
 
 

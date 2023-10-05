@@ -23,15 +23,25 @@ from trident import kernel, util
 class Attention(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, *args: Any, **kwargs: Any):
-        query, key, value, dropout_p, is_causal, softmax_scale, use_accelerator = args
+        query, key, value, mask, dropout_p, is_causal, softmax_scale, use_accelerator = args
+
+        if query.dim() != 4 or key.dim() != 4 or value.dim() != 4:
+            raise ValueError("The dimension of query, key and value should be 4.")
+
+        if mask is not None:
+            if is_causal:
+                raise ValueError("Error because both attn_mask and is_causal are set.")
+            if mask.dtype == torch.bool:
+                raise ValueError("Boolean mask is not supported yet.")
 
         util.push_trace("Attention.__forward")
         output, log_sum_exp = Attention.__forward(
-            query, key, value, dropout_p, is_causal, softmax_scale, use_accelerator
+            query, key, value, mask, dropout_p, is_causal, softmax_scale, use_accelerator
         )
         util.pop_trace()
 
         ctx.save_for_backward(query, key, value, output, log_sum_exp)
+        ctx.mask = mask
         ctx.dropout_p = dropout_p
         ctx.is_causal = is_causal
         ctx.softmax_scale = softmax_scale
@@ -45,13 +55,14 @@ class Attention(torch.autograd.Function):
         query, key, value, output, log_sum_exp = ctx.saved_tensors
 
         util.push_trace("Attention.__backward")
-        grad_query, grad_key, grad_value = Attention.__backward(
+        grad_query, grad_key, grad_value, grad_mask = Attention.__backward(
             grad_output,
             query,
             key,
             value,
             output,
             log_sum_exp,
+            ctx.mask,
             ctx.softmax_scale,
             ctx.dropout_p,
             ctx.is_causal,
@@ -59,13 +70,14 @@ class Attention(torch.autograd.Function):
         )
         util.pop_trace()
 
-        return grad_query, grad_key, grad_value, None, None, None, None
+        return grad_query, grad_key, grad_value, grad_mask, None, None, None, None
 
     @staticmethod
     def __forward(
         query: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
+        mask: torch.Tensor,
         dropout_p: torch.float32,
         is_causal: torch.bool,
         softmax_scale: torch.float32,
@@ -95,6 +107,10 @@ class Attention(torch.autograd.Function):
             query.stride(1),
             query.stride(2),
             query.stride(3),
+            mask,
+            mask.stride(1) if mask is not None else 0,
+            mask.stride(2) if mask is not None else 0,
+            mask.stride(3) if mask is not None else 0,
             dropout_p,
             torch.random.seed(),
             is_causal,
@@ -115,6 +131,7 @@ class Attention(torch.autograd.Function):
         value: torch.Tensor,
         output: torch.Tensor,
         log2sum: torch.Tensor,
+        mask: torch.Tensor,
         softmax_scale: torch.float32,
         dropout_p: torch.float32,
         is_causal: torch.bool,
@@ -124,6 +141,7 @@ class Attention(torch.autograd.Function):
         grad_query = torch.zeros_like(query)
         grad_key = torch.empty_like(key)
         grad_value = torch.empty_like(value)
+        grad_mask = torch.empty_like(mask) if mask is not None else None
         delta = torch.empty_like(log2sum)
 
         def grid(meta):
@@ -143,6 +161,7 @@ class Attention(torch.autograd.Function):
             grad_query,
             grad_key,
             grad_value,
+            grad_mask,
             grad_output,
             query,
             key,
@@ -152,6 +171,10 @@ class Attention(torch.autograd.Function):
             query.stride(1),
             query.stride(2),
             query.stride(3),
+            mask,
+            mask.stride(1) if mask is not None else 0,
+            mask.stride(2) if mask is not None else 0,
+            mask.stride(3) if mask is not None else 0,
             output,
             log2sum,
             delta,
@@ -166,4 +189,4 @@ class Attention(torch.autograd.Function):
         )
         util.pop_trace()
 
-        return grad_query, grad_key, grad_value
+        return grad_query, grad_key, grad_value, grad_mask
