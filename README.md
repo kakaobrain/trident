@@ -26,6 +26,12 @@ You can also install Trident using pip.
 pip install git+https://github.com/kakaobrain/trident.git
 ```
 
+You can add Trident in `requirements.txt`.
+
+```text
+trident@git+https://github.com/kakaobrain/trident.git@main
+```
+
 ## 📖 How to use
 
 ![how-to-use](https://github.com/kakaobrain/trident/assets/7459074/2876a2ca-d7cc-4d60-be81-b8d58cbb9f17)
