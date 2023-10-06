@@ -18,6 +18,7 @@ import triton.language as tl
 
 class LayerNorm:
     @staticmethod
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def forward(
         output_ptr: tl.tensor,
@@ -31,6 +32,7 @@ class LayerNorm:
         eps: tl.float32,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
 
@@ -67,10 +69,16 @@ class LayerNorm:
             order=(1, 0),
         )
 
-        input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
-        mean = tl.sum(input / x_size, 1)
-        condition = tl.arange(0, x_block_size) < x_size
-        centered_mean = tl.where(condition, input - mean, 0)
+        if require_x_boundary_check:
+            input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
+            mean = tl.sum(input / x_size, 1)
+            condition = tl.arange(0, x_block_size) < x_size
+            centered_mean = tl.where(condition, input - mean, 0)
+        else:
+            input = tl.load(input_block_ptr)
+            mean = tl.sum(input / x_size, 1)
+            centered_mean = input - mean
+
         var = tl.sum(centered_mean * centered_mean / x_size, 1)
         rstd = tl.math.rsqrt(var + eps)
         output = centered_mean * rstd
@@ -84,7 +92,12 @@ class LayerNorm:
                 block_shape=(x_block_size,),
                 order=(0,),
             )
-            weight = tl.load(weight_block_ptr, boundary_check=(0,))
+
+            if require_x_boundary_check:
+                weight = tl.load(weight_block_ptr, boundary_check=(0,))
+            else:
+                weight = tl.load(weight_block_ptr)
+
             output *= weight
 
         if bias_ptr is not None:
@@ -96,14 +109,24 @@ class LayerNorm:
                 block_shape=(x_block_size,),
                 order=(0,),
             )
-            bias = tl.load(bias_block_ptr, boundary_check=(0,))
+
+            if require_x_boundary_check:
+                bias = tl.load(bias_block_ptr, boundary_check=(0,))
+            else:
+                bias = tl.load(bias_block_ptr)
+
             output += bias
 
-        tl.store(output_block_ptr, output.to(dtype), boundary_check=(1,))
+        if require_x_boundary_check:
+            tl.store(output_block_ptr, output.to(dtype), boundary_check=(1,))
+        else:
+            tl.store(output_block_ptr, output.to(dtype))
+
         tl.store(rstd_block_ptr, rstd.to(dtype))
         tl.store(mean_block_ptr, mean.to(dtype))
 
     @staticmethod
+    @triton.heuristics({"require_x_boundary_check": lambda args: args["x_size"] % args["x_block_size"]})
     @triton.jit
     def backward(
         grad_input_ptr: tl.tensor,
@@ -117,6 +140,7 @@ class LayerNorm:
         mean_ptr: tl.tensor,
         dtype: tl.constexpr,
         x_block_size: tl.constexpr,
+        require_x_boundary_check: tl.constexpr,
     ):
         y_offset = tl.program_id(0)
 
@@ -161,12 +185,16 @@ class LayerNorm:
             order=(0,),
         )
 
-        grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,))
-        input = tl.load(input_block_ptr, boundary_check=(1,))
+        if require_x_boundary_check:
+            grad_output = tl.load(grad_output_block_ptr, boundary_check=(1,), padding_option="zero")
+            input = tl.load(input_block_ptr, boundary_check=(1,), padding_option="zero")
+        else:
+            grad_output = tl.load(grad_output_block_ptr)
+            input = tl.load(input_block_ptr)
+
         rstd = tl.load(rstd_block_ptr)
         mean = tl.load(mean_block_ptr)
-        condition = tl.arange(0, x_block_size) < x_size
-        centered_mean = tl.where(condition, input - mean, 0)
+        centered_mean = input - mean
 
         if weight_ptr is not None:
             weight_block_ptr = tl.make_block_ptr(
@@ -177,7 +205,12 @@ class LayerNorm:
                 block_shape=(1, x_block_size),
                 order=(1, 0),
             )
-            weight = tl.load(weight_block_ptr, boundary_check=(1,))
+
+            if require_x_boundary_check:
+                weight = tl.load(weight_block_ptr, boundary_check=(1,))
+            else:
+                weight = tl.load(weight_block_ptr)
+
             grad_norm = weight * grad_output
         else:
             grad_norm = grad_output
@@ -185,14 +218,16 @@ class LayerNorm:
         grad_std = tl.sum(grad_norm * centered_mean, 1)
         grad_var = grad_std * -(0.5 * rstd * rstd * rstd) / x_size
         grad_distance = 2 * centered_mean * grad_var
-        grad_centered_mean = tl.where(condition, grad_norm * rstd + grad_distance, 0)
+        grad_centered_mean = grad_norm * rstd + grad_distance
         grad_mean = -tl.sum(grad_centered_mean, 1) / x_size
         grad_input = grad_centered_mean + grad_mean
-        tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))
+
+        if require_x_boundary_check:
+            tl.store(grad_input_block_ptr, grad_input.to(dtype), boundary_check=(1,))
+        else:
+            tl.store(grad_input_block_ptr, grad_input.to(dtype))
 
         if grad_weight_staging_ptr is not None:
-            norm = centered_mean * rstd
-            grad_weight = norm * grad_output
             grad_weight_staging_block_ptr = tl.make_block_ptr(
                 grad_weight_staging_ptr,
                 shape=(y_size, x_size),
@@ -201,4 +236,11 @@ class LayerNorm:
                 block_shape=(1, x_block_size),
                 order=(1, 0),
             )
-            tl.store(grad_weight_staging_block_ptr, grad_weight.to(dtype), boundary_check=(1,))
+
+            norm = centered_mean * rstd
+            grad_weight = norm * grad_output
+
+            if require_x_boundary_check:
+                tl.store(grad_weight_staging_block_ptr, grad_weight.to(dtype), boundary_check=(1,))
+            else:
+                tl.store(grad_weight_staging_block_ptr, grad_weight.to(dtype))
