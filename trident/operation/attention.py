@@ -28,6 +28,16 @@ class Attention(torch.autograd.Function):
         if query.dim() != 4 or key.dim() != 4 or value.dim() != 4:
             raise ValueError("The dimension of query, key and value should be 4.")
 
+        if (
+            not util.is_pow2(query.shape[-2])
+            or not util.is_pow2(query.shape[-1])
+            or not util.is_pow2(key.shape[-2])
+            or not util.is_pow2(key.shape[-1])
+            or not util.is_pow2(value.shape[-2])
+            or not util.is_pow2(value.shape[-1])
+        ):
+            raise ValueError("Attention supports only for power of 2 size tensors.")
+
         if mask is not None:
             if is_causal:
                 raise ValueError("Error because both attn_mask and is_causal are set.")
@@ -185,7 +195,7 @@ class Attention(torch.autograd.Function):
             util.dtype(grad_query.dtype),
             64,
             triton.next_power_of_2(x_size),
-            num_warps=4 if x_size <= 64 else 8,
+            num_warps=2,
         )
         util.pop_trace()
 

@@ -58,6 +58,10 @@ def dtype(input):
         raise ValueError(f"Unable to convert the given input: '{input}'.")
 
 
+def is_pow2(value):
+    return False if value == 0 else (value & (value - 1)) == 0
+
+
 def size_and_stride(input: torch.Tensor, dim: int):
     if input.dim() == 2:
         if dim == 0:
