@@ -20,7 +20,7 @@ import trident
 
 
 @util.report(
-    "attention forward", ["y_size"], [32 * i for i in range(1, 21)], {"num_batches": 64, "num_heads": 8, "x_size": 64}
+    "attention forward", ["y_size"], [2**i for i in range(5, 10)], {"num_batches": 64, "num_heads": 8, "x_size": 64}
 )
 def bench_attention_forward(num_batches, num_heads, y_size, x_size, dtype, backend):
     factory_kwargs = {"device": "cuda", "dtype": dtype}
@@ -39,8 +39,8 @@ def bench_attention_forward(num_batches, num_heads, y_size, x_size, dtype, backe
 @util.report(
     "attention backward",
     ["y_size"],
-    [64 * i for i in range(1, 21)],
-    {"num_batches": 64, "num_heads": 8, "x_size": 64},
+    [2**i for i in range(5, 10)],
+    {"num_batches": 32, "num_heads": 8, "x_size": 64},
 )
 def bench_attention_backward(num_batches, num_heads, y_size, x_size, dtype, backend):
     factory_kwargs = {"device": "cuda", "dtype": dtype}
