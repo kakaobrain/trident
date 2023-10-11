@@ -16,7 +16,7 @@ import setuptools
 
 setuptools.setup(
     name="trident",
-    version="1.0.2",
+    version="1.1.0",
     description="A performance library for machine learning applications",
     author="Kakao Brain Corp",
     packages=setuptools.find_packages(),
