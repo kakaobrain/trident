@@ -16,4 +16,4 @@ from . import function, kernel, util
 from .config import *
 from .module import *
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
