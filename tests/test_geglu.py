@@ -58,7 +58,6 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
     assert util.equal(y, b, 3e-01)
 
     input = input.permute(0, 2, 1).reshape(num_batches, m_size, k_size)
-    weight = weight.permute(1, 0).reshape(n_size, k_size)
 
     (x, y) = train(geglu)
     (a, b) = train(trident.function.geglu)

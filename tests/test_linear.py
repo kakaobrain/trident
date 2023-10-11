@@ -31,7 +31,7 @@ def test_forward(num_batches, m_size, n_size, k_size, device):
     assert util.equal(torch.nn.functional.linear(input, weight, bias), trident.function.linear(input, weight, bias))
 
     input = input.permute(0, 2, 1)
-    weight = weight.permute(1, 0)
+    weight = torch.randn(k_size, n_size, device=device)
 
     assert util.equal(torch.nn.functional.linear(input, weight), trident.function.linear(input, weight))
 
@@ -56,7 +56,6 @@ def test_backward(num_batches, m_size, n_size, k_size, device):
     assert util.equal(y, b)
 
     input = input.permute(0, 2, 1).reshape(num_batches, m_size, k_size)
-    weight = weight.permute(1, 0).reshape(n_size, k_size)
 
     (x, y) = train(torch.nn.functional.linear)
     (a, b) = train(trident.function.linear)

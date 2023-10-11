@@ -26,13 +26,19 @@ class GEGLU(torch.autograd.Function):
         input, weight, bias, use_accelerator = args
 
         util.push_trace("GEGLU.__forward")
-        output, state_gate = GEGLU.__forward(input, weight, bias, use_accelerator)
+        input_shape = GEGLU.__input_shape(input)
+        output, state_gate = GEGLU.__forward(
+            input.view(input_shape) if input.is_contiguous() else input.reshape(input_shape),
+            weight,
+            bias,
+            use_accelerator,
+        )
         util.pop_trace()
 
         ctx.save_for_backward(input, weight, bias, state_gate)
         ctx.use_accelerator = False
 
-        return output
+        return output.view(GEGLU.__output_shape(input, weight))
 
     @staticmethod
     def backward(ctx: Any, *grad_outputs: Any):
@@ -41,25 +47,25 @@ class GEGLU(torch.autograd.Function):
 
         util.push_trace("GEGLU.__backward")
         grad_input, grad_weight, grad_bias = GEGLU.__backward(
-            grad_output, input, weight, bias, state_gate, ctx.use_accelerator
+            grad_output, input.view(GEGLU.__input_shape(input)), weight, bias, state_gate, ctx.use_accelerator
         )
         util.pop_trace()
 
-        return grad_input, grad_weight, grad_bias, None
+        return grad_input.view(input.shape), grad_weight, grad_bias, None
 
     @staticmethod
     def __forward(input, weight, bias, use_accelerator):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
-        num_batches, m_size, k_size = input.shape
+        m_size, k_size = input.shape
         n_size, _ = weight.shape
         x_size = n_size // 2
-        output = torch.empty(num_batches, m_size, x_size, **factory_kwargs)
-        state_gate = torch.empty(num_batches, m_size, n_size, **factory_kwargs)
+        output = torch.empty(m_size, x_size, **factory_kwargs)
+        state_gate = torch.empty(m_size, n_size, **factory_kwargs)
 
         def grid(meta):
             num_m_blocks = triton.cdiv(m_size, meta["m_block_size"])
             num_x_blocks = triton.cdiv(x_size, meta["x_block_size"])
-            return (num_batches * num_m_blocks * num_x_blocks,)
+            return (num_m_blocks * num_x_blocks,)
 
         util.push_trace("kernel.GEGLU.forward")
         kernel.GEGLU.forward[grid](
@@ -74,7 +80,6 @@ class GEGLU(torch.autograd.Function):
             x_size,
             input.stride(0),
             input.stride(1),
-            input.stride(2),
             weight.stride(0),
             weight.stride(1),
             use_accelerator,
@@ -87,15 +92,15 @@ class GEGLU(torch.autograd.Function):
     @staticmethod
     def __backward(grad_output, input, weight, bias, state_gate, use_accelerator):
         factory_kwargs = {"device": input.device, "dtype": input.dtype}
-        num_batches, m_size, k_size = input.shape
+        m_size, k_size = input.shape
         n_size, _ = weight.shape
         x_size = n_size // 2
         grad_state_gate = torch.empty_like(state_gate)
         grad_input = torch.empty_like(input)
-        grad_weight_staging = torch.empty(num_batches, n_size, k_size, **factory_kwargs)
+        grad_weight = torch.empty(n_size, k_size, **factory_kwargs)
 
         def grid(meta):
-            return (num_batches * m_size,)
+            return (m_size,)
 
         util.push_trace("kernel.GEGLU.backward")
         kernel.GEGLU.backward[grid](
@@ -113,7 +118,7 @@ class GEGLU(torch.autograd.Function):
         def grid(meta):
             num_m_blocks = triton.cdiv(m_size, meta["m_block_size"])
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
-            return (num_batches * num_m_blocks * num_k_blocks,)
+            return (num_m_blocks * num_k_blocks,)
 
         util.push_trace("kernel.Linear.backward")
         kernel.Linear.backward[grid](
@@ -123,8 +128,8 @@ class GEGLU(torch.autograd.Function):
             m_size,
             n_size,
             k_size,
+            input.stride(0),
             input.stride(1),
-            input.stride(2),
             weight.stride(0),
             weight.stride(1),
             use_accelerator,
@@ -135,11 +140,11 @@ class GEGLU(torch.autograd.Function):
         def grid(meta):
             num_n_blocks = triton.cdiv(n_size, meta["n_block_size"])
             num_k_blocks = triton.cdiv(k_size, meta["k_block_size"])
-            return (num_batches * num_n_blocks * num_k_blocks,)
+            return (num_n_blocks * num_k_blocks,)
 
         util.push_trace("kernel.Linear.backward_weight")
         kernel.Linear.backward_weight[grid](
-            grad_weight_staging,
+            grad_weight,
             grad_state_gate,
             input,
             m_size,
@@ -147,36 +152,41 @@ class GEGLU(torch.autograd.Function):
             k_size,
             input.stride(0),
             input.stride(1),
-            input.stride(2),
             use_accelerator,
-            util.dtype(grad_weight_staging.dtype),
+            util.dtype(grad_weight.dtype),
         )
         util.pop_trace()
 
-        util.push_trace("torch.sum")
-        grad_weight = torch.sum(grad_weight_staging, 0)
-        util.pop_trace()
-
         if bias is not None:
-            grad_bias_staging = torch.empty(num_batches, n_size, **factory_kwargs)
+            grad_bias = torch.empty(n_size, **factory_kwargs)
 
             def grid(meta):
-                return (num_batches * n_size,)
+                return (n_size,)
 
             util.push_trace("kernel.Linear.backward_bias")
             kernel.Linear.backward_bias[grid](
-                grad_bias_staging,
+                grad_bias,
                 grad_state_gate,
                 m_size,
                 n_size,
-                util.dtype(grad_bias_staging.dtype),
+                util.dtype(grad_bias.dtype),
             )
             util.pop_trace()
 
-            util.push_trace("torch.sum")
-            grad_bias = torch.sum(grad_bias_staging, 0)
-            util.pop_trace()
         else:
             grad_bias = None
 
         return grad_input, grad_weight, grad_bias
+
+    @staticmethod
+    def __input_shape(input: torch.Tensor):
+        return (-1, input.shape[-1])
+
+    @staticmethod
+    def __output_shape(input: torch.Tensor, weight: torch.Tensor):
+        if input.dim() == 2:
+            return (input.shape[0], weight.shape[0] // 2)
+        elif input.dim() == 3:
+            return (*input.shape[0:2], weight.shape[0] // 2)
+        else:
+            raise ValueError(f"Unable to convert the given input: '{input}'.")
